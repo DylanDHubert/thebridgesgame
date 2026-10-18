@@ -36,6 +36,8 @@ Use `terrainKindAt(view, row, col)` for lookups.
 | Area | Files | Notes |
 |------|-------|-------|
 | Terrain appearance | `cellAppearance.ts`, `terrain.ts` | colors, marsh splotches, cliffs |
+| Flat thumbnails | `flatTerrain.ts` | per-cell colors for level picker (no noise) |
+| Ambient chrome | `ambientGrid.ts` | shared cell/gap layout (header bands) |
 | Water animation | `waterNoise.ts`, `waterFeatures.ts` | subcell noise; no whirlpool terrain kind |
 | Bridges | `bridgeWood.ts` | bridge planks on water cells |
 | Borders | `terrainBorders.ts`, `TerrainBorderOverlay` | coast outlines |

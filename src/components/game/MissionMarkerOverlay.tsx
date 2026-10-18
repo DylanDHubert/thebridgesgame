@@ -1,13 +1,12 @@
-"use client";
-
 import type { Mission } from "@/lib/game/types";
+import { isoCellCenter, isoMetrics, SPRITE_NATIVE } from "@/lib/rendering/isoTiles";
+import { CLIFF_STONE_LIFT } from "@/lib/rendering/tileCatalog";
 
 type MissionMarkerOverlayProps = {
   mission: Mission;
   rows: number;
   cols: number;
-  cellSize: number;
-  gap: number;
+  tileWidth: number;
 };
 
 const MARKERS: Array<{ key: keyof Mission; label: string; color: string }> = [
@@ -16,62 +15,39 @@ const MARKERS: Array<{ key: keyof Mission; label: string; color: string }> = [
   { key: "z", label: "Z", color: "#fbbf24" },
 ];
 
-function cellCenter(
-  row: number,
-  col: number,
-  cellSize: number,
-  gap: number,
-): { x: number; y: number } {
-  const stride = cellSize + gap;
-  return {
-    x: col * stride + cellSize / 2,
-    y: row * stride + cellSize / 2,
-  };
-}
-
-/** X / Y / Z MARKERS — UX SHOWS ORDER; WIN LOGIC IS ORDER-AGNOSTIC */
+/** X / Y / Z MARKERS — UPRIGHT ON THE ISO DIAMOND. WIN LOGIC IS ORDER-AGNOSTIC */
 export function MissionMarkerOverlay({
   mission,
   rows,
   cols,
-  cellSize,
-  gap,
+  tileWidth,
 }: MissionMarkerOverlayProps) {
-  const width = cols * cellSize + Math.max(0, cols - 1) * gap;
-  const height = rows * cellSize + Math.max(0, rows - 1) * gap;
-  const radius = Math.max(8, cellSize * 0.22);
-  const fontSize = Math.max(10, cellSize * 0.28);
+  const metrics = isoMetrics(tileWidth, rows, cols);
+  const fontSize = Math.max(10, metrics.halfH * 0.9);
 
   return (
     <svg
       className="pointer-events-none absolute left-0 top-0"
-      width={width}
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
+      width={metrics.width}
+      height={metrics.height}
+      viewBox={`0 0 ${metrics.width} ${metrics.height}`}
       aria-hidden
     >
       {MARKERS.map(({ key, label, color }) => {
         const cell = mission[key];
-        const { x, y } = cellCenter(cell.row, cell.col, cellSize, gap);
+        const { x, y } = isoCellCenter(cell.row, cell.col, metrics);
+        const labelY = y - (CLIFF_STONE_LIFT * tileWidth) / SPRITE_NATIVE;
         return (
           <g key={key}>
-            <circle
-              cx={x}
-              cy={y}
-              r={radius}
-              fill="rgb(0 0 0 / 0.35)"
-              stroke={color}
-              strokeWidth={Math.max(2, cellSize * 0.06)}
-            />
             <text
               x={x}
-              y={y}
+              y={labelY}
               textAnchor="middle"
               dominantBaseline="central"
               fill="white"
               fontSize={fontSize}
               fontWeight="bold"
-              style={{ paintOrder: "stroke", stroke: "rgb(0 0 0 / 0.8)", strokeWidth: 2 }}
+              style={{ paintOrder: "stroke", stroke: color, strokeWidth: 3 }}
             >
               {label}
             </text>

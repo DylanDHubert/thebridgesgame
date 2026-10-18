@@ -1,11 +1,9 @@
 import type { CSSProperties } from "react";
 
 import { canPlaceBridgeAt } from "@/lib/game/rules";
+import { isoCellTop, type IsoMetrics } from "@/lib/rendering/isoTiles";
 import {
   appearanceForCell,
-  isMarkerOverlay,
-  overlayAccent,
-  overlayLabel,
   type AppearanceContext,
 } from "@/lib/rendering/cellAppearance";
 
@@ -13,34 +11,39 @@ type CellViewProps = {
   row: number;
   col: number;
   context: AppearanceContext;
-  cellSize: number;
+  metrics: IsoMetrics;
   interactive: boolean;
   editable?: boolean;
   onToggle?: (row: number, col: number) => void;
 };
 
+/** DIAMOND HIT TARGET OVER THE SPRITE — TERRAIN ART IS THE CANVAS UNDERNEATH */
 export function CellView({
   row,
   col,
   context,
-  cellSize,
+  metrics,
   interactive,
   editable = false,
   onToggle,
 }: CellViewProps) {
   const appearance = appearanceForCell(row, col, context);
-  const accent = overlayAccent(appearance.overlay);
-  const label = overlayLabel(appearance.overlay);
   const bridgeable = context.level
     ? canPlaceBridgeAt(context.level, row, col)
     : false;
   const clickable = editable || (interactive && bridgeable);
+  const top = isoCellTop(row, col, metrics);
+  const wash =
+    appearance.overlay === "path" ? "rgb(251 191 36 / 0.35)" : "transparent";
 
   const style: CSSProperties = {
-    width: cellSize,
-    height: cellSize,
-    backgroundColor: appearance.backgroundColor,
-    backgroundImage: appearance.shimmer,
+    left: top.x - metrics.halfW,
+    top: top.y,
+    width: metrics.tileWidth,
+    height: metrics.halfH * 2,
+    backgroundColor: wash,
+    clipPath: "polygon(50% 0, 100% 50%, 50% 100%, 0 50%)",
+    zIndex: row + col,
   };
 
   return (
@@ -50,29 +53,13 @@ export function CellView({
       disabled={!clickable}
       onClick={() => onToggle?.(row, col)}
       className={[
-        "relative transition-transform duration-100",
-        clickable
-          ? "cursor-pointer hover:brightness-110 active:scale-95"
-          : "cursor-default",
-        appearance.overlay === "path" ? "brightness-110" : "",
+        "absolute",
+        clickable ? "cursor-pointer border-0 p-0 hover:bg-white/25" : "cursor-default border-0 p-0",
       ].join(" ")}
       style={style}
     >
-      {accent && isMarkerOverlay(appearance.overlay) ? (
-        <span
-          className="pointer-events-none absolute inset-1 rounded-full border-2 shadow-sm"
-          style={{ borderColor: accent }}
-        />
-      ) : null}
-
-      {label ? (
-        <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-          {label}
-        </span>
-      ) : null}
-
       {appearance.bridgeCostLabel === 2 && appearance.overlay !== "bridge" ? (
-        <span className="pointer-events-none absolute bottom-0.5 right-0.5 rounded bg-black/35 px-0.5 text-[8px] font-bold text-lime-200">
+        <span className="pointer-events-none absolute bottom-0 right-1/2 translate-x-1/2 font-mono text-[8px] font-bold text-[rgb(78_145_66)]">
           ×2
         </span>
       ) : null}

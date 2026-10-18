@@ -1,4 +1,5 @@
 import type { CellCoord } from "@/lib/game/types";
+import { isoCellCenter, isoMetrics } from "@/lib/rendering/isoTiles";
 
 export type PathLineStyle = {
   id: string;
@@ -13,34 +14,16 @@ type PathLineOverlayProps = {
   paths: PathLineStyle[];
   rows: number;
   cols: number;
-  cellSize: number;
-  gap?: number;
+  tileWidth: number;
 };
-
-function cellCenter(
-  row: number,
-  col: number,
-  cellSize: number,
-  gap: number,
-): { x: number; y: number } {
-  return {
-    x: col * (cellSize + gap) + cellSize / 2,
-    y: row * (cellSize + gap) + cellSize / 2,
-  };
-}
 
 function pathToPoints(
   path: CellCoord[],
-  cellSize: number,
-  gap: number,
+  metrics: ReturnType<typeof isoMetrics>,
 ): string {
-  if (path.length === 0) {
-    return "";
-  }
-
   return path
     .map(({ row, col }) => {
-      const { x, y } = cellCenter(row, col, cellSize, gap);
+      const { x, y } = isoCellCenter(row, col, metrics);
       return `${x},${y}`;
     })
     .join(" ");
@@ -50,12 +33,9 @@ export function PathLineOverlay({
   paths,
   rows,
   cols,
-  cellSize,
-  gap = 2,
+  tileWidth,
 }: PathLineOverlayProps) {
-  const width = cols * cellSize + (cols - 1) * gap;
-  const height = rows * cellSize + (rows - 1) * gap;
-
+  const metrics = isoMetrics(tileWidth, rows, cols);
   const visiblePaths = paths.filter((entry) => entry.path.length >= 2);
   if (visiblePaths.length === 0) {
     return null;
@@ -64,18 +44,18 @@ export function PathLineOverlay({
   return (
     <svg
       className="pointer-events-none absolute left-0 top-0"
-      width={width}
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
+      width={metrics.width}
+      height={metrics.height}
+      viewBox={`0 0 ${metrics.width} ${metrics.height}`}
       aria-hidden
     >
       {visiblePaths.map((entry) => (
         <polyline
           key={entry.id}
-          points={pathToPoints(entry.path, cellSize, gap)}
+          points={pathToPoints(entry.path, metrics)}
           fill="none"
           stroke={entry.stroke}
-          strokeWidth={entry.strokeWidth ?? Math.max(2, cellSize * 0.12)}
+          strokeWidth={entry.strokeWidth ?? Math.max(2, metrics.halfH * 0.35)}
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeDasharray={entry.dashArray}

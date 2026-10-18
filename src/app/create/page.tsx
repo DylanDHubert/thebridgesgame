@@ -1,23 +1,19 @@
-import Link from "next/link";
-
 import { CreateSettingsForm } from "@/components/create/CreateSettingsForm";
-import { OceanBackground } from "@/components/home/OceanBackground";
 import { WoodenHeader } from "@/components/home/WoodenHeader";
+import { WoodLink } from "@/components/ui/woodPlaque";
 
 export default function CreatePage() {
   return (
-    <main className="relative min-h-full flex-1 overflow-hidden bg-ocean-gradient">
-      <OceanBackground />
-      <div className="relative z-10 flex min-h-full flex-col">
-        <WoodenHeader title="Create" subtitle="Codename: Journeyman" />
-        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6">
-          <Link
-            href="/"
-            className="w-fit text-sm text-sky-200/70 transition hover:text-sky-100"
-          >
-            ← Home
-          </Link>
-          <CreateSettingsForm />
+    <main className="flex h-dvh flex-col overflow-hidden">
+      <WoodenHeader title="Create" subtitle="the bridges game" nav="create" />
+      <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden px-4 py-4 sm:px-6">
+        <div className="flex h-full max-h-[40rem] w-full max-w-md flex-col gap-4 sm:max-w-lg">
+          <div className="flex shrink-0 justify-center pt-1">
+            <WoodLink href="/create/view?level=home">Edit home map →</WoodLink>
+          </div>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <CreateSettingsForm />
+          </div>
         </div>
       </div>
     </main>

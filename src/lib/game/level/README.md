@@ -81,4 +81,5 @@ Whirlpool on the gen grid is intentional: gen produces objects; playable terrain
 
 - Rules: `../rules.ts`
 - Simulation: `../simulateLevel.ts`
+- Play list/load: `./listLevels.ts`
 - Rendering input: `../../rendering/terrainView.ts` → `terrainViewFromLevel(level)`

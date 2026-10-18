@@ -1,52 +1,43 @@
-# `src/app/play` — play mode (stub)
+# `src/app/play` — play mode
 
-**What:** route shell for loading saved levels and playing bridge puzzles.
+**What:** load saved levels, place bridges, succeed when mission checkpoints connect.
 
-**Why:** create + save shipped first; play reuses the same `Level` + `GameBoard` without procedural generation or PAR.
-
-**Current state:** `page.tsx` is a placeholder with links to create and `simulateLevel.ts`.
+**Why:** create + save ship first; play reuses `Level` + `GameBoard` with no PAR / solver.
 
 ---
 
-## Target flow (Oliver)
+## Flow
 
 ```
-1. Resolve level id (searchParam ?level= or dynamic segment)
-2. fetch(`/levels/${id}.json`)
-3. deserializeLevel(json)
-4. Render <GameBoard level={level} … />
-5. useLevelGame — bridge Set, phases, pointer input (incl. drag)
-6. On submit → simulateLevel(level, bridges)
-7. If result.connected → success UI
+/play                  → level picker (mini maps from public/levels/)
+/play?level={id}       → PlaySession + useLevelGame
+                       → toggle bridges → Check → simulateLevel
+                       → success shows weighted bridge cost
 ```
 
 ---
 
-## Modules to wire
+## Modules
 
-| Concern | Import from |
-|---------|-------------|
-| Level on disk | `@/lib/game/level/serialize` |
-| Win check | `@/lib/game/simulateLevel` |
-| Bridge rules | `@/lib/game/rules` |
+| Concern | Where |
+|---------|--------|
+| List / load disk | `@/lib/game/level/listLevels` |
+| Win + cost | `@/lib/game/simulateLevel` |
+| Session state | `@/hooks/useLevelGame` |
+| Mini map | `@/components/play/LevelMiniMap` |
+| Picker / session | `@/components/play/LevelPicker`, `PlaySession` |
 | Board | `@/components/game/GameBoard` |
-| Mission labels | `@/components/game/MissionMarkerOverlay` |
 
 ---
 
-## Win rule (reminder)
+## Win rule
 
-All mission checkpoints `x`, `y`, `z` must be reachable from each other via walkable cells + bridges. **Order does not matter.**
-
-`displayMissionPath` returns X → Y → Z for animation only.
+All mission checkpoints `x`, `y`, `z` reachable from each other via land + bridges. **Order does not matter.** Score is **bridge cost** only (marsh weighted).
 
 ---
 
-## Not in scope for first play PR
+## Not in scope
 
-- Procedural level generation (use `/create` or hand JSON)
-- PAR / optimal solution display
-- Animals / collection hooks
-- `effectHandlers` gameplay (lighthouse, port)
-
-See `docs/ideas.md` for full ticket list.
+- PAR / optimal display
+- Animals / lighthouse / port gameplay
+- Procedural play generation

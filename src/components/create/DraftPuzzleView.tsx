@@ -5,7 +5,9 @@ import { useEffect, useMemo, useState } from "react";
 import { EditorPalette, type EditorTool } from "@/components/create/EditorPalette";
 import { GameBoard } from "@/components/game/GameBoard";
 import type { DraftRoute } from "@/components/game/RouteCanvasOverlay";
+import { WoodButton, WoodControlRow } from "@/components/ui/woodPlaque";
 import { saveLevelAction } from "@/app/actions/saveLevel";
+import { homeMapFromLevel } from "@/lib/game/homeMap";
 import { serializeLevel } from "@/lib/game/level/serialize";
 import type { Level } from "@/lib/game/level/types";
 import {
@@ -15,8 +17,10 @@ import {
 import {
   canPlaceObjectAt,
   canRouteEnter,
+  isLandKind,
+  terrainKindAt,
 } from "@/lib/game/rules";
-import type { TileKind } from "@/lib/game/types";
+import type { Mission, TileKind } from "@/lib/game/types";
 import {
   DEFAULT_DISPLAY_PREFS,
   loadDisplayPrefs,
@@ -26,12 +30,17 @@ import {
 
 type DraftPuzzleViewProps = {
   level: Level;
+  /** WHEN TRUE — EDITING THE TITLE MAP (X=HOME Y=PLAY Z=CREATE) */
+  homeMap?: boolean;
 };
 
 const PANEL_FRAME =
-  "overflow-hidden rounded-xl border border-white/15 bg-black/15 shadow-[inset_0_0_0_1px_rgb(255_255_255_/_0.04)]";
+  "overflow-hidden border border-[rgb(95_84_74)] bg-[rgb(12_48_92)]";
 
-function toolHint(tool: EditorTool): string {
+function toolHint(tool: EditorTool, homeMap: boolean): string {
+  if (homeMap && !tool) {
+    return "Drag HOME / PLAY / CREATE onto land. Select a tool to paint.";
+  }
   if (!tool) {
     return "Select a tool to start editing.";
   }
@@ -54,7 +63,10 @@ function newRouteId(): string {
   return `route-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 }
 
-export function DraftPuzzleView({ level: initialLevel }: DraftPuzzleViewProps) {
+export function DraftPuzzleView({
+  level: initialLevel,
+  homeMap = false,
+}: DraftPuzzleViewProps) {
   const [level, setLevel] = useState<Level>(initialLevel);
   const [tool, setTool] = useState<EditorTool>(null);
   const [draftRoute, setDraftRoute] = useState<DraftRoute | null>(null);
@@ -76,6 +88,10 @@ export function DraftPuzzleView({ level: initialLevel }: DraftPuzzleViewProps) {
 
   const emptyBridges = useMemo(() => new Set<string>(), []);
   const emptyPath = useMemo(() => new Set<string>(), []);
+  const homeLabels = useMemo(
+    () => (homeMap ? homeMapFromLevel(level).labels : undefined),
+    [homeMap, level],
+  );
 
   const handleCellGridOpacity = (value: number) => {
     const next = normalizeDisplayPrefs({
@@ -183,6 +199,27 @@ export function DraftPuzzleView({ level: initialLevel }: DraftPuzzleViewProps) {
     setDraftRoute({ ...draftRoute, path: [...draftRoute.path, { row, col }] });
   };
 
+  const handleHomeLabelMove = (id: string, row: number, col: number) => {
+    const kind = terrainKindAt(level, row, col);
+    if (!kind || !isLandKind(kind)) {
+      setStatus("Drop HOME / PLAY / CREATE on land.");
+      return;
+    }
+    const missionKey =
+      id === "home" ? "x" : id === "play" ? "y" : id === "create" ? "z" : null;
+    if (!missionKey) {
+      return;
+    }
+    setStatus(null);
+    setLevel((prev) => ({
+      ...prev,
+      mission: {
+        ...prev.mission,
+        [missionKey]: { row, col },
+      } satisfies Mission,
+    }));
+  };
+
   const handleCellClick = (row: number, col: number) => {
     if (!tool) {
       return;
@@ -255,7 +292,12 @@ export function DraftPuzzleView({ level: initialLevel }: DraftPuzzleViewProps) {
   const handleSave = async () => {
     setIsSaving(true);
     setStatus(null);
-    const toSave: Level = { ...level, name: name.trim() || level.id };
+    const toSave: Level = {
+      ...level,
+      // HOME MAP ALWAYS SAVES AS id=home
+      id: homeMap ? "home" : level.id,
+      name: homeMap ? "the bridges game" : name.trim() || level.id,
+    };
     try {
       const result = await saveLevelAction(serializeLevel(toSave));
       setStatus(result.ok ? `Saved to ${result.path}` : `Save failed: ${result.error}`);
@@ -269,10 +311,10 @@ export function DraftPuzzleView({ level: initialLevel }: DraftPuzzleViewProps) {
   const isRouteTool = tool?.type === "route";
 
   return (
-    <div className="flex h-full min-h-0 w-full overflow-hidden">
-      <section className="flex min-h-0 min-w-0 flex-[3] flex-col gap-3 p-4">
-        <div className={`flex min-h-0 flex-[3] p-3 ${PANEL_FRAME}`}>
-          <div className="flex min-h-0 flex-1 items-start justify-center">
+    <div className="flex h-full min-h-0 w-full overflow-hidden font-mono">
+      <section className="flex min-h-0 min-w-0 flex-[3] flex-col gap-2 p-3">
+        <div className={`flex min-h-0 flex-1 p-2 ${PANEL_FRAME}`}>
+          <div className="flex min-h-0 flex-1 items-center justify-center">
             <GameBoard
               level={level}
               bridges={emptyBridges}
@@ -282,89 +324,82 @@ export function DraftPuzzleView({ level: initialLevel }: DraftPuzzleViewProps) {
               onCellClick={handleCellClick}
               draftRoute={draftRoute}
               sizing="contain"
+              showMission={!homeMap}
+              mapLabels={homeLabels}
+              mapLabelsDraggable={homeMap && tool === null}
+              onMapLabelMove={homeMap ? handleHomeLabelMove : undefined}
               cellGridOpacity={cellGridOpacity}
               waterDepthInterpolation={waterDepthInterpolation}
             />
           </div>
         </div>
 
-        <div className={`flex min-h-0 flex-1 flex-col gap-3 p-3 ${PANEL_FRAME}`}>
+        <div className={`flex shrink-0 flex-col gap-2 px-3 py-2 ${PANEL_FRAME}`}>
           <div className="flex items-center justify-between gap-3">
-            <p className="text-[11px] text-sky-100/60">{toolHint(tool)}</p>
+            <p className="text-[11px] text-[rgb(210_196_138)]">
+              {toolHint(tool, homeMap)}
+            </p>
             {status ? (
-              <p className="truncate text-[11px] text-amber-200/80">{status}</p>
+              <p className="truncate text-[11px] text-[rgb(251_191_36)]">{status}</p>
             ) : null}
           </div>
 
           {isRouteTool && draftRoute ? (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] text-sky-100/50">
+              <span className="text-[11px] text-[rgb(36_148_132)]">
                 {draftRoute.path.length} point{draftRoute.path.length === 1 ? "" : "s"}
               </span>
-              <button
-                type="button"
-                onClick={toggleRouteClosed}
-                className="rounded-md border border-white/15 px-2 py-1 text-[11px] text-white/70 hover:border-white/40"
-              >
-                {draftRoute.closed ? "Loop: on" : "Loop: off"}
-              </button>
-              <button
-                type="button"
-                onClick={undoRoutePoint}
-                className="rounded-md border border-white/15 px-2 py-1 text-[11px] text-white/70 hover:border-white/40"
-              >
-                Undo point
-              </button>
-              <button
-                type="button"
-                onClick={clearDraftRoute}
-                className="rounded-md border border-white/15 px-2 py-1 text-[11px] text-white/70 hover:border-white/40"
-              >
-                Clear
-              </button>
-              <button
-                type="button"
-                onClick={finishRoute}
-                className="rounded-md border border-emerald-300/60 bg-emerald-400/10 px-2 py-1 text-[11px] text-emerald-100 hover:border-emerald-200"
-              >
-                Finish route
-              </button>
+              <WoodControlRow className="justify-start">
+                <WoodButton type="button" onClick={toggleRouteClosed}>
+                  {draftRoute.closed ? "Loop: on" : "Loop: off"}
+                </WoodButton>
+                <WoodButton type="button" onClick={undoRoutePoint}>
+                  Undo point
+                </WoodButton>
+                <WoodButton type="button" onClick={clearDraftRoute}>
+                  Clear
+                </WoodButton>
+                <WoodButton type="button" onClick={finishRoute}>
+                  Finish route
+                </WoodButton>
+              </WoodControlRow>
             </div>
           ) : null}
 
-          <div className="mt-auto flex items-center gap-2">
-            <input
-              type="text"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="Level name"
-              className="min-w-0 flex-1 rounded-md border border-white/15 bg-black/20 px-2 py-1.5 text-xs text-white placeholder:text-white/30 focus:border-sky-300 focus:outline-none"
-            />
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={isSaving}
-              className="rounded-md border border-sky-300/60 bg-sky-400/10 px-3 py-1.5 text-xs font-medium text-sky-100 hover:border-sky-200 disabled:opacity-50"
-            >
-              {isSaving ? "Saving…" : "Save level"}
-            </button>
+          <div className="flex items-center gap-2">
+            {homeMap ? (
+              <p className="min-w-0 flex-1 text-[11px] text-[rgb(36_148_132)]">
+                Saving updates the title screen map
+              </p>
+            ) : (
+              <input
+                type="text"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Level name"
+                className="min-w-0 flex-1 border border-[rgb(95_84_74)] bg-[rgb(42_112_151)] px-2 py-1.5 text-xs text-[rgb(210_196_138)] placeholder:text-[rgb(36_148_132)] focus:border-[rgb(210_196_138)] focus:outline-none"
+              />
+            )}
+            <WoodButton type="button" onClick={handleSave} disabled={isSaving}>
+              {isSaving ? "Saving…" : homeMap ? "Save home map" : "Save level"}
+            </WoodButton>
           </div>
         </div>
       </section>
 
-      <aside className="flex min-h-0 min-w-0 flex-1 flex-col gap-5 overflow-y-auto border-l border-white/10 bg-black/10 p-4">
+      <aside className="flex min-h-0 w-48 shrink-0 flex-col gap-3 overflow-y-auto border-l border-[rgb(95_84_74)] p-3 sm:w-56">
         <EditorPalette tool={tool} onSelect={handleSelectTool} />
 
         {process.env.NODE_ENV === "development" ? (
-          <details className="rounded-md border border-white/10 bg-black/20 open:pb-2">
-            <summary className="cursor-pointer select-none px-2 py-1.5 text-[10px] font-medium uppercase tracking-[0.2em] text-amber-200/70 hover:text-amber-100/90">
+          <details className="border border-[rgb(95_84_74)] bg-[rgb(42_112_151)] open:pb-2">
+            <summary className="cursor-pointer select-none px-2 py-1.5 text-[10px] font-medium uppercase tracking-[0.2em] text-[rgb(251_191_36)] hover:text-[rgb(210_196_138)]">
               Dev
             </summary>
-            <div className="space-y-3 border-t border-white/10 px-2 pt-2">
+            <div className="space-y-3 border-t border-[rgb(95_84_74)] px-2 pt-2">
               <label className="flex flex-col gap-1">
-                <span className="flex items-baseline justify-between gap-2 text-[11px] text-sky-100/70">
+                <span className="flex items-baseline justify-between gap-2 text-[11px] text-[rgb(210_196_138)]">
                   <span>Cell outline</span>
-                  <span className="font-mono text-sky-50">
+                  <span className="font-mono text-[rgb(72_176_210)]">
                     {cellGridOpacity === 0
                       ? "off"
                       : cellGridOpacity.toFixed(2).replace(/\.?0+$/, "")}
@@ -379,14 +414,14 @@ export function DraftPuzzleView({ level: initialLevel }: DraftPuzzleViewProps) {
                   onChange={(event) =>
                     handleCellGridOpacity(Number(event.target.value))
                   }
-                  className="h-1.5 w-full cursor-pointer accent-sky-400"
+                  className="wood-slider"
                 />
               </label>
 
               <label className="flex flex-col gap-1">
-                <span className="flex items-baseline justify-between gap-2 text-[11px] text-sky-100/70">
+                <span className="flex items-baseline justify-between gap-2 text-[11px] text-[rgb(210_196_138)]">
                   <span>Water depth blend</span>
-                  <span className="font-mono text-sky-50">
+                  <span className="font-mono text-[rgb(72_176_210)]">
                     {waterDepthInterpolation.toFixed(2).replace(/\.?0+$/, "")}
                   </span>
                 </span>
@@ -399,9 +434,9 @@ export function DraftPuzzleView({ level: initialLevel }: DraftPuzzleViewProps) {
                   onChange={(event) =>
                     handleWaterDepthInterpolation(Number(event.target.value))
                   }
-                  className="h-1.5 w-full cursor-pointer accent-sky-400"
+                  className="wood-slider"
                 />
-                <span className="text-[10px] text-sky-100/40">
+                <span className="text-[10px] text-[rgb(36_148_132)]">
                   0 = per-cell depth · 1 = full neighbor blend
                 </span>
               </label>
@@ -410,11 +445,11 @@ export function DraftPuzzleView({ level: initialLevel }: DraftPuzzleViewProps) {
         ) : null}
 
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-sky-200/50">
+          <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[rgb(72_176_210)]">
             Placed routes
           </p>
           {level.routes.length === 0 ? (
-            <p className="mt-2 text-[11px] text-sky-100/40">No routes yet.</p>
+            <p className="mt-2 text-[11px] text-[rgb(36_148_132)]">No routes yet.</p>
           ) : (
             <ul className="mt-2 flex flex-col gap-1.5">
               {level.routes.map((route) => {
@@ -422,27 +457,23 @@ export function DraftPuzzleView({ level: initialLevel }: DraftPuzzleViewProps) {
                 return (
                   <li
                     key={route.id}
-                    className="flex items-center gap-2 rounded-md border border-white/10 bg-black/20 px-2 py-1.5 text-[11px] text-white/70"
+                    className="flex items-center gap-2 border border-[rgb(95_84_74)] bg-[rgb(42_112_151)] px-2 py-1.5 text-[11px] text-[rgb(210_196_138)]"
                   >
                     <span
                       aria-hidden
-                      className="h-2.5 w-4 rounded-full"
+                      className="h-2.5 w-4"
                       style={{ backgroundColor: definition?.color ?? "white" }}
                     />
                     <span className="flex-1 truncate">
                       {definition?.label ?? route.defId}
-                      <span className="text-white/35">
+                      <span className="text-[rgb(36_148_132)]">
                         {" "}
                         · {route.path.length} pts{route.closed ? " · loop" : ""}
                       </span>
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => deleteRoute(route.id)}
-                      className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] text-rose-200/80 hover:border-rose-300/60"
-                    >
+                    <WoodButton type="button" onClick={() => deleteRoute(route.id)}>
                       Delete
-                    </button>
+                    </WoodButton>
                   </li>
                 );
               })}

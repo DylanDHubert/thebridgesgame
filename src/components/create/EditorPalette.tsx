@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { ObjectSwatch } from "@/components/create/ObjectSwatch";
 import { TileSwatch } from "@/components/create/TileSwatch";
+import { WoodButton, WoodPlaque } from "@/components/ui/woodPlaque";
 import {
   OBJECT_DEFINITION_LIST,
   ROUTE_DEFINITION_LIST,
@@ -20,7 +21,6 @@ export type EditorTool =
   | null;
 
 const SWATCH_SIZE = 40;
-const CELL_OUTLINE = "rgb(255 255 255 / 0.72)";
 
 // TERRAIN ORDER FOR THE PALETTE (WHIRLPOOL IS A BUILDING NOW)
 const TERRAIN_ORDER: TileKind[] = ["ocean", "marsh", "beach", "grass", "cliff"];
@@ -52,7 +52,7 @@ function sameTool(a: EditorTool, b: EditorTool): boolean {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div>
-      <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-sky-200/50">
+      <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[rgb(72_176_210)]">
         {title}
       </p>
       <div className="mt-3">{children}</div>
@@ -81,16 +81,22 @@ function SwatchButton({
         aria-pressed={selected}
         title={title}
         className={[
-          "relative block overflow-hidden border transition",
-          selected
-            ? "border-sky-300 ring-2 ring-sky-300/70 ring-offset-2 ring-offset-[#0a1f33]"
-            : "border-white/70 hover:border-white",
+          "relative block transition hover:brightness-110 active:translate-y-px",
+          selected ? "brightness-110" : "",
         ].join(" ")}
-        style={{ borderColor: selected ? undefined : CELL_OUTLINE }}
       >
-        {children}
+        <WoodPlaque compact className="p-[2px]">
+          <div
+            className={[
+              "overflow-hidden",
+              selected ? "outline outline-1 outline-[rgb(251_191_36)]" : "",
+            ].join(" ")}
+          >
+            {children}
+          </div>
+        </WoodPlaque>
       </button>
-      <span className="text-[10px] font-medium tracking-wide text-white/70">
+      <span className="text-[10px] font-medium tracking-wide text-[rgb(210_196_138)]">
         {label}
       </span>
     </div>
@@ -144,51 +150,34 @@ export function EditorPalette({ tool, onSelect }: EditorPaletteProps) {
       </Section>
 
       <Section title="Routes">
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3">
           {ROUTE_DEFINITION_LIST.map((definition) => {
             const next: EditorTool = { type: "route", defId: definition.id };
             const selected = sameTool(tool, next);
             return (
-              <button
+              <WoodButton
                 key={definition.id}
                 type="button"
                 onClick={() => pick(next)}
-                aria-pressed={selected}
-                className={[
-                  "flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-left text-xs transition",
-                  selected
-                    ? "border-sky-300 bg-sky-400/10 text-white"
-                    : "border-white/15 text-white/70 hover:border-white/40",
-                ].join(" ")}
+                pressed={selected}
+                className="w-full"
               >
-                <span
-                  aria-hidden
-                  className="h-3 w-6 rounded-full"
-                  style={{ backgroundColor: definition.color }}
-                />
-                <span className="flex-1">{definition.label}</span>
-                <span className="text-[10px] text-white/40">
-                  {definition.closedByDefault ? "loop" : "lane"}
-                </span>
-              </button>
+                {definition.label}
+                {definition.closedByDefault ? " · loop" : " · lane"}
+              </WoodButton>
             );
           })}
         </div>
       </Section>
 
-      <button
+      <WoodButton
         type="button"
         onClick={() => pick({ type: "erase" })}
-        aria-pressed={tool?.type === "erase"}
-        className={[
-          "rounded-md border px-2.5 py-1.5 text-xs transition",
-          tool?.type === "erase"
-            ? "border-rose-300 bg-rose-400/10 text-white"
-            : "border-white/15 text-white/70 hover:border-white/40",
-        ].join(" ")}
+        pressed={tool?.type === "erase"}
+        className="w-full"
       >
         Erase building
-      </button>
+      </WoodButton>
     </div>
   );
 }

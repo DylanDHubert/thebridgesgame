@@ -1,0 +1,56 @@
+{
+  "version": 2,
+  "id": "create-599385375",
+  "name": "create-599385375",
+  "seed": "create-599385375",
+  "grid": {
+    "rows": 25,
+    "cols": 47
+  },
+  "terrain": "ooooooooooooobccoooooomoooooooooooocccooooobgboooooooooomooooooooooombmocoooooomoooocmooombgbooooooomoobooooooooooooobmooooooobccombboooocboomooooobcbboooooooomooooocbbcbbobgbooobbooooomoobmoombbggbmoooomooboombbgggcbbobbboomboooooomomgcoobbmcggcoooobbbbooocccgboobbcoooooooooooobbbcoooooocgggcccocgbooooooocboobmboooomboomoooccgooocooombbcccboocoooooooooooommbcooombbbbmoooocoooooooobmooomomoooccbmooooooombgboombgbmoooooooomboomoombocccbooocggcoombooooobcooobboooooooooobboobocbcoooccoombbboooobcooooooooobbooooooooombcooobbbmoomooomooobcmooobooooooooombmocbbcbooocboombmooobbmmbbcombbbmoobooooocoooocbcgbmooooombmoomooombcoommooomoooobcooooobbmoooobbooomooooccoocoocobmooomoooooooomccbcoommcooooomoocbbooooobbgbmoomooombcoooomooocoobmooooombmooooobbooooocgcmommboombbbmoombooocboooooooooccooooccoooooombmombomooooocombcgbmoobooooccooomboooooooooooooooooccboooooooombgbmooccooobboooomobmooooooooooooocggboooooooooobgboobgcbmomoooooobcoooooooooboocggcooooommoooobbmoobggcooooobmoomoomooobooocbbgggbmooobbbobcbbbombgbbgbooobgbmooocboooooooobgggboooombgboooomoombbmocgbmoobbmooobgcoobbcobbgggbmoooccboooooomocboombggbbbmmoooomccooocboombggcoooooomooobombccmoombggggbmoooooobbm",
+  "mission": {
+    "x": [
+      0,
+      14
+    ],
+    "y": [
+      6,
+      46
+    ],
+    "z": [
+      24,
+      2
+    ]
+  },
+  "objects": [
+    {
+      "defId": "whirlpool",
+      "row": 3,
+      "col": 40
+    },
+    {
+      "defId": "whirlpool",
+      "row": 3,
+      "col": 41
+    },
+    {
+      "defId": "whirlpool",
+      "row": 15,
+      "col": 40
+    },
+    {
+      "defId": "whirlpool",
+      "row": 17,
+      "col": 26
+    },
+    {
+      "defId": "whirlpool",
+      "row": 18,
+      "col": 26
+    }
+  ],
+  "routes": [],
+  "meta": {
+    "createdAt": "2026-07-19T00:19:49.251Z"
+  }
+}

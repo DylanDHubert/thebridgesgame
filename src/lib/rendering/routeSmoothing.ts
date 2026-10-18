@@ -1,14 +1,4 @@
-import type { CellCoord } from "@/lib/game/types";
-
 export type Point = { x: number; y: number };
-
-function cellCenter(cell: CellCoord, cellSize: number, gap: number): Point {
-  const stride = cellSize + gap;
-  return {
-    x: cell.col * stride + cellSize / 2,
-    y: cell.row * stride + cellSize / 2,
-  };
-}
 
 function catmullRom(
   p0: Point,
@@ -36,17 +26,14 @@ function catmullRom(
 }
 
 /**
- * SMOOTH A BLOCKY CELL PATH INTO A FLOWING CURVE VIA CATMULL-ROM.
- * RETURNS A DENSE POLYLINE IN PIXEL SPACE (CELL CENTERS).
+ * SMOOTH A POLYLINE VIA CATMULL-ROM.
+ * RETURNS A DENSE POLYLINE IN THE SAME SPACE AS `pts`.
  */
-export function smoothRoutePixels(
-  path: CellCoord[],
+export function smoothPoints(
+  pts: Point[],
   closed: boolean,
-  cellSize: number,
-  gap: number,
   samplesPerSegment = 20,
 ): Point[] {
-  const pts = path.map((cell) => cellCenter(cell, cellSize, gap));
   if (pts.length < 3) {
     return pts;
   }

@@ -37,14 +37,27 @@
   → serializeLevel → public/levels/*.json
 ```
 
-### Play (stub — Oliver)
+### Home
 
 ```
+/
+  → loadSavedLevel("home")  // public/levels/home.json
+  → homeMapFromLevel (X=HOME Y=PLAY Z=CREATE land components)
+  → GameBoard + bridges → /play or /create
+
+Edit: /create/view?level=home → DraftPuzzleView → Save home map
+```
+
+### Play
+
+```
+/play
+  → listSavedLevels (public/levels/)
+  → picker + LevelMiniMap
 /play?level=id
-  → fetch LevelFile
-  → deserializeLevel
-  → GameBoard(level) + useLevelGame (bridges)
-  → simulateLevel(level, bridges) on submit
+  → loadSavedLevel
+  → GameBoard + useLevelGame (bridges)
+  → Check → simulateLevel → success (cost) or disconnected
 ```
 
 ---
@@ -53,7 +66,6 @@
 
 | Ticket | Hook |
 |--------|------|
-| Play hook | `useLevelGame.ts` — bridge `Set`, phases, call `simulateLevel` |
 | Drag bridges | `GameBoard` pointer layer + `canPlaceBridgeAt` |
 | Level validator | `scripts/validateLevels.ts` + `deserializeLevel` |
 | Custom gameplay | `objects/effectHandlers.ts` — `lighthouseLight`, `port` |

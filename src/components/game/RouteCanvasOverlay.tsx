@@ -1,6 +1,7 @@
 import { routeDefinition } from "@/lib/game/objects/registry";
 import type { LevelRoute } from "@/lib/game/level/types";
 import type { CellCoord } from "@/lib/game/types";
+import { isoCellCenter, isoMetrics } from "@/lib/rendering/isoTiles";
 
 export type DraftRoute = {
   defId: string;
@@ -13,32 +14,18 @@ type RouteCanvasOverlayProps = {
   draftRoute?: DraftRoute | null;
   rows: number;
   cols: number;
-  cellSize: number;
-  gap: number;
+  tileWidth: number;
 };
-
-function cellCenter(
-  cell: CellCoord,
-  cellSize: number,
-  gap: number,
-): { x: number; y: number } {
-  const stride = cellSize + gap;
-  return {
-    x: cell.col * stride + cellSize / 2,
-    y: cell.row * stride + cellSize / 2,
-  };
-}
 
 function pointsFor(
   path: CellCoord[],
   closed: boolean,
-  cellSize: number,
-  gap: number,
+  metrics: ReturnType<typeof isoMetrics>,
 ): string {
   const cells = closed && path.length > 1 ? [...path, path[0]!] : path;
   return cells
     .map((cell) => {
-      const { x, y } = cellCenter(cell, cellSize, gap);
+      const { x, y } = isoCellCenter(cell.row, cell.col, metrics);
       return `${x},${y}`;
     })
     .join(" ");
@@ -48,25 +35,23 @@ function RoutePolyline({
   path,
   closed,
   color,
-  cellSize,
-  gap,
+  metrics,
   dashed,
 }: {
   path: CellCoord[];
   closed: boolean;
   color: string;
-  cellSize: number;
-  gap: number;
+  metrics: ReturnType<typeof isoMetrics>;
   dashed?: boolean;
 }) {
-  const strokeWidth = Math.max(2, cellSize * 0.16);
-  const nodeRadius = Math.max(1.5, cellSize * 0.12);
+  const strokeWidth = Math.max(2, metrics.halfH * 0.4);
+  const nodeRadius = Math.max(1.5, metrics.halfH * 0.28);
 
   return (
     <g>
       {path.length >= 2 ? (
         <polyline
-          points={pointsFor(path, closed, cellSize, gap)}
+          points={pointsFor(path, closed, metrics)}
           fill="none"
           stroke={color}
           strokeWidth={strokeWidth}
@@ -77,7 +62,7 @@ function RoutePolyline({
         />
       ) : null}
       {path.map((cell, index) => {
-        const { x, y } = cellCenter(cell, cellSize, gap);
+        const { x, y } = isoCellCenter(cell.row, cell.col, metrics);
         const isEnd = index === 0 || index === path.length - 1;
         return (
           <circle
@@ -87,7 +72,7 @@ function RoutePolyline({
             r={isEnd ? nodeRadius * 1.4 : nodeRadius}
             fill={isEnd ? color : "white"}
             stroke={color}
-            strokeWidth={Math.max(1, cellSize * 0.04)}
+            strokeWidth={Math.max(1, metrics.tileWidth * 0.03)}
           />
         );
       })}
@@ -100,11 +85,9 @@ export function RouteCanvasOverlay({
   draftRoute,
   rows,
   cols,
-  cellSize,
-  gap,
+  tileWidth,
 }: RouteCanvasOverlayProps) {
-  const width = cols * cellSize + Math.max(0, cols - 1) * gap;
-  const height = rows * cellSize + Math.max(0, rows - 1) * gap;
+  const metrics = isoMetrics(tileWidth, rows, cols);
 
   if (routes.length === 0 && (!draftRoute || draftRoute.path.length === 0)) {
     return null;
@@ -113,9 +96,9 @@ export function RouteCanvasOverlay({
   return (
     <svg
       className="pointer-events-none absolute left-0 top-0"
-      width={width}
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
+      width={metrics.width}
+      height={metrics.height}
+      viewBox={`0 0 ${metrics.width} ${metrics.height}`}
       aria-hidden
     >
       {routes.map((route) => (
@@ -124,8 +107,7 @@ export function RouteCanvasOverlay({
           path={route.path}
           closed={route.closed}
           color={routeDefinition(route.defId)?.color ?? "rgb(226 232 240)"}
-          cellSize={cellSize}
-          gap={gap}
+          metrics={metrics}
         />
       ))}
       {draftRoute && draftRoute.path.length > 0 ? (
@@ -133,8 +115,7 @@ export function RouteCanvasOverlay({
           path={draftRoute.path}
           closed={draftRoute.closed}
           color={routeDefinition(draftRoute.defId)?.color ?? "rgb(226 232 240)"}
-          cellSize={cellSize}
-          gap={gap}
+          metrics={metrics}
           dashed
         />
       ) : null}

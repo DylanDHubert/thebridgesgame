@@ -4,10 +4,11 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { routeDefinition } from "@/lib/game/objects/registry";
 import type { LevelRoute } from "@/lib/game/level/types";
+import { isoCellCenter, isoMetrics } from "@/lib/rendering/isoTiles";
 import {
   buildArcTable,
   samplePath,
-  smoothRoutePixels,
+  smoothPoints,
   type Point,
 } from "@/lib/rendering/routeSmoothing";
 
@@ -15,8 +16,7 @@ type RouteShipOverlayProps = {
   routes: LevelRoute[];
   rows: number;
   cols: number;
-  cellSize: number;
-  gap: number;
+  tileWidth: number;
 };
 
 type PreparedRoute = {
@@ -123,30 +123,33 @@ export function RouteShipOverlay({
   routes,
   rows,
   cols,
-  cellSize,
-  gap,
+  tileWidth,
 }: RouteShipOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const width = cols * cellSize + Math.max(0, cols - 1) * gap;
-  const height = rows * cellSize + Math.max(0, rows - 1) * gap;
-  const stride = cellSize + gap;
+  const metrics = useMemo(
+    () => isoMetrics(tileWidth, rows, cols),
+    [tileWidth, rows, cols],
+  );
 
   const prepared = useMemo<PreparedRoute[]>(() => {
     return routes.map((route) => {
       const definition = routeDefinition(route.defId);
-      const points = smoothRoutePixels(route.path, route.closed, cellSize, gap);
+      const centers = route.path.map((cell) =>
+        isoCellCenter(cell.row, cell.col, metrics),
+      );
+      const points = smoothPoints(centers, route.closed);
       const arc = buildArcTable(points);
       return {
         id: route.id,
         closed: route.closed,
         color: definition?.color ?? "rgb(226 232 240)",
-        speedPx: (definition?.speed ?? 3) * stride,
+        speedPx: (definition?.speed ?? 3) * metrics.halfW,
         points,
         cumulative: arc.cumulative,
         total: arc.total,
       };
     });
-  }, [routes, cellSize, gap, stride]);
+  }, [routes, metrics]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -158,7 +161,7 @@ export function RouteShipOverlay({
       return;
     }
 
-    const shipSize = Math.max(6, Math.round(cellSize * 0.72));
+    const shipSize = Math.max(6, Math.round(tileWidth * 0.36));
     const start = performance.now();
     let raf = 0;
 
@@ -167,7 +170,7 @@ export function RouteShipOverlay({
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       for (const route of prepared) {
-        drawPixelTrail(ctx, route.points, route.color, cellSize);
+        drawPixelTrail(ctx, route.points, route.color, tileWidth);
 
         if (route.total > 0) {
           const distance = transitDistance(
@@ -186,7 +189,7 @@ export function RouteShipOverlay({
 
     raf = requestAnimationFrame(render);
     return () => cancelAnimationFrame(raf);
-  }, [prepared, cellSize]);
+  }, [prepared, tileWidth, metrics.width, metrics.height]);
 
   if (routes.length === 0) {
     return null;
@@ -195,11 +198,11 @@ export function RouteShipOverlay({
   return (
     <canvas
       ref={canvasRef}
-      width={width}
-      height={height}
+      width={metrics.width}
+      height={metrics.height}
       aria-hidden
       className="pointer-events-none absolute left-0 top-0"
-      style={{ width, height, imageRendering: "pixelated" }}
+      style={{ width: metrics.width, height: metrics.height, imageRendering: "pixelated" }}
     />
   );
 }

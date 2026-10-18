@@ -1,0 +1,102 @@
+{
+  "version": 2,
+  "id": "home",
+  "name": "the bridges game",
+  "seed": "home-archipelago",
+  "grid": {
+    "rows": 14,
+    "cols": 22
+  },
+  "terrain": "cccccoocccccccbcccgccccggbocboccgccmmccggcccbgboobgbbggggbmbggggbcoboobgggbbgggbommbgoocoooobbbboobbbooooobooooooooooooooooooocoooooooooooooooooobbccooooooooommoooooobgggbooooooombbboooommbcggboooooombggbmooommccgbcoboooombcgcmoooommobbobgbooooccbmoooooooommbgcooooooooooooooobbbooboooooooooooooooccggboooooo",
+  "mission": {
+    "x": [
+      3,
+      5
+    ],
+    "y": [
+      8,
+      14
+    ],
+    "z": [
+      9,
+      4
+    ]
+  },
+  "objects": [
+    {
+      "defId": "lighthouse",
+      "row": 5,
+      "col": 16
+    },
+    {
+      "defId": "port",
+      "row": 10,
+      "col": 13
+    },
+    {
+      "defId": "port",
+      "row": 12,
+      "col": 4
+    }
+  ],
+  "routes": [
+    {
+      "id": "45da6793-ac87-437e-b708-190fbd6ca268",
+      "defId": "merchant",
+      "closed": false,
+      "path": [
+        [
+          10,
+          13
+        ],
+        [
+          11,
+          13
+        ],
+        [
+          11,
+          12
+        ],
+        [
+          11,
+          11
+        ],
+        [
+          11,
+          10
+        ],
+        [
+          11,
+          9
+        ],
+        [
+          11,
+          8
+        ],
+        [
+          11,
+          7
+        ],
+        [
+          12,
+          7
+        ],
+        [
+          12,
+          6
+        ],
+        [
+          12,
+          5
+        ],
+        [
+          12,
+          4
+        ]
+      ]
+    }
+  ],
+  "meta": {
+    "createdAt": "2026-09-20T02:23:42.654Z"
+  }
+}
