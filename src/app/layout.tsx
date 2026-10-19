@@ -22,7 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${pixelFont.variable} h-full`}>
-      <body className={`${pixelFont.className} app-backdrop relative flex h-dvh flex-col overflow-hidden`}>
+      <body className={`${pixelFont.className} relative flex h-dvh flex-col overflow-hidden bg-white text-black`}>
         {children}
       </body>
     </html>

@@ -2,23 +2,30 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { BridgeSplash } from "@/components/game/BridgeSplash";
 import { CellView } from "@/components/game/CellView";
 import { MapLabelOverlay, type MapLabel } from "@/components/game/MapLabelOverlay";
-import { MissionMarkerOverlay } from "@/components/game/MissionMarkerOverlay";
-import { ObjectCanvasOverlay } from "@/components/game/ObjectCanvasOverlay";
 import { PathLineOverlay, type PathLineStyle } from "@/components/game/PathLineOverlay";
-import { RouteCanvasOverlay, type DraftRoute } from "@/components/game/RouteCanvasOverlay";
-import { RouteShipOverlay } from "@/components/game/RouteShipOverlay";
+import type { DraftRoute } from "@/components/game/RouteCanvasOverlay";
 import { SpriteTerrainCanvas } from "@/components/game/SpriteTerrainCanvas";
 import { WoodFrame } from "@/components/ui/woodPlaque";
 import { cellKey } from "@/lib/game/coords";
-import { isoLatticeCells, type IsoSpan } from "@/lib/game/isoBoard";
+import { bleedRimSpan, isoLatticeCells, type IsoSpan } from "@/lib/game/isoBoard";
 import type { Level } from "@/lib/game/level/types";
+import { latticeWaterDepth } from "@/lib/game/terrain";
 import type { CellCoord } from "@/lib/game/types";
 import { createAppearanceContext } from "@/lib/rendering/cellAppearance";
 import { isoMetrics } from "@/lib/rendering/isoTiles";
-import { FLOWER_VARIANTS } from "@/lib/rendering/tileCatalog";
-import { terrainViewFromLevel } from "@/lib/rendering/terrainView";
+import { FLOWER_VARIANTS, waterSurfaceTint } from "@/lib/rendering/tileCatalog";
+import { terrainKindAt, terrainViewFromLevel } from "@/lib/rendering/terrainView";
+import { buildMarshWarmth } from "@/lib/rendering/waterWaves";
+
+type BridgePickup = {
+  id: number;
+  row: number;
+  col: number;
+  tint?: string;
+};
 
 type GameBoardProps = {
   level: Level;
@@ -30,10 +37,6 @@ type GameBoardProps = {
   editable?: boolean;
   sizing?: "play" | "contain";
   draftRoute?: DraftRoute | null;
-  /** WHITE CELL OUTLINE OPACITY — 0 HIDES THE GRID */
-  cellGridOpacity?: number;
-  /** BLEND WATER DEPTH ACROSS NEIGHBOR CELLS — 0 = CHUNKY, 1 = FULL */
-  waterDepthInterpolation?: number;
   onToggleBridge?: (row: number, col: number) => void;
   onCellClick?: (row: number, col: number) => void;
   mapLabels?: MapLabel[];
@@ -41,14 +44,16 @@ type GameBoardProps = {
   maxContainCell?: number;
   /** WOOD BEZEL HUGGING THE GRID (NO INNER PAD) */
   framed?: boolean;
+  /** SCALE UNTIL THE MAP COVERS THE FRAME. PADDING OCEAN CLIPS UNDER THE BORDER. */
+  bleed?: boolean;
   mapLabelsDraggable?: boolean;
   onMapLabelMove?: (id: string, row: number, col: number) => void;
 };
 
 const MAX_TILE = 64;
 const MIN_TILE = 16;
-const emptyRoutes: Level["routes"] = [];
 const CONTAIN_MIN_TILE = 8;
+const emptyWhirlpools = new Set<string>();
 const TILE_STEP = 4;
 const BOARD_PADDING = 24;
 const BOARD_CARD_PADDING = 12;
@@ -59,8 +64,12 @@ function boardCardPixelSize(
   rows: number,
   cols: number,
   iso: IsoSpan,
+  bleed = false,
 ) {
   const board = isoMetrics(tileWidth, rows, cols, iso);
+  if (bleed) {
+    return { width: board.width, height: board.height };
+  }
   const chrome = BOARD_CARD_PADDING * 2 + BOARD_CARD_BORDER * 2;
   return { width: board.width + chrome, height: board.height + chrome };
 }
@@ -74,6 +83,7 @@ function resolveTileWidth(
   iso: IsoSpan,
   sizing: "play" | "contain",
   maxContainCell = 512,
+  bleed = false,
 ): number {
   const min = sizing === "contain" ? CONTAIN_MIN_TILE : MIN_TILE;
   const max = sizing === "contain" ? Math.max(min, maxContainCell) : MAX_TILE;
@@ -82,8 +92,17 @@ function resolveTileWidth(
   }
   let best = min;
   for (let tile = min; tile <= max; tile += TILE_STEP) {
-    const card = boardCardPixelSize(tile, rows, cols, iso);
-    if (card.width <= width && card.height <= height) {
+    const card = boardCardPixelSize(tile, rows, cols, iso, bleed);
+    const fits = card.width <= width && card.height <= height;
+    if (bleed) {
+      // SMALLEST TILE THAT COVERS THE FRAME. THE RIM PAST THE EDGE IS CLIPPED.
+      if (card.width >= width && card.height >= height) {
+        return tile;
+      }
+      best = tile;
+      continue;
+    }
+    if (fits) {
       best = tile;
     } else {
       break;
@@ -101,24 +120,58 @@ export function GameBoard({
   interactive = true,
   editable = false,
   sizing = "play",
-  draftRoute,
+  draftRoute: _draftRoute,
   onToggleBridge,
   onCellClick,
   mapLabels,
   maxContainCell = 512,
   framed = false,
+  bleed = false,
   mapLabelsDraggable = false,
   onMapLabelMove,
 }: GameBoardProps) {
-  const handleCellActivate = editable ? onCellClick : onToggleBridge;
   const containerRef = useRef<HTMLDivElement>(null);
   const [tileWidth, setTileWidth] = useState(() =>
     sizing === "contain" ? CONTAIN_MIN_TILE : MAX_TILE,
   );
+  const [bleedPlace, setBleedPlace] = useState({ scale: 1, left: 0, top: 0 });
   const view = useMemo(() => terrainViewFromLevel(level), [level]);
+  const splashId = useRef(0);
+  const [pickups, setPickups] = useState<BridgePickup[]>([]);
+  const depthAt = useMemo(
+    () => latticeWaterDepth(view, level.iso),
+    [view, level.iso],
+  );
+  const warmthAt = useMemo(() => buildMarshWarmth(view.seed), [view.seed]);
+
+  const handleCellActivate = (row: number, col: number) => {
+    if (!editable && bridges.has(cellKey(row, col))) {
+      const kind = terrainKindAt(view, row, col);
+      const tint =
+        kind === "marsh"
+          ? waterSurfaceTint("marsh", depthAt(row, col), warmthAt(row, col))
+          : undefined;
+      const id = splashId.current;
+      splashId.current += 1;
+      setPickups((prev) => [...prev, { id, row, col, tint }]);
+    }
+    if (editable) {
+      onCellClick?.(row, col);
+      return;
+    }
+    onToggleBridge?.(row, col);
+  };
+  const drawSpan = useMemo(
+    () => (bleed ? bleedRimSpan(level.iso) : level.iso),
+    [bleed, level.iso],
+  );
   const metrics = useMemo(
-    () => isoMetrics(tileWidth, level.rows, level.cols, level.iso),
-    [tileWidth, level.rows, level.cols, level.iso],
+    () => isoMetrics(tileWidth, level.rows, level.cols, drawSpan),
+    [tileWidth, level.rows, level.cols, drawSpan],
+  );
+  const drawView = useMemo(
+    () => (bleed ? { ...view, iso: drawSpan } : view),
+    [bleed, view, drawSpan],
   );
   const playableCells = useMemo(
     () => isoLatticeCells(level.iso).filter((cell) => cell.role === "play"),
@@ -136,16 +189,6 @@ export function GameBoard({
       ),
     [view, bridges, pathKeys, level, interactive, editable],
   );
-
-  const whirlpools = useMemo(() => {
-    const keys = new Set<string>();
-    for (const object of level.objects) {
-      if (object.defId === "whirlpool") {
-        keys.add(cellKey(object.at.row, object.at.col));
-      }
-    }
-    return keys;
-  }, [level.objects]);
 
   const objectiveMarkers = useMemo(() => {
     if (!showMission) {
@@ -182,17 +225,32 @@ export function GameBoard({
       if (sizing === "contain") {
         // ROOM FOR WOOD BEZEL + OUTER RINGS WHEN framed
         const framePad = framed ? 14 : 0;
-        setTileWidth(
-          resolveTileWidth(
-            Math.max(1, element.clientWidth - framePad),
-            Math.max(1, element.clientHeight - framePad),
-            level.rows,
-            level.cols,
-            level.iso,
-            sizing,
-            maxContainCell,
-          ),
+        const width = Math.max(1, element.clientWidth - framePad);
+        const height = Math.max(1, element.clientHeight - framePad);
+        const tile = resolveTileWidth(
+          width,
+          height,
+          level.rows,
+          level.cols,
+          level.iso,
+          sizing,
+          maxContainCell,
+          bleed,
         );
+        setTileWidth(tile);
+        if (bleed) {
+          // SCALE FROM THE ORIGINAL MAP. THE EXTRA RIM SITS OUTSIDE IT AND GETS CLIPPED.
+          const base = isoMetrics(tile, level.rows, level.cols, level.iso);
+          const grown = isoMetrics(tile, level.rows, level.cols, bleedRimSpan(level.iso));
+          const scale = Math.max(width / base.width, height / base.height);
+          const dx = grown.originX - base.originX;
+          const dy = grown.originY - base.originY;
+          setBleedPlace({
+            scale,
+            left: (width - base.width * scale) / 2 - dx * scale,
+            top: (height - base.height * scale) / 2 - dy * scale,
+          });
+        }
         return;
       }
       const width = element.clientWidth - BOARD_PADDING;
@@ -216,7 +274,7 @@ export function GameBoard({
       observer.disconnect();
       window.removeEventListener("resize", updateSize);
     };
-  }, [level.rows, level.cols, level.iso, sizing, maxContainCell, framed]);
+  }, [level.rows, level.cols, level.iso, sizing, maxContainCell, framed, bleed]);
 
   const grid = (
     <div
@@ -224,25 +282,25 @@ export function GameBoard({
       style={{ width: metrics.width, height: metrics.height }}
     >
       <SpriteTerrainCanvas
-        view={view}
+        view={drawView}
+        depthIso={level.iso}
         metrics={metrics}
         bridges={bridges}
         objectives={objectiveMarkers}
-        whirlpools={whirlpools}
+        whirlpools={emptyWhirlpools}
       />
-      {level.objects.length > 0 ? (
-        <ObjectCanvasOverlay objects={level.objects} metrics={metrics} />
-      ) : null}
-      {level.routes.length > 0 ? (
-        <RouteShipOverlay routes={level.routes} metrics={metrics} />
-      ) : null}
-      {draftRoute && draftRoute.path.length > 0 ? (
-        <RouteCanvasOverlay
-          routes={emptyRoutes}
-          draftRoute={draftRoute}
+      {pickups.map((pickup) => (
+        <BridgeSplash
+          key={pickup.id}
+          row={pickup.row}
+          col={pickup.col}
           metrics={metrics}
+          tint={pickup.tint}
+          onDone={() =>
+            setPickups((prev) => prev.filter((entry) => entry.id !== pickup.id))
+          }
         />
-      ) : null}
+      ))}
       {playableCells.map((cell) => (
         <CellView
           key={`${cell.row}-${cell.col}`}
@@ -255,9 +313,6 @@ export function GameBoard({
           onToggle={handleCellActivate}
         />
       ))}
-      {showMission ? (
-        <MissionMarkerOverlay mission={level.mission} metrics={metrics} />
-      ) : null}
       {mapLabels && mapLabels.length > 0 ? (
         <MapLabelOverlay
           labels={mapLabels}
@@ -270,12 +325,34 @@ export function GameBoard({
     </div>
   );
 
+  if (bleed) {
+    return (
+      <div
+        ref={containerRef}
+        className="relative h-full min-h-0 w-full min-w-0 overflow-hidden border border-black bg-[rgb(12_48_92)]"
+      >
+        <div
+          className="absolute origin-top-left"
+          style={{
+            width: metrics.width,
+            height: metrics.height,
+            left: bleedPlace.left,
+            top: bleedPlace.top,
+            transform: `scale(${bleedPlace.scale})`,
+          }}
+        >
+          {grid}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={containerRef}
       className={
         sizing === "contain"
-          ? "flex h-full w-full items-center justify-center"
+          ? "flex h-full min-h-0 w-full min-w-0 items-center justify-center overflow-hidden"
           : "w-full max-w-md lg:max-w-none lg:flex-1"
       }
     >
@@ -285,8 +362,8 @@ export function GameBoard({
         <div
           className={
             sizing === "contain"
-              ? "max-h-full max-w-full shrink-0 border border-[rgb(95_84_74)] bg-[rgb(12_48_92)] p-2"
-              : "mx-auto w-fit max-w-full border border-[rgb(95_84_74)] bg-[rgb(12_48_92)] p-2"
+              ? "max-h-full max-w-full shrink-0 border border-black bg-[rgb(12_48_92)] p-2"
+              : "mx-auto w-fit max-w-full border border-black bg-[rgb(12_48_92)] p-2"
           }
         >
           {grid}

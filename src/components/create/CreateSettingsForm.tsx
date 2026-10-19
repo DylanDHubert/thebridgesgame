@@ -13,11 +13,7 @@ import {
   type CreateGenerationConfig,
 } from "@/lib/game/createConfig";
 import { hashStringToSeed, mulberry32 } from "@/lib/game/seed";
-import {
-  WoodButton,
-  WoodControlRow,
-  WOOD_SUB_SHADOW,
-} from "@/components/ui/woodPlaque";
+import { HairlineButton, HairlineRow } from "@/components/ui/hairline";
 
 type SliderProps = {
   label: string;
@@ -38,9 +34,9 @@ function SliderField({
 }: Omit<SliderProps, "hint">) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="flex items-baseline justify-between gap-3 text-[10px] uppercase tracking-[0.12em] text-[rgb(210_196_138)]">
+      <span className="flex items-baseline justify-between gap-3 text-[10px] uppercase tracking-[0.14em]">
         <span>{label}</span>
-        <span className="font-mono text-[rgb(72_176_210)]">
+        <span className="font-mono">
           {value.toFixed(3).replace(/\.?0+$/, "")}
         </span>
       </span>
@@ -51,7 +47,7 @@ function SliderField({
         step={step}
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
-        className="wood-slider"
+        className="hairline-slider"
       />
     </label>
   );
@@ -102,25 +98,22 @@ export function CreateSettingsForm() {
   }, []);
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden border-2 border-[rgb(74_44_20)] bg-[rgb(12_48_92)] shadow-[0_0_0_2px_rgb(42_28_16)]">
+    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden border border-black bg-white">
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
         <div className="space-y-1 text-center">
-          <p
-            className="text-[8px] font-medium uppercase tracking-[0.28em] text-[rgb(251_191_36)] sm:text-[9px]"
-            style={{ textShadow: WOOD_SUB_SHADOW }}
-          >
+          <p className="text-[8px] uppercase tracking-[0.28em] text-black/55">
             Workshop
           </p>
-          <h2 className="text-xs font-normal uppercase tracking-[0.14em] text-[rgb(210_196_138)] sm:text-sm">
+          <h2 className="text-[11px] uppercase tracking-[0.16em]">
             Archipelago settings
           </h2>
-          <p className="pt-1 text-[8px] uppercase tracking-[0.16em] text-[rgb(72_176_210)]">
+          <p className="pt-1 text-[8px] uppercase tracking-[0.16em] text-black/55">
             Grid {CREATE_FIXED_GRID.cols}×{CREATE_FIXED_GRID.rows}
           </p>
         </div>
 
         <div className="space-y-3">
-          <p className="text-center text-[8px] font-medium uppercase tracking-[0.22em] text-[rgb(72_176_210)]">
+          <p className="text-center text-[8px] uppercase tracking-[0.22em] text-black/55">
             Noise
           </p>
           <div className="space-y-3">
@@ -175,31 +168,31 @@ export function CreateSettingsForm() {
           </div>
         </div>
 
-        <label className="flex flex-col gap-1.5 text-[10px] uppercase tracking-[0.12em] text-[rgb(210_196_138)]">
+        <label className="flex flex-col gap-1.5 text-[10px] uppercase tracking-[0.14em]">
           Seed
           <div className="flex items-center gap-3">
             <input
               type="text"
               value={seed}
               onChange={(event) => setSeed(event.target.value)}
-              className="min-w-0 flex-1 border border-[rgb(95_84_74)] bg-[rgb(28_48_78)] px-2.5 py-2 font-mono text-[10px] normal-case tracking-normal text-[rgb(210_196_138)] focus:border-[rgb(210_196_138)] focus:outline-none"
+              className="min-w-0 flex-1 border border-black bg-white px-2.5 py-2 font-mono text-[10px] normal-case tracking-normal text-black focus:outline-none"
             />
-            <WoodButton type="button" onClick={handleRerollSeed}>
+            <HairlineButton type="button" onClick={handleRerollSeed}>
               Reroll
-            </WoodButton>
+            </HairlineButton>
           </div>
         </label>
       </div>
 
-      <div className="shrink-0 border-t border-[rgb(74_44_20)] px-4 py-4 sm:px-5">
-        <WoodControlRow>
-          <WoodButton type="button" size="md" onClick={handleGenerate}>
+      <div className="shrink-0 border-t border-black px-4 py-4 sm:px-5">
+        <HairlineRow>
+          <HairlineButton type="button" onClick={handleGenerate}>
             Generate archipelago
-          </WoodButton>
-          <WoodButton type="button" size="md" onClick={handleReset}>
+          </HairlineButton>
+          <HairlineButton type="button" onClick={handleReset}>
             Reset
-          </WoodButton>
-        </WoodControlRow>
+          </HairlineButton>
+        </HairlineRow>
       </div>
     </div>
   );

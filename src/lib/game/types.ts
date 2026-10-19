@@ -1,5 +1,5 @@
 /** TERRAIN KINDS — WHIRLPOOL IS AN OBJECT, NOT TERRAIN (SEE content/objects/) */
-export type TileKind = "grass" | "beach" | "cliff" | "ocean" | "marsh";
+export type TileKind = "grass" | "cliff" | "ocean" | "marsh";
 
 export type CellCoord = {
   row: number;

@@ -10,28 +10,22 @@ function levelIdFromSeed(seed: string): string {
   return safe.replace(/^-+|-+$/g, "") || "level";
 }
 
-/** FLATTEN TILE GRID — WHIRLPOOL TERRAIN BECOMES OCEAN + WHIRLPOOL OBJECT */
+/** FLATTEN TILE GRID. WHIRLPOOL CELLS BECOME PLAIN OCEAN. */
 export function tileGridToLevelParts(
   grid: TileGrid,
   rows: number,
   cols: number,
 ): { terrain: TileKind[]; objects: LevelObject[] } {
   const terrain: TileKind[] = [];
-  const objects: LevelObject[] = [];
 
   for (let row = 0; row < rows; row += 1) {
     for (let col = 0; col < cols; col += 1) {
       const kind = grid[row]![col]!;
-      if (kind === "whirlpool") {
-        terrain.push("ocean");
-        objects.push({ defId: "whirlpool", at: { row, col } });
-      } else {
-        terrain.push(kind as TileKind);
-      }
+      terrain.push(kind === "whirlpool" ? "ocean" : (kind as TileKind));
     }
   }
 
-  return { terrain, objects };
+  return { terrain, objects: [] };
 }
 
 export function buildLevel(

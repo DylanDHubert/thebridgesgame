@@ -5,7 +5,6 @@ import {
   CLIFF_STONE_LIFT,
   GRASS_VARIANTS,
   OCEAN_VARIANTS,
-  SAND_VARIANTS,
 } from "@/lib/rendering/tileCatalog";
 
 /** NATIVE SPRITE — SQUARE IMAGE, GROUND DIAMOND INSIDE IT */
@@ -18,7 +17,6 @@ export const SPRITE_ANCHOR_Y = 8;
 /** PALETTE STAND-IN — THE BOARD PICKS A VARIANT PER CELL */
 export const TILE_SPRITES: Record<TileKind, string> = {
   grass: GRASS_VARIANTS[0]!,
-  beach: SAND_VARIANTS[0]!,
   cliff: CLIFF_BLOCK,
   ocean: OCEAN_VARIANTS[0]!,
   marsh: OCEAN_VARIANTS[0]!,

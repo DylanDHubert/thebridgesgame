@@ -1,29 +1,19 @@
 import { DIRECTIONS } from "./constants";
 import { cellKey, indexFor, inBounds } from "./coords";
-import { isoCellRole } from "./isoBoard";
+import { isoCellRole, type IsoSpan } from "./isoBoard";
 import { isLandKind } from "./rules";
-import type { CellCoord, TileKind } from "./types";
+import type { CellCoord } from "./types";
 import type { TerrainView } from "@/lib/rendering/terrainView";
 import { terrainKindAt } from "@/lib/rendering/terrainView";
 
 export type TerrainMaps = {
   distanceFromLand: number[][];
-  isBeach: boolean[][];
 };
-
-const WATER_KINDS: TileKind[] = ["ocean", "marsh"];
-
-function isWaterKind(kind: TileKind): boolean {
-  return WATER_KINDS.includes(kind);
-}
 
 export function buildTerrainMaps(view: TerrainView): TerrainMaps {
   const { rows, cols } = view;
   const distanceFromLand = Array.from({ length: rows }, () =>
     Array<number>(cols).fill(Infinity),
-  );
-  const isBeach = Array.from({ length: rows }, () =>
-    Array<boolean>(cols).fill(false),
   );
   const queue: CellCoord[] = [];
 
@@ -36,23 +26,6 @@ export function buildTerrainMaps(view: TerrainView): TerrainMaps {
 
       distanceFromLand[row]![col] = 0;
       queue.push({ row, col });
-
-      if (kind === "beach") {
-        isBeach[row]![col] = true;
-      }
-
-      for (const { dr, dc } of DIRECTIONS) {
-        const nr = row + dr;
-        const nc = col + dc;
-        if (!inBounds(nr, nc, rows, cols)) {
-          continue;
-        }
-        const neighbor = terrainKindAt(view, nr, nc)!;
-        if (isWaterKind(neighbor)) {
-          isBeach[row]![col] = kind === "beach" || kind === "grass";
-          break;
-        }
-      }
     }
   }
 
@@ -77,20 +50,24 @@ export function buildTerrainMaps(view: TerrainView): TerrainMaps {
     }
   }
 
-  return { distanceFromLand, isBeach };
+  return { distanceFromLand };
 }
 
 /**
- * 0 AT THE SHORE, 1 AT THE FARTHEST WATER ON THIS MAP.
+ * 0 AT THE SHORE, 1 AT THE FARTHEST PLAYABLE WATER.
+ * PADDING AND THE BLEED RIM DO NOT RAISE THE CEILING, SO CHANNELS BETWEEN ISLANDS CAN GO DARK.
  * VOIDS ARE SKIPPED SO THE CORNERS OF THE STORED RECTANGLE DO NOT SHORTCUT DEPTH.
  */
 export function latticeWaterDepth(
   view: TerrainView,
+  depthSpan: IsoSpan = view.iso,
 ): (row: number, col: number) => number {
   const distance = new Map<string, number>();
   const queue: CellCoord[] = [];
   const onBoard = (row: number, col: number) =>
     isoCellRole(row, col, view.iso) !== "void";
+  const setsCeiling = (row: number, col: number) =>
+    isoCellRole(row, col, depthSpan) === "play";
 
   for (let row = 0; row < view.rows; row += 1) {
     for (let col = 0; col < view.cols; col += 1) {
@@ -126,7 +103,11 @@ export function latticeWaterDepth(
       distance.set(key, next);
       queue.push({ row: nr, col: nc });
       const kind = terrainKindAt(view, nr, nc);
-      if ((kind === "ocean" || kind === "marsh") && next > maxWater) {
+      if (
+        (kind === "ocean" || kind === "marsh") &&
+        setsCeiling(nr, nc) &&
+        next > maxWater
+      ) {
         maxWater = next;
       }
     }

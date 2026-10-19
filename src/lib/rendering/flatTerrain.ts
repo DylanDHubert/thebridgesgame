@@ -4,7 +4,6 @@ import type { TileKind } from "@/lib/game/types";
 const FLAT_TERRAIN_RGB: Record<TileKind, { r: number; g: number; b: number }> = {
   ocean: { r: 42, g: 112, b: 151 },
   marsh: { r: 36, g: 148, b: 132 },
-  beach: { r: 210, g: 196, b: 138 },
   grass: { r: 78, g: 145, b: 66 },
   cliff: { r: 95, g: 84, b: 74 },
 };

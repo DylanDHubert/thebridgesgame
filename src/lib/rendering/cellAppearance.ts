@@ -10,10 +10,6 @@ import type { TerrainView } from "@/lib/rendering/terrainView";
 import { terrainKindAt } from "@/lib/rendering/terrainView";
 import type { CellAppearance, OverlayKind } from "./types";
 import {
-  buildBeachSandField,
-  type BeachSandField,
-} from "./beachSand";
-import {
   buildBridgeWoodField,
   type BridgeWoodField,
 } from "./bridgeWood";
@@ -43,7 +39,6 @@ const MARSH_GREEN_PUSH = { r: 46, g: 156, b: 88 };
 /** EXTRA SHADE FOR WHIRLPOOL — DARKER OCEAN */
 const WHIRLPOOL_SHADE = { r: 4, g: 24, b: 58 };
 const INTERIOR_LAND = { r: 88, g: 156, b: 72 };
-const BEACH_SAND = { r: 232, g: 210, b: 148 };
 const CLIFF_STONE = { r: 110, g: 98, b: 86 };
 const PATH_GLOW = { r: 255, g: 244, b: 180 };
 
@@ -81,8 +76,6 @@ function tileBaseRgb(
   switch (kind) {
     case "grass":
       return mixColorRgb(INTERIOR_LAND, { r: 64, g: 130, b: 58 }, 0.35);
-    case "beach":
-      return mixColorRgb(BEACH_SAND, INTERIOR_LAND, 0.15);
     case "cliff":
       return mixColorRgb(CLIFF_STONE, { r: 72, g: 64, b: 56 }, 0.4);
     case "marsh":
@@ -297,22 +290,6 @@ export function oceanWaterRgbForSubcell(
   return tileBaseRgb("ocean", depth);
 }
 
-export function beachBaseForCell(
-  row: number,
-  col: number,
-  context: AppearanceContext,
-): { rgb: { r: number; g: number; b: number } } | null {
-  const kind = terrainKindAt(context.view, row, col);
-
-  if (kind !== "beach") {
-    return null;
-  }
-
-  return {
-    rgb: tileBaseRgb("beach", 0),
-  };
-}
-
 export function grassBaseForCell(
   row: number,
   col: number,
@@ -356,7 +333,6 @@ export type AppearanceContext = {
   maxDepth: number;
   waterNoise: WaterNoiseField;
   marshSplotch: MarshSplotchField;
-  beachSand: BeachSandField;
   grassTerrain: GrassTerrainField;
   cliffRock: CliffRockField;
   bridgeWood: BridgeWoodField;
@@ -373,7 +349,6 @@ export function createAppearanceContext(
   const maxDepth = maxWaterDistance(terrainMaps);
   const waterNoise = buildWaterNoiseField(view);
   const marshSplotch = buildMarshSplotchField(view);
-  const beachSand = buildBeachSandField(view);
   const grassTerrain = buildGrassTerrainField(view);
   const cliffRock = buildCliffRockField(view);
   const bridgeWood = buildBridgeWoodField(view);
@@ -388,7 +363,6 @@ export function createAppearanceContext(
     maxDepth,
     waterNoise,
     marshSplotch,
-    beachSand,
     grassTerrain,
     cliffRock,
     bridgeWood,
@@ -424,7 +398,6 @@ export function appearanceForCell(
 
     if (
       isAnimatedWaterKind(kind) ||
-      kind === "beach" ||
       kind === "grass" ||
       kind === "cliff"
     ) {

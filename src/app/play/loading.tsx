@@ -1,6 +1,6 @@
 export default function PlayLoading() {
   return (
-    <div className="flex min-h-dvh items-center justify-center font-mono text-sm text-[rgb(210_196_138)]">
+    <div className="flex min-h-dvh items-center justify-center text-[10px] uppercase tracking-[0.2em]">
       Loading…
     </div>
   );

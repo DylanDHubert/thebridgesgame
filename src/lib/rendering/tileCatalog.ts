@@ -1,3 +1,4 @@
+import { DIRECTIONS } from "@/lib/game/constants";
 import { hashStringToSeed } from "@/lib/game/seed";
 import { isLandKind } from "@/lib/game/rules";
 import type { TileKind } from "@/lib/game/types";
@@ -49,7 +50,7 @@ export const TILE_CATALOG: readonly TileCatalogEntry[] = [
   { index: 34, slug: "jungle_plants", file: "jungle_plants_034.png" },
   { index: 35, slug: "jungle_plants", file: "jungle_plants_035.png" },
   { index: 36, slug: "jungle_plants", file: "jungle_plants_036.png" },
-  { index: 37, slug: "jungle_plants", file: "jungle_plants_037.png" },
+  { index: 37, slug: "jungle_grass", file: "jungle_grass_037.png" },
   { index: 38, slug: "jungle_grass_light", file: "jungle_grass_light_038.png" },
   { index: 39, slug: "jungle_grass_light", file: "jungle_grass_light_039.png" },
   { index: 40, slug: "grass_dark", file: "grass_dark_040.png" },
@@ -143,11 +144,11 @@ function filesFrom(indexes: readonly number[]): string[] {
   });
 }
 
-/** GRASS CELLS — JUNGLE PLANTS 30 THROUGH 37 */
-export const GRASS_VARIANTS = filesFrom([30, 31, 32, 33, 34, 35, 36, 37]);
+/** INLAND GRASS — JUNGLE PLANTS 30 THROUGH 36. 37 IS GRASS, NOT A PLANT. */
+export const GRASS_VARIANTS = filesFrom([30, 31, 32, 33, 34, 35, 36]);
 
-/** SAND / BEACH CELLS — JUNGLE GRASS 27 AND 28 */
-export const SAND_VARIANTS = filesFrom([27, 28]);
+/** GRASS TOUCHING WATER — JUNGLE GRASS 27 AND 28 */
+export const SHORE_GRASS_VARIANTS = filesFrom([27, 28]);
 
 /** OPEN LIGHT WATER — NO LAND NEIGHBORS. SHORE TILES ARE CHOSEN PER CELL. */
 export const OCEAN_VARIANTS = filesFrom([104]);
@@ -214,6 +215,8 @@ const SHALLOW_OCEAN: Rgb = { r: 150, g: 206, b: 226 };
 const DEEP_OCEAN: Rgb = { r: 8, g: 32, b: 72 };
 const SHALLOW_MARSH: Rgb = { r: 28, g: 150, b: 64 };
 const DEEP_MARSH: Rgb = { r: 8, g: 64, b: 32 };
+const SHALLOW_MARSH_YELLOW: Rgb = { r: 176, g: 168, b: 42 };
+const DEEP_MARSH_YELLOW: Rgb = { r: 78, g: 86, b: 18 };
 
 function mixRgb(a: Rgb, b: Rgb, t: number): Rgb {
   return {
@@ -226,12 +229,18 @@ function mixRgb(a: Rgb, b: Rgb, t: number): Rgb {
 /**
  * WASH OVER THE WATER SPRITE.
  * DEPTH 0 IS NEXT TO LAND. DEPTH 1 IS THE FARTHEST WATER ON THE MAP.
- * MARSH STAYS GREENER THAN OCEAN AT EVERY DEPTH.
+ * MARSH WARMTH 0 IS THE CURRENT GREEN. 1 IS THE YELLOWER END.
  */
-export function waterSurfaceTint(kind: "ocean" | "marsh", depth: number): string {
+export function waterSurfaceTint(
+  kind: "ocean" | "marsh",
+  depth: number,
+  warmth = 0,
+): string {
   const t = Math.min(1, Math.max(0, depth));
   if (kind === "marsh") {
-    const color = mixRgb(SHALLOW_MARSH, DEEP_MARSH, t);
+    const green = mixRgb(SHALLOW_MARSH, DEEP_MARSH, t);
+    const yellow = mixRgb(SHALLOW_MARSH_YELLOW, DEEP_MARSH_YELLOW, t);
+    const color = mixRgb(green, yellow, Math.min(1, Math.max(0, warmth)));
     const alpha = 0.52 + t * 0.22;
     return `rgb(${color.r} ${color.g} ${color.b} / ${alpha.toFixed(3)})`;
   }
@@ -242,6 +251,9 @@ export function waterSurfaceTint(kind: "ocean" | "marsh", depth: number): string
 
 /** PALETTE SAMPLE — A SHALLOW-TO-MID MARSH */
 export const MARSH_WATER_TINT = waterSurfaceTint("marsh", 0.35);
+
+/** PICKUP SPLASH — PLAYS ONCE OVER THE REVEALED WATER */
+export const WATER_SPLASH_FRAMES = filesFrom([82, 83, 84, 85]);
 
 /** BRIDGE ON OPEN WATER */
 export const BRIDGE_WOOD = filesFrom([25])[0]!;
@@ -274,20 +286,26 @@ export function pickVariant(
   return variants[roll % variants.length]!;
 }
 
-/** SPRITE FOR A TERRAIN CELL. KINDS WITHOUT A POOL STAY UNDRAWN. */
-export function terrainSprite(
-  kind: TileKind,
-  seed: string,
-  row: number,
-  col: number,
-): string | null {
-  if (kind === "grass") {
-    return pickVariant(GRASS_VARIANTS, seed, row, col, "grass");
+function grassTouchesWater(view: TerrainView, row: number, col: number): boolean {
+  for (const { dr, dc } of DIRECTIONS) {
+    const neighbor = terrainKindAt(view, row + dr, col + dc);
+    if (neighbor === "ocean" || neighbor === "marsh") {
+      return true;
+    }
   }
-  if (kind === "beach") {
-    return pickVariant(SAND_VARIANTS, seed, row, col, "beach");
-  }
-  return null;
+  return false;
+}
+
+/** INLAND GRASS IS JUNGLE PLANTS. GRASS ON THE WATER IS JUNGLE GRASS. */
+function grassSprite(view: TerrainView, row: number, col: number): string {
+  const shore = grassTouchesWater(view, row, col);
+  return pickVariant(
+    shore ? SHORE_GRASS_VARIANTS : GRASS_VARIANTS,
+    view.seed,
+    row,
+    col,
+    shore ? "shore-grass" : "grass",
+  );
 }
 
 /** LAYERS FOR ONE CELL. CLIFFS ARE THE STONE BLOCK. */
@@ -301,14 +319,13 @@ export function terrainLayers(
   if (kind === "cliff") {
     return [{ src: CLIFF_BLOCK, lift: 0 }];
   }
-  if (kind === "ocean" || kind === "marsh") {
-    return [
-      {
-        src: oceanSprite(view, row, col, kind === "ocean" && whirlpool),
-        lift: 0,
-      },
-    ];
+  if (kind === "grass") {
+    return [{ src: grassSprite(view, row, col), lift: 0 }];
   }
-  const src = terrainSprite(kind, view.seed, row, col);
-  return src ? [{ src, lift: 0 }] : [];
+  return [
+    {
+      src: oceanSprite(view, row, col, kind === "ocean" && whirlpool),
+      lift: 0,
+    },
+  ];
 }

@@ -18,7 +18,7 @@ type FeatureContext = {
 };
 
 function isLandKind(kind: GenTileKind): boolean {
-  return kind === "grass" || kind === "beach" || kind === "cliff";
+  return kind === "grass" || kind === "cliff";
 }
 
 function isWaterKind(kind: GenTileKind): boolean {
@@ -34,7 +34,7 @@ export type TerrainFeatureToggles = {
 const DEFAULT_TERRAIN_FEATURES: Required<TerrainFeatureToggles> = {
   cliffs: true,
   marsh: true,
-  whirlpools: true,
+  whirlpools: false,
 };
 
 function resolveTerrainFeatures(
@@ -43,7 +43,7 @@ function resolveTerrainFeatures(
   return { ...DEFAULT_TERRAIN_FEATURES, ...features };
 }
 
-/** CLASSIFY LAND INTO BEACH / GRASS / CLIFF FROM RAW LAND-WATER EDGES */
+/** CLIFFS ON SOME LAND EDGES. EVERY OTHER LAND CELL STAYS GRASS. */
 export function applyLandKinds(
   grid: BaseGrid,
   rng: () => number,
@@ -77,7 +77,9 @@ export function applyLandKinds(
         continue;
       }
 
-      grid[row]![col] = cliffs && rng() < 0.35 ? "cliff" : "beach";
+      if (cliffs && rng() < 0.35) {
+        grid[row]![col] = "cliff";
+      }
     }
   }
 }
@@ -101,7 +103,7 @@ export function applyMarsh(grid: BaseGrid, rng: () => number): void {
           continue;
         }
         const neighbor = grid[nr]![nc]!;
-        if (neighbor === "beach" || neighbor === "grass") {
+        if (neighbor === "grass") {
           shallow.push({ row, col });
           break;
         }

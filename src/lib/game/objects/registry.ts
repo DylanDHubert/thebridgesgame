@@ -34,13 +34,6 @@ export const TERRAIN_DEFINITIONS: Record<TileKind, TerrainDefinition> = {
     bridgeable: true,
     effects: [{ type: "bridgeCost", cost: 2 }],
   },
-  beach: {
-    id: "beach",
-    label: "Sand",
-    land: true,
-    bridgeable: false,
-    effects: [],
-  },
   grass: {
     id: "grass",
     label: "Grass",

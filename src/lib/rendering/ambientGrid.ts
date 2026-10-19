@@ -4,12 +4,10 @@ import {
   terrainSubcellSize,
 } from "@/lib/rendering/terrainBorders";
 import { WATER_SUBCELLS } from "@/lib/rendering/waterNoise";
-import { DEFAULT_DISPLAY_PREFS } from "@/lib/rendering/displayPrefs";
-
 /** MATCHES A TYPICAL PLAY BOARD CELL */
 export const AMBIENT_CELL_SIZE = 32;
 
-export const AMBIENT_GRID_OPACITY = DEFAULT_DISPLAY_PREFS.cellGridOpacity;
+export const AMBIENT_GRID_OPACITY = 0.72;
 
 export type AmbientGridMetrics = {
   cellSize: number;

@@ -5,7 +5,6 @@ import {
   type AppearanceContext,
 } from "@/lib/rendering/cellAppearance";
 import { terrainSurfaceRgb } from "@/lib/rendering/cellAppearance";
-import { DEFAULT_DISPLAY_PREFS } from "@/lib/rendering/displayPrefs";
 import type { TileKind } from "@/lib/game/types";
 import type { TerrainView } from "@/lib/rendering/terrainView";
 import { terrainKindAt } from "@/lib/rendering/terrainView";
@@ -295,7 +294,7 @@ export function drawTerrainBorders(
   context: AppearanceContext,
   cellSize: number,
   gap: number,
-  cellGridOpacity = DEFAULT_DISPLAY_PREFS.cellGridOpacity,
+  cellGridOpacity = 0.72,
 ): void {
   const { rows, cols } = view;
   const stride = cellSize + gap;

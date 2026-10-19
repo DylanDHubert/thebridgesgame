@@ -6,7 +6,6 @@ export type TerrainKind = TileKind;
 export const TERRAIN_KINDS: readonly TerrainKind[] = [
   "ocean",
   "marsh",
-  "beach",
   "grass",
   "cliff",
 ];

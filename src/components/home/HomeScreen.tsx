@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { GameBoard } from "@/components/game/GameBoard";
-import { WoodenHeader } from "@/components/home/WoodenHeader";
+import { GameStage } from "@/components/game/GameStage";
+import { HairlineHeader } from "@/components/ui/hairline";
 import { cellKey } from "@/lib/game/coords";
 import {
   homeMapFromLevel,
@@ -65,24 +66,30 @@ export function HomeScreen({ level }: HomeScreenProps) {
   }, [bridges, map, router]);
 
   return (
-    <main className="relative flex h-dvh w-full flex-col overflow-hidden">
-      <WoodenHeader
-        title="the bridges game"
-        subtitle="bridge!"
-      />
-      <div className="flex min-h-0 w-full flex-1 p-3 sm:p-4">
-        <GameBoard
-          level={map.level}
-          bridges={bridges}
-          pathKeys={emptyPath}
-          showMission={false}
-          interactive
-          sizing="contain"
-          framed
-          mapLabels={map.labels}
-          onToggleBridge={toggleBridge}
-        />
-      </div>
+    <main className="flex h-dvh w-full flex-col overflow-hidden">
+      <HairlineHeader title="Home" subtitle="the bridges game" nav="home" />
+      <section className="flex min-h-0 flex-1 flex-col gap-3 p-3 sm:p-4">
+        <div className="relative min-h-0 min-w-0 flex-1">
+          <GameStage>
+            <GameBoard
+              level={map.level}
+              bridges={bridges}
+              pathKeys={emptyPath}
+              showMission={false}
+              interactive
+              sizing="contain"
+              bleed
+              mapLabels={map.labels}
+              onToggleBridge={toggleBridge}
+            />
+          </GameStage>
+        </div>
+        <div className="flex w-full shrink-0 items-center border border-black px-3 py-2.5">
+          <p className="text-[10px] uppercase tracking-[0.14em]">
+            Bridge from home to play or create
+          </p>
+        </div>
+      </section>
     </main>
   );
 }

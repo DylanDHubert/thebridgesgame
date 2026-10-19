@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 
 import { cellKey } from "@/lib/game/coords";
-import { isoLatticeCells } from "@/lib/game/isoBoard";
+import { isoLatticeCells, type IsoSpan } from "@/lib/game/isoBoard";
 import { latticeWaterDepth } from "@/lib/game/terrain";
 import {
   isoSpriteOrigin,
@@ -21,6 +21,11 @@ import {
 } from "@/lib/rendering/tileCatalog";
 import type { TerrainView } from "@/lib/rendering/terrainView";
 import { terrainKindAt } from "@/lib/rendering/terrainView";
+import {
+  animatedWaterDepth,
+  buildMarshWarmth,
+  buildWaterWaveField,
+} from "@/lib/rendering/waterWaves";
 
 type ObjectiveMarker = {
   row: number;
@@ -28,8 +33,14 @@ type ObjectiveMarker = {
   src: string;
 };
 
+type PaintedLayer = SpriteLayer & {
+  water?: { kind: "ocean" | "marsh"; depth: number; warmth: number };
+};
+
 type SpriteTerrainCanvasProps = {
   view: TerrainView;
+  /** PLAYABLE SPAN FOR THE DEPTH CEILING. THE DRAW SPAN MAY INCLUDE THE BLEED RIM. */
+  depthIso?: IsoSpan;
   metrics: IsoMetrics;
   bridges: Set<string>;
   objectives: ObjectiveMarker[];
@@ -90,7 +101,8 @@ function layersForCell(
   col: number,
   padding: boolean,
   depthAt: (row: number, col: number) => number,
-): SpriteLayer[] {
+  warmthAt: (row: number, col: number) => number,
+): PaintedLayer[] {
   const key = cellKey(row, col);
   const whirlpool = whirlpools.has(key);
 
@@ -99,12 +111,12 @@ function layersForCell(
       {
         src: oceanSprite(view, row, col, false),
         lift: 0,
-        tint: waterSurfaceTint("ocean", depthAt(row, col)),
+        water: { kind: "ocean", depth: depthAt(row, col), warmth: 0 },
       },
     ];
   }
 
-  const layers: SpriteLayer[] = [];
+  const layers: PaintedLayer[] = [];
 
   if (bridges.has(key)) {
     const kind = terrainKindAt(view, row, col);
@@ -117,8 +129,12 @@ function layersForCell(
     if (kind) {
       const painted = terrainLayers(kind, view, row, col, whirlpool);
       if ((kind === "ocean" || kind === "marsh") && !whirlpool) {
-        const tint = waterSurfaceTint(kind, depthAt(row, col));
-        layers.push(...painted.map((layer) => ({ ...layer, tint })));
+        const water = {
+          kind,
+          depth: depthAt(row, col),
+          warmth: kind === "marsh" ? warmthAt(row, col) : 0,
+        };
+        layers.push(...painted.map((layer) => ({ ...layer, water })));
       } else {
         layers.push(...painted);
       }
@@ -134,6 +150,7 @@ function layersForCell(
 
 export function SpriteTerrainCanvas({
   view,
+  depthIso,
   metrics,
   bridges,
   objectives,
@@ -152,8 +169,10 @@ export function SpriteTerrainCanvas({
     const objectiveSrc = new Map(
       objectives.map((marker) => [cellKey(marker.row, marker.col), marker.src]),
     );
-    const depthAt = latticeWaterDepth(view);
-    const placements: { row: number; col: number; layers: SpriteLayer[] }[] = [];
+    const depthAt = latticeWaterDepth(view, depthIso ?? view.iso);
+    const waves = buildWaterWaveField(view.seed, view.iso);
+    const warmthAt = buildMarshWarmth(view.seed);
+    const placements: { row: number; col: number; layers: PaintedLayer[] }[] = [];
     for (const cell of isoLatticeCells(view.iso)) {
       const layers = layersForCell(
         view,
@@ -164,6 +183,7 @@ export function SpriteTerrainCanvas({
         cell.col,
         cell.role === "pad",
         depthAt,
+        warmthAt,
       );
       if (layers.length > 0) {
         placements.push({ row: cell.row, col: cell.col, layers });
@@ -172,6 +192,8 @@ export function SpriteTerrainCanvas({
     const sources = [
       ...new Set(placements.flatMap((cell) => cell.layers.map((layer) => layer.src))),
     ];
+
+    let frame = 0;
 
     Promise.all(
       sources.map(async (src) => {
@@ -197,36 +219,70 @@ export function SpriteTerrainCanvas({
       const dpr = window.devicePixelRatio || 1;
       canvas.width = Math.max(1, Math.round(metrics.width * dpr));
       canvas.height = Math.max(1, Math.round(metrics.height * dpr));
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.imageSmoothingEnabled = false;
-      ctx.clearRect(0, 0, metrics.width, metrics.height);
-
       const scale = metrics.tileWidth / SPRITE_NATIVE;
-      for (const cell of placements) {
-        const origin = isoSpriteOrigin(cell.row, cell.col, metrics);
-        for (const layer of cell.layers) {
-          const image = bySrc.get(layer.src);
-          if (!image) {
-            continue;
+
+      const paint = (time: number) => {
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, metrics.width, metrics.height);
+        for (const cell of placements) {
+          const origin = isoSpriteOrigin(cell.row, cell.col, metrics);
+          for (const layer of cell.layers) {
+            const image = bySrc.get(layer.src);
+            if (!image) {
+              continue;
+            }
+            const tint = layer.water
+              ? waterSurfaceTint(
+                  layer.water.kind,
+                  animatedWaterDepth(
+                    waves,
+                    layer.water.depth,
+                    cell.row,
+                    cell.col,
+                    time,
+                  ),
+                  layer.water.warmth,
+                )
+              : layer.tint;
+            const sprite = tint ? tintedSprite(image, layer.src, tint) : image;
+            ctx.drawImage(
+              sprite,
+              origin.x,
+              origin.y - layer.lift * scale,
+              metrics.tileWidth,
+              metrics.tileWidth,
+            );
           }
-          const sprite = layer.tint
-            ? tintedSprite(image, layer.src, layer.tint)
-            : image;
-          ctx.drawImage(
-            sprite,
-            origin.x,
-            origin.y - layer.lift * scale,
-            metrics.tileWidth,
-            metrics.tileWidth,
-          );
         }
+      };
+
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      paint(0);
+      if (reduceMotion) {
+        return;
       }
+
+      let last = 0;
+      const tick = (now: number) => {
+        if (cancelled) {
+          return;
+        }
+        frame = requestAnimationFrame(tick);
+        if (document.hidden || now - last < 80) {
+          return;
+        }
+        last = now;
+        paint(now / 1000);
+      };
+      frame = requestAnimationFrame(tick);
     });
 
     return () => {
       cancelled = true;
+      cancelAnimationFrame(frame);
     };
-  }, [view, metrics, bridges, objectives, whirlpools]);
+  }, [view, depthIso, metrics, bridges, objectives, whirlpools]);
 
   return (
     <canvas

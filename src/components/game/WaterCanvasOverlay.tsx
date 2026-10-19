@@ -17,7 +17,6 @@ import {
   WATER_SUBCELLS,
   type WaterNoiseField,
 } from "@/lib/rendering/waterNoise";
-import { DEFAULT_DISPLAY_PREFS } from "@/lib/rendering/displayPrefs";
 import {
   terrainSubcellRect,
   terrainSubcellSize,
@@ -307,7 +306,7 @@ export function drawWaterSurface(
   waterPhase: number,
   cellSize: number,
   gap: number,
-  depthInterpolation = DEFAULT_DISPLAY_PREFS.waterDepthInterpolation,
+  depthInterpolation = 0.75,
 ): void {
   const { rows, cols } = view;
   const subcells = WATER_SUBCELLS;
@@ -386,7 +385,7 @@ export function WaterCanvasOverlay({
   cellSize,
   gap,
   frameMs = DEFAULT_FRAME_MS,
-  depthInterpolation = DEFAULT_DISPLAY_PREFS.waterDepthInterpolation,
+  depthInterpolation = 0.75,
 }: WaterCanvasOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [waterPhase, setWaterPhase] = useState(0);

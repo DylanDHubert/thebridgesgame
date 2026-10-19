@@ -3,7 +3,6 @@
 import { useEffect, useRef } from "react";
 
 import type { AppearanceContext } from "@/lib/rendering/cellAppearance";
-import { DEFAULT_DISPLAY_PREFS } from "@/lib/rendering/displayPrefs";
 import { drawTerrainBorders } from "@/lib/rendering/terrainBorders";
 import type { TerrainView } from "@/lib/rendering/terrainView";
 
@@ -20,7 +19,7 @@ export function TerrainBorderOverlay({
   context,
   cellSize,
   gap,
-  cellGridOpacity = DEFAULT_DISPLAY_PREFS.cellGridOpacity,
+  cellGridOpacity = 0.72,
 }: TerrainBorderOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 

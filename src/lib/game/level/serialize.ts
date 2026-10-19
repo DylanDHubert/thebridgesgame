@@ -17,7 +17,6 @@ import {
 const TERRAIN_TO_CODE: Record<TileKind, string> = {
   ocean: "o",
   marsh: "m",
-  beach: "b",
   grass: "g",
   cliff: "c",
 };
@@ -25,7 +24,7 @@ const TERRAIN_TO_CODE: Record<TileKind, string> = {
 const CODE_TO_TERRAIN: Record<string, TileKind> = {
   o: "ocean",
   m: "marsh",
-  b: "beach",
+  b: "grass",
   g: "grass",
   c: "cliff",
 };
@@ -86,7 +85,7 @@ const FALLBACK_MISSION = {
   z: { row: 3, col: 3 },
 };
 
-const LAND: ReadonlySet<TileKind> = new Set(["grass", "beach", "cliff"]);
+const LAND: ReadonlySet<TileKind> = new Set(["grass", "cliff"]);
 
 function shiftCell(cell: CellCoord, minRow: number, minCol: number): CellCoord {
   return { row: cell.row - minRow, col: cell.col - minCol };
@@ -256,8 +255,8 @@ export function deserializeLevel(file: LevelFile): Level {
     rows,
     cols,
     terrain,
-    objects,
-    routes,
+    objects: [],
+    routes: [],
     mission,
   };
 

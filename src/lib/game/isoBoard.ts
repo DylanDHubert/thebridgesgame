@@ -21,6 +21,16 @@ export type IsoBoard = {
   minCol: number;
 };
 
+/** ONE EXTRA ROW ON THE TOP, LEFT, AND RIGHT SO THOSE EDGES GET CUT BY THE FRAME. */
+export function bleedRimSpan(span: IsoSpan): IsoSpan {
+  return {
+    uMin: span.uMin - LATTICE_STEP,
+    uMax: span.uMax + LATTICE_STEP,
+    vMin: span.vMin - LATTICE_STEP,
+    vMax: span.vMax,
+  };
+}
+
 export function isIsoSpan(value: unknown): value is IsoSpan {
   if (!value || typeof value !== "object") {
     return false;

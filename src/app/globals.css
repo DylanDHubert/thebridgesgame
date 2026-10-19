@@ -28,8 +28,8 @@ html {
 }
 
 body {
-  background: var(--deep-ocean);
-  color: var(--foreground);
+  background: white;
+  color: black;
   font-family: var(--font-pixel), ui-monospace, monospace;
   font-size: 12px;
   line-height: 1.7;
@@ -70,6 +70,49 @@ body {
 
 .bg-ocean-gradient {
   background: transparent;
+}
+
+/** ONE-PIXEL RANGE — BLACK TRACK, SQUARE THUMB */
+.hairline-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 14px;
+  cursor: pointer;
+  background: transparent;
+}
+
+.hairline-slider:focus {
+  outline: none;
+}
+
+.hairline-slider::-webkit-slider-runnable-track {
+  height: 1px;
+  background: black;
+}
+
+.hairline-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border: 1px solid black;
+  background: white;
+}
+
+.hairline-slider::-moz-range-track {
+  height: 1px;
+  background: black;
+  border: none;
+}
+
+.hairline-slider::-moz-range-thumb {
+  width: 8px;
+  height: 8px;
+  border: 1px solid black;
+  border-radius: 0;
+  background: white;
 }
 
 /** PIXEL WOOD RANGE — TRACK + SQUARE THUMB */
