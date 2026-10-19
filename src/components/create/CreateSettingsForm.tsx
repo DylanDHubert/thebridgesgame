@@ -12,6 +12,7 @@ import {
   saveCreateConfig,
   type CreateGenerationConfig,
 } from "@/lib/game/createConfig";
+import { randomArchipelagoName } from "@/lib/game/archipelagoNames";
 import { hashStringToSeed, mulberry32 } from "@/lib/game/seed";
 import { HairlineButton, HairlineRow } from "@/components/ui/hairline";
 
@@ -55,7 +56,7 @@ function SliderField({
 
 function randomCreateSeed(): string {
   const rng = mulberry32(hashStringToSeed(`${Date.now()}`));
-  return `create-${Math.floor(rng() * 1_000_000_000)}`;
+  return randomArchipelagoName(rng);
 }
 
 export function CreateSettingsForm() {

@@ -1,7 +1,7 @@
 {
   "version": 3,
   "id": "home",
-  "name": "the bridges game",
+  "name": "The Bridges Game",
   "seed": "home-archipelago",
   "grid": {
     "rows": 34,

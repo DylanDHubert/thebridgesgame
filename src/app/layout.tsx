@@ -10,9 +10,12 @@ const pixelFont = Press_Start_2P({
 });
 
 export const metadata: Metadata = {
-  title: "the bridges game",
+  title: "The Bridges Game",
   description:
     "Bridge the Isles — daily archipelago puzzles and island crafting.",
+  icons: {
+    icon: "/assets/sprites/tiles/wood_moss.png",
+  },
 };
 
 export default function RootLayout({

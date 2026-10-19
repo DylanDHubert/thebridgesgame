@@ -67,7 +67,7 @@ export function HomeScreen({ level }: HomeScreenProps) {
 
   return (
     <main className="flex h-dvh w-full flex-col overflow-hidden">
-      <HairlineHeader title="Home" subtitle="the bridges game" nav="home" />
+      <HairlineHeader title="Home" subtitle="The Bridges Game" nav="home" />
       <section className="flex min-h-0 flex-1 flex-col gap-3 p-3 sm:p-4">
         <div className="relative min-h-0 min-w-0 flex-1">
           <GameStage>
@@ -84,8 +84,8 @@ export function HomeScreen({ level }: HomeScreenProps) {
             />
           </GameStage>
         </div>
-        <div className="flex w-full shrink-0 items-center border border-black px-3 py-2.5">
-          <p className="text-[10px] uppercase tracking-[0.14em]">
+        <div className="flex w-full shrink-0 items-center justify-between gap-3 border border-black px-3 py-2.5">
+          <p className="inline-flex items-center border border-transparent py-1.5 text-[10px] uppercase tracking-[0.14em]">
             Bridge from home to play or create
           </p>
         </div>

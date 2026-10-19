@@ -8,7 +8,7 @@ export default async function HomePage() {
   if (!level) {
     return (
       <main className="flex h-dvh flex-col overflow-hidden">
-        <HairlineHeader title="Home" subtitle="the bridges game" nav="home" />
+        <HairlineHeader title="Home" subtitle="The Bridges Game" nav="home" />
         <div className="flex flex-1 items-center justify-center px-6 text-center">
           <p className="text-[11px] uppercase tracking-[0.14em]">
             Home map missing. Open Create, then Edit home map.

@@ -10,6 +10,20 @@ function levelIdFromSeed(seed: string): string {
   return safe.replace(/^-+|-+$/g, "") || "level";
 }
 
+/** TITLE CASE SO "AMBER CAY" STAYS A NAME AND "amber-cay" DOES NOT */
+function displayNameFromSeed(seed: string): string {
+  const words = seed
+    .trim()
+    .split(/[\s_-]+/)
+    .filter((word) => word.length > 0);
+  if (words.length === 0) {
+    return "Island";
+  }
+  return words
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
 /** FLATTEN TILE GRID. WHIRLPOOL CELLS BECOME PLAIN OCEAN. */
 export function tileGridToLevelParts(
   grid: TileGrid,
@@ -41,7 +55,7 @@ export function buildLevel(
   const id = levelIdFromSeed(seed);
   return {
     id,
-    name: name ?? id,
+    name: name ?? displayNameFromSeed(seed),
     seed,
     rows,
     cols,

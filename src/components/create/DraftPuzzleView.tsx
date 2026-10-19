@@ -255,7 +255,7 @@ export function DraftPuzzleView({
       ...level,
       // HOME MAP ALWAYS SAVES AS id=home
       id: homeMap ? "home" : level.id,
-      name: homeMap ? "the bridges game" : name.trim() || level.id,
+      name: homeMap ? "The Bridges Game" : name.trim() || level.id,
     };
     try {
       const result = await saveLevelAction(serializeLevel(toSave));

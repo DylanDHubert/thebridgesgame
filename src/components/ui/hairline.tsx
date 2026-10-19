@@ -34,6 +34,7 @@ type HairlineLinkProps = {
   href: string;
   children: ReactNode;
   className?: string;
+  pressed?: boolean;
   "aria-label"?: string;
 };
 
@@ -42,10 +43,18 @@ export function HairlineLink({
   href,
   children,
   className = "",
+  pressed = false,
   "aria-label": ariaLabel,
 }: HairlineLinkProps) {
   return (
-    <Link href={href} aria-label={ariaLabel} className={`${CONTROL} ${className}`}>
+    <Link
+      href={href}
+      aria-label={ariaLabel}
+      aria-current={pressed ? "page" : undefined}
+      className={[CONTROL, pressed ? "bg-black text-white" : "", className]
+        .filter(Boolean)
+        .join(" ")}
+    >
       {children}
     </Link>
   );
@@ -70,37 +79,41 @@ const NAV = [
   { id: "create", href: "/create", label: "Create" },
 ] as const;
 
-/** THIN BAR — TITLE ON THE LEFT, SECTION LINKS ON THE RIGHT */
+/** ISLAND LABEL YELLOW. SELECTED IS BLACK; HOVER IS THIS YELLOW. */
+const NAV_LINK = [
+  "inline-flex items-center justify-center border border-black bg-white px-3 py-1.5",
+  "text-[10px] uppercase tracking-[0.16em] text-black transition",
+  "hover:bg-[#fbbf24] hover:text-black",
+  "aria-[current=page]:bg-black aria-[current=page]:text-white",
+  "aria-[current=page]:hover:bg-[#fbbf24] aria-[current=page]:hover:text-black",
+].join(" ");
+
+/** THIN BAR — GAME NAME ON THE LEFT, SECTION LINKS ON THE RIGHT */
 export function HairlineHeader({
-  title,
-  subtitle,
   nav,
 }: {
-  title: string;
+  title?: string;
   subtitle?: string;
   nav?: "home" | "play" | "create";
 }) {
   return (
-    <header className="flex shrink-0 items-end justify-between gap-4 border-b border-black px-4 py-3 sm:px-6">
-      <div className="min-w-0">
-        <h1 className="truncate text-[11px] uppercase tracking-[0.22em]">{title}</h1>
-        {subtitle ? (
-          <p className="mt-1 truncate text-[9px] uppercase tracking-[0.16em] text-black/55">
-            {subtitle}
-          </p>
-        ) : null}
-      </div>
-      <nav className="flex shrink-0 gap-4 text-[10px] uppercase tracking-[0.18em]">
+    <header className="flex shrink-0 items-center justify-between gap-4 border-b border-black px-4 py-3 sm:px-6">
+      <h1
+        className="min-w-0 truncate text-[11px] tracking-[0.12em] text-[#fbbf24]"
+        style={{
+          textShadow:
+            "1px 0 0 rgb(12 48 92), -1px 0 0 rgb(12 48 92), 0 1px 0 rgb(12 48 92), 0 -1px 0 rgb(12 48 92)",
+        }}
+      >
+        The Bridges Game
+      </h1>
+      <nav className="flex shrink-0 items-center gap-2">
         {NAV.map((item) => (
           <Link
             key={item.id}
             href={item.href}
             aria-current={nav === item.id ? "page" : undefined}
-            className={
-              nav === item.id
-                ? "underline decoration-1 underline-offset-4"
-                : "hover:underline hover:decoration-1 hover:underline-offset-4"
-            }
+            className={NAV_LINK}
           >
             {item.label}
           </Link>
