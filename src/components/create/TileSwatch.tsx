@@ -1,5 +1,6 @@
-import { TILE_SPRITES } from "@/lib/rendering/isoTiles";
 import type { TileKind } from "@/lib/game/types";
+import { TILE_SPRITES } from "@/lib/rendering/isoTiles";
+import { MARSH_WATER_TINT } from "@/lib/rendering/tileCatalog";
 
 /** PALETTE PREVIEW — THE SAME SPRITE THE BOARD DRAWS */
 export function TileSwatch({
@@ -12,7 +13,7 @@ export function TileSwatch({
   return (
     <div
       aria-hidden
-      className="block"
+      className="relative block"
       style={{
         width: size,
         height: size,
@@ -20,6 +21,19 @@ export function TileSwatch({
         backgroundSize: "100% 100%",
         imageRendering: "pixelated",
       }}
-    />
+    >
+      {kind === "marsh" ? (
+        <span
+          className="absolute inset-0"
+          style={{
+            backgroundColor: MARSH_WATER_TINT,
+            maskImage: `url(${TILE_SPRITES[kind]})`,
+            WebkitMaskImage: `url(${TILE_SPRITES[kind]})`,
+            maskSize: "100% 100%",
+            maskRepeat: "no-repeat",
+          }}
+        />
+      ) : null}
+    </div>
   );
 }

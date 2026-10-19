@@ -1,4 +1,5 @@
 import { pickMissionEndpoints } from "../endpoints";
+import { isoBoardFromContent, isoCellRole, isoLatticeCells, type IsoSpan } from "../isoBoard";
 import { buildRawTerrainGrid } from "../terrainNoise";
 import type { CreateGenerationConfig } from "../createConfig";
 import { normalizeCreateConfig } from "../createConfig";
@@ -45,6 +46,7 @@ function fallbackMission(
   labels: number[][],
   rows: number,
   cols: number,
+  span: IsoSpan,
   rng: () => number,
 ) {
   const landCells: CellCoord[] = [];
@@ -63,35 +65,58 @@ function fallbackMission(
     }
   }
 
-  return missionFromEndpoints(
-    { row: 1, col: 1 },
-    { row: Math.floor(rows / 2), col: Math.floor(cols / 2) },
-    { row: Math.max(1, rows - 2), col: Math.max(1, cols - 2) },
-  );
-}
-
-function toTerrainConfig(config: CreateGenerationConfig) {
-  return { grid: config.grid, noise: config.noise };
+  const playable = isoLatticeCells(span).filter((cell) => cell.role === "play");
+  const first = playable[0] ?? { row: 0, col: 0 };
+  const mid = playable[Math.floor(playable.length / 2)] ?? first;
+  const last = playable[playable.length - 1] ?? first;
+  return missionFromEndpoints(first, mid, last);
 }
 
 /**
- * CREATE ENTRY — SINGLE-PASS RANDOM TERRAIN + AUTO MISSION (X/Y/Z).
- * OUTPUTS Level DIRECTLY; NO PAR SEARCH.
+ * CREATE ENTRY — NOISE FILLS THE ISO INTERIOR.
+ * THE OUTER TWO LAYERS STAY OCEAN AND ARE NOT PART OF THE PUZZLE.
  */
 export function generateLevel(options: GenerateLevelOptions): Level {
   const config = normalizeCreateConfig(options.config);
-  const { rows, cols } = config.grid;
   const seed = options.seed;
   const rng = mulberry32(hashStringToSeed(seed));
+  const board = isoBoardFromContent(config.grid.rows, config.grid.cols);
 
-  const rawGrid = buildRawTerrainGrid(toTerrainConfig(config), seed);
+  const rawGrid = buildRawTerrainGrid(
+    { grid: { rows: board.rows, cols: board.cols }, noise: config.noise },
+    seed,
+  );
+  for (let row = 0; row < board.rows; row += 1) {
+    for (let col = 0; col < board.cols; col += 1) {
+      if (isoCellRole(row, col, board.span) !== "play") {
+        rawGrid[row]![col] = "water";
+      }
+    }
+  }
+
   const tileGrid = buildTileGridFromNoise(rawGrid, seed, rng);
-  const labels = labelLandComponents(tileGrid, rows, cols);
+  for (let row = 0; row < board.rows; row += 1) {
+    for (let col = 0; col < board.cols; col += 1) {
+      if (isoCellRole(row, col, board.span) !== "play") {
+        tileGrid[row]![col] = "ocean";
+      }
+    }
+  }
+
+  const labels = labelLandComponents(tileGrid, board.rows, board.cols);
   const mission =
-    pickMissionEndpoints(tileGrid, labels, rows, cols, rng) ??
-    fallbackMission(labels, rows, cols, rng);
+    pickMissionEndpoints(tileGrid, labels, board.rows, board.cols, rng) ??
+    fallbackMission(labels, board.rows, board.cols, board.span, rng);
 
-  const { terrain, objects } = tileGridToLevelParts(tileGrid, rows, cols);
+  const { terrain, objects } = tileGridToLevelParts(tileGrid, board.rows, board.cols);
 
-  return buildLevel(seed, rows, cols, terrain, objects, mission);
+  return buildLevel(
+    seed,
+    board.rows,
+    board.cols,
+    terrain,
+    objects,
+    mission,
+    board.span,
+  );
 }

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { routeDefinition } from "@/lib/game/objects/registry";
 import type { LevelRoute } from "@/lib/game/level/types";
-import { isoCellCenter, isoMetrics } from "@/lib/rendering/isoTiles";
+import { isoCellCenter, type IsoMetrics } from "@/lib/rendering/isoTiles";
 import {
   buildArcTable,
   samplePath,
@@ -14,9 +14,7 @@ import {
 
 type RouteShipOverlayProps = {
   routes: LevelRoute[];
-  rows: number;
-  cols: number;
-  tileWidth: number;
+  metrics: IsoMetrics;
 };
 
 type PreparedRoute = {
@@ -119,17 +117,9 @@ function transitDistance(
   return phase <= total ? phase : period - phase;
 }
 
-export function RouteShipOverlay({
-  routes,
-  rows,
-  cols,
-  tileWidth,
-}: RouteShipOverlayProps) {
+export function RouteShipOverlay({ routes, metrics }: RouteShipOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const metrics = useMemo(
-    () => isoMetrics(tileWidth, rows, cols),
-    [tileWidth, rows, cols],
-  );
+  const tileWidth = metrics.tileWidth;
 
   const prepared = useMemo<PreparedRoute[]>(() => {
     return routes.map((route) => {

@@ -1,5 +1,5 @@
 import type { CellCoord } from "@/lib/game/types";
-import { isoCellCenter, isoMetrics } from "@/lib/rendering/isoTiles";
+import { isoCellCenter, type IsoMetrics } from "@/lib/rendering/isoTiles";
 
 export type PathLineStyle = {
   id: string;
@@ -12,15 +12,10 @@ export type PathLineStyle = {
 
 type PathLineOverlayProps = {
   paths: PathLineStyle[];
-  rows: number;
-  cols: number;
-  tileWidth: number;
+  metrics: IsoMetrics;
 };
 
-function pathToPoints(
-  path: CellCoord[],
-  metrics: ReturnType<typeof isoMetrics>,
-): string {
+function pathToPoints(path: CellCoord[], metrics: IsoMetrics): string {
   return path
     .map(({ row, col }) => {
       const { x, y } = isoCellCenter(row, col, metrics);
@@ -29,13 +24,7 @@ function pathToPoints(
     .join(" ");
 }
 
-export function PathLineOverlay({
-  paths,
-  rows,
-  cols,
-  tileWidth,
-}: PathLineOverlayProps) {
-  const metrics = isoMetrics(tileWidth, rows, cols);
+export function PathLineOverlay({ paths, metrics }: PathLineOverlayProps) {
   const visiblePaths = paths.filter((entry) => entry.path.length >= 2);
   if (visiblePaths.length === 0) {
     return null;

@@ -8,13 +8,11 @@ import {
   ANIMATED_RENDERERS,
   objectRenderer,
 } from "@/lib/rendering/objectRenderers";
-import { isoCellCenter, isoMetrics } from "@/lib/rendering/isoTiles";
+import { isoCellCenter, type IsoMetrics } from "@/lib/rendering/isoTiles";
 
 type ObjectCanvasOverlayProps = {
   objects: LevelObject[];
-  rows: number;
-  cols: number;
-  tileWidth: number;
+  metrics: IsoMetrics;
   frameMs?: number;
 };
 
@@ -23,13 +21,10 @@ const DEFAULT_FRAME_MS = 50;
 export function drawObjectsSurface(
   ctx: CanvasRenderingContext2D,
   objects: LevelObject[],
-  rows: number,
-  cols: number,
-  tileWidth: number,
+  metrics: IsoMetrics,
   phase: number,
 ): void {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-  const metrics = isoMetrics(tileWidth, rows, cols);
   const box = metrics.halfW;
 
   for (const object of objects) {
@@ -39,7 +34,7 @@ export function drawObjectsSurface(
     }
 
     const renderer = objectRenderer(definition.render);
-    if (!renderer) {
+    if (!renderer || definition.render === "whirlpool") {
       continue;
     }
 
@@ -59,14 +54,11 @@ export function drawObjectsSurface(
 
 export function ObjectCanvasOverlay({
   objects,
-  rows,
-  cols,
-  tileWidth,
+  metrics,
   frameMs = DEFAULT_FRAME_MS,
 }: ObjectCanvasOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [phase, setPhase] = useState(0);
-  const metrics = isoMetrics(tileWidth, rows, cols);
 
   const hasAnimated = objects.some((object) => {
     const definition = objectDefinition(object.defId);
@@ -96,8 +88,8 @@ export function ObjectCanvasOverlay({
       return;
     }
 
-    drawObjectsSurface(ctx, objects, rows, cols, tileWidth, phase);
-  }, [objects, rows, cols, tileWidth, phase]);
+    drawObjectsSurface(ctx, objects, metrics, phase);
+  }, [objects, metrics, phase]);
 
   return (
     <canvas

@@ -1,5 +1,8 @@
 import { hashStringToSeed } from "@/lib/game/seed";
+import { isLandKind } from "@/lib/game/rules";
 import type { TileKind } from "@/lib/game/types";
+import type { TerrainView } from "@/lib/rendering/terrainView";
+import { terrainKindAt } from "@/lib/rendering/terrainView";
 
 /** TILE SHEET ORDER — SLUG PLUS ORIGINAL INDEX. SPLIT A SLUG BY RENAMING ENTRIES. */
 export type TileCatalogEntry = {
@@ -34,8 +37,8 @@ export const TILE_CATALOG: readonly TileCatalogEntry[] = [
   { index: 22, slug: "grass", file: "grass_022.png" },
   { index: 23, slug: "grass", file: "grass_023.png" },
   { index: 24, slug: "grass", file: "grass_024.png" },
-  { index: 25, slug: "farmland_mud", file: "farmland_mud_025.png" },
-  { index: 26, slug: "farmland_mud_plants", file: "farmland_mud_plants_026.png" },
+  { index: 25, slug: "wood", file: "wood_025.png" },
+  { index: 26, slug: "wood_moss", file: "wood_moss.png" },
   { index: 27, slug: "jungle_grass", file: "jungle_grass_027.png" },
   { index: 28, slug: "jungle_grass", file: "jungle_grass_028.png" },
   { index: 29, slug: "jungle_plants", file: "jungle_plants_029.png" },
@@ -146,16 +149,105 @@ export const GRASS_VARIANTS = filesFrom([30, 31, 32, 33, 34, 35, 36, 37]);
 /** SAND / BEACH CELLS — JUNGLE GRASS 27 AND 28 */
 export const SAND_VARIANTS = filesFrom([27, 28]);
 
-/** OCEAN CELLS — DEEP WATER 86 THROUGH 94. DIRECTION COMES LATER. */
-export const OCEAN_VARIANTS = TILE_CATALOG.filter(
-  (entry) => entry.slug === "water_deep",
-).map((entry) => tileSrc(entry.file));
+/** OPEN LIGHT WATER — NO LAND NEIGHBORS. SHORE TILES ARE CHOSEN PER CELL. */
+export const OCEAN_VARIANTS = filesFrom([104]);
+
+/**
+ * LIGHT WATER SHORE, TURNED 90° CLOCKWISE FROM THE FIRST MAPPING.
+ * NORTH USES NE, EAST USES SE, SOUTH USES SW, WEST USES NW.
+ * 112 WAS LISTED THE SAME AS 111, SO IT IS NE AND SE.
+ */
+const SHORE_NW = 1;
+const SHORE_NE = 2;
+const SHORE_SE = 4;
+const SHORE_SW = 8;
+
+const LIGHT_WATER_BY_SHORE: Readonly<Record<number, number>> = {
+  0: 104,
+  [SHORE_NE]: 105,
+  [SHORE_NW]: 106,
+  [SHORE_SE]: 107,
+  [SHORE_SW]: 108,
+  [SHORE_NW | SHORE_NE]: 109,
+  [SHORE_SE | SHORE_SW]: 110,
+  [SHORE_NW | SHORE_SW]: 111,
+  [SHORE_NE | SHORE_SE]: 112,
+};
+
+function neighborIsLand(view: TerrainView, row: number, col: number): boolean {
+  const kind = terrainKindAt(view, row, col);
+  return kind ? isLandKind(kind) : false;
+}
+
+/** SHORE FROM ORTHOGONAL LAND. WHIRLPOOL WINS. ANY OTHER MASK USES THE ALL TILE. */
+export function oceanSprite(
+  view: TerrainView,
+  row: number,
+  col: number,
+  whirlpool: boolean,
+): string {
+  if (whirlpool) {
+    return filesFrom([114])[0]!;
+  }
+  let shore = 0;
+  if (neighborIsLand(view, row - 1, col)) {
+    shore |= SHORE_NE;
+  }
+  if (neighborIsLand(view, row, col + 1)) {
+    shore |= SHORE_SE;
+  }
+  if (neighborIsLand(view, row + 1, col)) {
+    shore |= SHORE_SW;
+  }
+  if (neighborIsLand(view, row, col - 1)) {
+    shore |= SHORE_NW;
+  }
+  return filesFrom([LIGHT_WATER_BY_SHORE[shore] ?? 113])[0]!;
+}
 
 /** CLIFF BASE — THE STONE BLOCK */
 export const CLIFF_BLOCK = filesFrom([63])[0]!;
 
-/** STONE SITTING ON THE CLIFF BLOCK — LOOSE STONES, NOT 66 */
-export const CLIFF_STONES = filesFrom([64, 65, 67]);
+type Rgb = { r: number; g: number; b: number };
+
+const SHALLOW_OCEAN: Rgb = { r: 150, g: 206, b: 226 };
+const DEEP_OCEAN: Rgb = { r: 8, g: 32, b: 72 };
+const SHALLOW_MARSH: Rgb = { r: 28, g: 150, b: 64 };
+const DEEP_MARSH: Rgb = { r: 8, g: 64, b: 32 };
+
+function mixRgb(a: Rgb, b: Rgb, t: number): Rgb {
+  return {
+    r: Math.round(a.r + (b.r - a.r) * t),
+    g: Math.round(a.g + (b.g - a.g) * t),
+    b: Math.round(a.b + (b.b - a.b) * t),
+  };
+}
+
+/**
+ * WASH OVER THE WATER SPRITE.
+ * DEPTH 0 IS NEXT TO LAND. DEPTH 1 IS THE FARTHEST WATER ON THE MAP.
+ * MARSH STAYS GREENER THAN OCEAN AT EVERY DEPTH.
+ */
+export function waterSurfaceTint(kind: "ocean" | "marsh", depth: number): string {
+  const t = Math.min(1, Math.max(0, depth));
+  if (kind === "marsh") {
+    const color = mixRgb(SHALLOW_MARSH, DEEP_MARSH, t);
+    const alpha = 0.52 + t * 0.22;
+    return `rgb(${color.r} ${color.g} ${color.b} / ${alpha.toFixed(3)})`;
+  }
+  const color = mixRgb(SHALLOW_OCEAN, DEEP_OCEAN, t);
+  const alpha = 0.06 + t * 0.56;
+  return `rgb(${color.r} ${color.g} ${color.b} / ${alpha.toFixed(3)})`;
+}
+
+/** PALETTE SAMPLE — A SHALLOW-TO-MID MARSH */
+export const MARSH_WATER_TINT = waterSurfaceTint("marsh", 0.35);
+
+/** BRIDGE ON OPEN WATER */
+export const BRIDGE_WOOD = filesFrom([25])[0]!;
+
+/** BRIDGE ON MARSH */
+export const BRIDGE_MARSH = filesFrom([26])[0]!;
 
 /** OBJECTIVES X / Y / Z — FLOWER TILES */
 export const FLOWER_VARIANTS = filesFrom([41, 42, 44, 46, 47]);
@@ -166,12 +258,9 @@ export const CLIFF_STONE_LIFT = 12;
 export type SpriteLayer = {
   src: string;
   lift: number;
+  /** FILLED OVER THE OPAQUE SPRITE PIXELS */
+  tint?: string;
 };
-
-/** PLACED BRIDGES — EVERY COBBLE-IN-WATER TILE */
-export const BRIDGE_VARIANTS = TILE_CATALOG.filter(
-  (entry) => entry.slug === "cobble_block_water",
-).map((entry) => tileSrc(entry.file));
 
 /** STABLE PICK — SAME SEED AND CELL ALWAYS GET THE SAME FILE */
 export function pickVariant(
@@ -198,28 +287,28 @@ export function terrainSprite(
   if (kind === "beach") {
     return pickVariant(SAND_VARIANTS, seed, row, col, "beach");
   }
-  if (kind === "ocean") {
-    return pickVariant(OCEAN_VARIANTS, seed, row, col, "ocean");
-  }
   return null;
 }
 
-/** LAYERS FOR ONE CELL. CLIFFS ARE A BLOCK WITH A STONE ON TOP. */
+/** LAYERS FOR ONE CELL. CLIFFS ARE THE STONE BLOCK. */
 export function terrainLayers(
   kind: TileKind,
-  seed: string,
+  view: TerrainView,
   row: number,
   col: number,
+  whirlpool = false,
 ): SpriteLayer[] {
   if (kind === "cliff") {
+    return [{ src: CLIFF_BLOCK, lift: 0 }];
+  }
+  if (kind === "ocean" || kind === "marsh") {
     return [
-      { src: CLIFF_BLOCK, lift: 0 },
       {
-        src: pickVariant(CLIFF_STONES, seed, row, col, "cliff"),
-        lift: CLIFF_STONE_LIFT,
+        src: oceanSprite(view, row, col, kind === "ocean" && whirlpool),
+        lift: 0,
       },
     ];
   }
-  const src = terrainSprite(kind, seed, row, col);
+  const src = terrainSprite(kind, view.seed, row, col);
   return src ? [{ src, lift: 0 }] : [];
 }

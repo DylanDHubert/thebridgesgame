@@ -3,7 +3,7 @@ import {
   maxWaterDistance,
   waterDepthAt,
 } from "@/lib/game/terrain";
-import { bridgeCostAt, isLandKind } from "@/lib/game/rules";
+import { isLandKind } from "@/lib/game/rules";
 import type { TileKind } from "@/lib/game/types";
 import type { Level } from "@/lib/game/level/types";
 import type { TerrainView } from "@/lib/rendering/terrainView";
@@ -401,7 +401,7 @@ export function appearanceForCell(
   context: AppearanceContext,
   overlayOverride?: OverlayKind,
 ): CellAppearance {
-  const { view, level, bridges, pathKeys, terrainMaps, maxDepth } = context;
+  const { view, bridges, pathKeys, terrainMaps, maxDepth } = context;
   const kind = terrainKindAt(view, row, col)!;
   const key = `${row},${col}`;
   const hasBridge = bridges.has(key);
@@ -434,17 +434,11 @@ export function appearanceForCell(
     }
   }
 
-  const bridgeCostLabel =
-    level && !hasBridge && (kind === "marsh" || kind === "ocean")
-      ? bridgeCostAt(level, row, col)
-      : undefined;
-
   return {
     backgroundColor,
     shimmer: undefined,
     overlay,
     componentTint: undefined,
-    bridgeCostLabel,
   };
 }
 

@@ -1,7 +1,7 @@
 import { routeDefinition } from "@/lib/game/objects/registry";
 import type { LevelRoute } from "@/lib/game/level/types";
 import type { CellCoord } from "@/lib/game/types";
-import { isoCellCenter, isoMetrics } from "@/lib/rendering/isoTiles";
+import { isoCellCenter, type IsoMetrics } from "@/lib/rendering/isoTiles";
 
 export type DraftRoute = {
   defId: string;
@@ -12,16 +12,10 @@ export type DraftRoute = {
 type RouteCanvasOverlayProps = {
   routes: LevelRoute[];
   draftRoute?: DraftRoute | null;
-  rows: number;
-  cols: number;
-  tileWidth: number;
+  metrics: IsoMetrics;
 };
 
-function pointsFor(
-  path: CellCoord[],
-  closed: boolean,
-  metrics: ReturnType<typeof isoMetrics>,
-): string {
+function pointsFor(path: CellCoord[], closed: boolean, metrics: IsoMetrics): string {
   const cells = closed && path.length > 1 ? [...path, path[0]!] : path;
   return cells
     .map((cell) => {
@@ -41,7 +35,7 @@ function RoutePolyline({
   path: CellCoord[];
   closed: boolean;
   color: string;
-  metrics: ReturnType<typeof isoMetrics>;
+  metrics: IsoMetrics;
   dashed?: boolean;
 }) {
   const strokeWidth = Math.max(2, metrics.halfH * 0.4);
@@ -83,11 +77,8 @@ function RoutePolyline({
 export function RouteCanvasOverlay({
   routes,
   draftRoute,
-  rows,
-  cols,
-  tileWidth,
+  metrics,
 }: RouteCanvasOverlayProps) {
-  const metrics = isoMetrics(tileWidth, rows, cols);
 
   if (routes.length === 0 && (!draftRoute || draftRoute.path.length === 0)) {
     return null;

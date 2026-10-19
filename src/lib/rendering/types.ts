@@ -25,8 +25,6 @@ export type CellAppearance = {
   sprite?: SpriteRef;
   overlay: OverlayKind;
   componentTint?: string;
-  /** SHOWN ON HOVERABLE WATER — MARSH COSTS 2 */
-  bridgeCostLabel?: number;
 };
 
 export const SPRITE_SHEETS = {

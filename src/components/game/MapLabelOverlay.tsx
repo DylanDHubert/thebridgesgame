@@ -6,7 +6,7 @@ import type { CellCoord } from "@/lib/game/types";
 import {
   cellAtIsoPoint,
   isoCellCenter,
-  isoMetrics,
+  type IsoMetrics,
 } from "@/lib/rendering/isoTiles";
 
 export type MapLabel = {
@@ -18,9 +18,7 @@ export type MapLabel = {
 
 type MapLabelOverlayProps = {
   labels: MapLabel[];
-  rows: number;
-  cols: number;
-  tileWidth: number;
+  metrics: IsoMetrics;
   /** WHEN TRUE — DRAG LABELS TO NEW LAND CELLS */
   draggable?: boolean;
   onMoveLabel?: (id: string, row: number, col: number) => void;
@@ -43,16 +41,13 @@ function pointerToIso(
 /** PIXEL LABELS ON ISO CELLS — OPTIONAL DRAG TO REPOSITION */
 export function MapLabelOverlay({
   labels,
-  rows,
-  cols,
-  tileWidth,
+  metrics,
   draggable = false,
   onMoveLabel,
 }: MapLabelOverlayProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragPoint, setDragPoint] = useState<{ x: number; y: number } | null>(null);
-  const metrics = isoMetrics(tileWidth, rows, cols);
   const fontSize = Math.max(8, Math.min(14, metrics.halfH * 0.85));
   const hitPad = Math.max(14, metrics.halfH);
 

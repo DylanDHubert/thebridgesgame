@@ -1,3 +1,4 @@
+import { isoCellRole, type IsoSpan } from "@/lib/game/isoBoard";
 import type { TileKind } from "@/lib/game/types";
 import {
   CLIFF_BLOCK,
@@ -20,7 +21,7 @@ export const TILE_SPRITES: Record<TileKind, string> = {
   beach: SAND_VARIANTS[0]!,
   cliff: CLIFF_BLOCK,
   ocean: OCEAN_VARIANTS[0]!,
-  marsh: "/assets/sprites/marsh.png",
+  marsh: OCEAN_VARIANTS[0]!,
 };
 
 export type IsoMetrics = {
@@ -33,6 +34,7 @@ export type IsoMetrics = {
   height: number;
   rows: number;
   cols: number;
+  span?: IsoSpan;
 };
 
 /**
@@ -46,22 +48,30 @@ export function isoMetrics(
   tileWidth: number,
   rows: number,
   cols: number,
+  span?: IsoSpan,
 ): IsoMetrics {
   const halfW = tileWidth / 2;
   const halfH = tileWidth / 4;
   const propLift = (CLIFF_STONE_LIFT * tileWidth) / SPRITE_NATIVE;
-  const originX = rows * halfW;
-  const originY = halfH + propLift;
+  const bounds = span ?? {
+    uMin: 1 - rows,
+    uMax: cols - 1,
+    vMin: 0,
+    vMax: rows + cols - 2,
+  };
+  const originX = halfW * (1 - bounds.uMin);
+  const originY = halfH + propLift - bounds.vMin * halfH;
   return {
     tileWidth,
     halfW,
     halfH,
     originX,
     originY,
-    width: (rows + cols) * halfW,
-    height: (rows + cols + 2) * halfH + propLift,
+    width: (bounds.uMax - bounds.uMin + 2) * halfW,
+    height: propLift + (bounds.vMax - bounds.vMin + 4) * halfH,
     rows,
     cols,
+    span,
   };
 }
 
@@ -111,6 +121,9 @@ export function cellAtIsoPoint(
   const col = Math.round((a + b) / 2);
   const row = Math.round((b - a) / 2);
   if (row < 0 || col < 0 || row >= metrics.rows || col >= metrics.cols) {
+    return null;
+  }
+  if (metrics.span && isoCellRole(row, col, metrics.span) !== "play") {
     return null;
   }
   return { row, col };

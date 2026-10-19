@@ -1,5 +1,6 @@
 import { DIRECTIONS } from "./constants";
 import { cellKey, indexFor, inBounds } from "./coords";
+import { isoCellRole } from "./isoBoard";
 import { isLandKind } from "./rules";
 import type { CellCoord, TileKind } from "./types";
 import type { TerrainView } from "@/lib/rendering/terrainView";
@@ -77,6 +78,68 @@ export function buildTerrainMaps(view: TerrainView): TerrainMaps {
   }
 
   return { distanceFromLand, isBeach };
+}
+
+/**
+ * 0 AT THE SHORE, 1 AT THE FARTHEST WATER ON THIS MAP.
+ * VOIDS ARE SKIPPED SO THE CORNERS OF THE STORED RECTANGLE DO NOT SHORTCUT DEPTH.
+ */
+export function latticeWaterDepth(
+  view: TerrainView,
+): (row: number, col: number) => number {
+  const distance = new Map<string, number>();
+  const queue: CellCoord[] = [];
+  const onBoard = (row: number, col: number) =>
+    isoCellRole(row, col, view.iso) !== "void";
+
+  for (let row = 0; row < view.rows; row += 1) {
+    for (let col = 0; col < view.cols; col += 1) {
+      if (!onBoard(row, col)) {
+        continue;
+      }
+      const kind = terrainKindAt(view, row, col);
+      if (!kind || !isLandKind(kind)) {
+        continue;
+      }
+      distance.set(cellKey(row, col), 0);
+      queue.push({ row, col });
+    }
+  }
+
+  let maxWater = 1;
+  let head = 0;
+  while (head < queue.length) {
+    const current = queue[head]!;
+    head += 1;
+    const here = distance.get(cellKey(current.row, current.col))!;
+    for (const { dr, dc } of DIRECTIONS) {
+      const nr = current.row + dr;
+      const nc = current.col + dc;
+      if (!inBounds(nr, nc, view.rows, view.cols) || !onBoard(nr, nc)) {
+        continue;
+      }
+      const key = cellKey(nr, nc);
+      if (distance.has(key)) {
+        continue;
+      }
+      const next = here + 1;
+      distance.set(key, next);
+      queue.push({ row: nr, col: nc });
+      const kind = terrainKindAt(view, nr, nc);
+      if ((kind === "ocean" || kind === "marsh") && next > maxWater) {
+        maxWater = next;
+      }
+    }
+  }
+
+  return (row: number, col: number) => {
+    const value = distance.get(cellKey(row, col));
+    if (value === undefined) {
+      return 1;
+    }
+    // FIRST WATER RING TOUCHES LAND, SO IT IS THE SHALLOW END
+    return waterDepthAt(Math.max(0, value - 1), Math.max(1, maxWater - 1));
+  };
 }
 
 export function waterDepthAt(distance: number, maxDepth: number): number {

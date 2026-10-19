@@ -1,3 +1,4 @@
+import type { IsoSpan } from "../isoBoard";
 import type { GenTileKind } from "../terrainFeatures";
 import type { CellCoord, Mission, TileKind } from "../types";
 import type { Level, LevelObject } from "./types";
@@ -40,6 +41,7 @@ export function buildLevel(
   terrain: TileKind[],
   objects: LevelObject[],
   mission: Mission,
+  iso: IsoSpan,
   name?: string,
 ): Level {
   const id = levelIdFromSeed(seed);
@@ -53,6 +55,7 @@ export function buildLevel(
     objects,
     routes: [],
     mission,
+    iso,
   };
 }
 

@@ -1,12 +1,10 @@
 import type { Mission } from "@/lib/game/types";
-import { isoCellCenter, isoMetrics, SPRITE_NATIVE } from "@/lib/rendering/isoTiles";
+import { isoCellCenter, SPRITE_NATIVE, type IsoMetrics } from "@/lib/rendering/isoTiles";
 import { CLIFF_STONE_LIFT } from "@/lib/rendering/tileCatalog";
 
 type MissionMarkerOverlayProps = {
   mission: Mission;
-  rows: number;
-  cols: number;
-  tileWidth: number;
+  metrics: IsoMetrics;
 };
 
 const MARKERS: Array<{ key: keyof Mission; label: string; color: string }> = [
@@ -18,11 +16,9 @@ const MARKERS: Array<{ key: keyof Mission; label: string; color: string }> = [
 /** X / Y / Z MARKERS — UPRIGHT ON THE ISO DIAMOND. WIN LOGIC IS ORDER-AGNOSTIC */
 export function MissionMarkerOverlay({
   mission,
-  rows,
-  cols,
-  tileWidth,
+  metrics,
 }: MissionMarkerOverlayProps) {
-  const metrics = isoMetrics(tileWidth, rows, cols);
+  const tileWidth = metrics.tileWidth;
   const fontSize = Math.max(10, metrics.halfH * 0.9);
 
   return (

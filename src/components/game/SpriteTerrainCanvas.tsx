@@ -3,16 +3,20 @@
 import { useEffect, useRef } from "react";
 
 import { cellKey } from "@/lib/game/coords";
+import { isoLatticeCells } from "@/lib/game/isoBoard";
+import { latticeWaterDepth } from "@/lib/game/terrain";
 import {
   isoSpriteOrigin,
   SPRITE_NATIVE,
   type IsoMetrics,
 } from "@/lib/rendering/isoTiles";
 import {
-  BRIDGE_VARIANTS,
+  BRIDGE_MARSH,
+  BRIDGE_WOOD,
   CLIFF_STONE_LIFT,
-  pickVariant,
+  oceanSprite,
   terrainLayers,
+  waterSurfaceTint,
   type SpriteLayer,
 } from "@/lib/rendering/tileCatalog";
 import type { TerrainView } from "@/lib/rendering/terrainView";
@@ -29,9 +33,37 @@ type SpriteTerrainCanvasProps = {
   metrics: IsoMetrics;
   bridges: Set<string>;
   objectives: ObjectiveMarker[];
+  whirlpools: Set<string>;
 };
 
 const imageCache = new Map<string, Promise<HTMLImageElement>>();
+const tintCache = new Map<string, HTMLCanvasElement>();
+
+/** COLOR WASH ON WATER. ONLY THE SPRITE'S OPAQUE PIXELS CHANGE. */
+function tintedSprite(
+  image: HTMLImageElement,
+  src: string,
+  tint: string,
+): CanvasImageSource {
+  const key = `${src}|${tint}`;
+  const cached = tintCache.get(key);
+  if (cached) {
+    return cached;
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth || image.width;
+  canvas.height = image.naturalHeight || image.height;
+  const tintContext = canvas.getContext("2d");
+  if (!tintContext) {
+    return image;
+  }
+  tintContext.drawImage(image, 0, 0);
+  tintContext.globalCompositeOperation = "source-atop";
+  tintContext.fillStyle = tint;
+  tintContext.fillRect(0, 0, canvas.width, canvas.height);
+  tintCache.set(key, canvas);
+  return canvas;
+}
 
 function loadSprite(src: string): Promise<HTMLImageElement> {
   const cached = imageCache.get(src);
@@ -48,26 +80,48 @@ function loadSprite(src: string): Promise<HTMLImageElement> {
   return pending;
 }
 
-/** BRIDGE REPLACES THE CELL. X / Y / Z ARE A FLOWER ON THAT CELL. */
+/** BRIDGE REPLACES THE CELL. THE OUTER TWO ISO LAYERS ARE OPEN WATER. */
 function layersForCell(
   view: TerrainView,
   bridges: Set<string>,
   objectiveSrc: Map<string, string>,
+  whirlpools: Set<string>,
   row: number,
   col: number,
+  padding: boolean,
+  depthAt: (row: number, col: number) => number,
 ): SpriteLayer[] {
   const key = cellKey(row, col);
+  const whirlpool = whirlpools.has(key);
+
+  if (padding) {
+    return [
+      {
+        src: oceanSprite(view, row, col, false),
+        lift: 0,
+        tint: waterSurfaceTint("ocean", depthAt(row, col)),
+      },
+    ];
+  }
+
   const layers: SpriteLayer[] = [];
 
   if (bridges.has(key)) {
+    const kind = terrainKindAt(view, row, col);
     layers.push({
-      src: pickVariant(BRIDGE_VARIANTS, view.seed, row, col, "bridge"),
+      src: kind === "marsh" ? BRIDGE_MARSH : BRIDGE_WOOD,
       lift: 0,
     });
   } else {
     const kind = terrainKindAt(view, row, col);
     if (kind) {
-      layers.push(...terrainLayers(kind, view.seed, row, col));
+      const painted = terrainLayers(kind, view, row, col, whirlpool);
+      if ((kind === "ocean" || kind === "marsh") && !whirlpool) {
+        const tint = waterSurfaceTint(kind, depthAt(row, col));
+        layers.push(...painted.map((layer) => ({ ...layer, tint })));
+      } else {
+        layers.push(...painted);
+      }
     }
   }
 
@@ -83,6 +137,7 @@ export function SpriteTerrainCanvas({
   metrics,
   bridges,
   objectives,
+  whirlpools,
 }: SpriteTerrainCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -97,13 +152,21 @@ export function SpriteTerrainCanvas({
     const objectiveSrc = new Map(
       objectives.map((marker) => [cellKey(marker.row, marker.col), marker.src]),
     );
+    const depthAt = latticeWaterDepth(view);
     const placements: { row: number; col: number; layers: SpriteLayer[] }[] = [];
-    for (let row = 0; row < view.rows; row += 1) {
-      for (let col = 0; col < view.cols; col += 1) {
-        const layers = layersForCell(view, bridges, objectiveSrc, row, col);
-        if (layers.length > 0) {
-          placements.push({ row, col, layers });
-        }
+    for (const cell of isoLatticeCells(view.iso)) {
+      const layers = layersForCell(
+        view,
+        bridges,
+        objectiveSrc,
+        whirlpools,
+        cell.row,
+        cell.col,
+        cell.role === "pad",
+        depthAt,
+      );
+      if (layers.length > 0) {
+        placements.push({ row: cell.row, col: cell.col, layers });
       }
     }
     const sources = [
@@ -146,8 +209,11 @@ export function SpriteTerrainCanvas({
           if (!image) {
             continue;
           }
+          const sprite = layer.tint
+            ? tintedSprite(image, layer.src, layer.tint)
+            : image;
           ctx.drawImage(
-            image,
+            sprite,
             origin.x,
             origin.y - layer.lift * scale,
             metrics.tileWidth,
@@ -160,7 +226,7 @@ export function SpriteTerrainCanvas({
     return () => {
       cancelled = true;
     };
-  }, [view, metrics, bridges, objectives]);
+  }, [view, metrics, bridges, objectives, whirlpools]);
 
   return (
     <canvas

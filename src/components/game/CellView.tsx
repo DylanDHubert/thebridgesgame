@@ -57,12 +57,6 @@ export function CellView({
         clickable ? "cursor-pointer border-0 p-0 hover:bg-white/25" : "cursor-default border-0 p-0",
       ].join(" ")}
       style={style}
-    >
-      {appearance.bridgeCostLabel === 2 && appearance.overlay !== "bridge" ? (
-        <span className="pointer-events-none absolute bottom-0 right-1/2 translate-x-1/2 font-mono text-[8px] font-bold text-[rgb(78_145_66)]">
-          ×2
-        </span>
-      ) : null}
-    </button>
+    />
   );
 }

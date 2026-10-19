@@ -18,6 +18,7 @@ import {
   canPlaceObjectAt,
   canRouteEnter,
   isLandKind,
+  isPlayableCell,
   terrainKindAt,
 } from "@/lib/game/rules";
 import type { Mission, TileKind } from "@/lib/game/types";
@@ -131,6 +132,9 @@ export function DraftPuzzleView({
 
   const paintTerrain = (row: number, col: number, kind: TileKind) => {
     setLevel((prev) => {
+      if (!isPlayableCell(prev, row, col)) {
+        return prev;
+      }
       const index = row * prev.cols + col;
       if (prev.terrain[index] === kind) {
         return prev;

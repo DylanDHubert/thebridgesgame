@@ -1,3 +1,4 @@
+import type { IsoSpan } from "@/lib/game/isoBoard";
 import type { Level } from "@/lib/game/level/types";
 import type { TileKind } from "@/lib/game/types";
 
@@ -7,6 +8,7 @@ export type TerrainView = {
   rows: number;
   cols: number;
   terrain: readonly TileKind[];
+  iso: IsoSpan;
 };
 
 export function terrainViewFromLevel(level: Level): TerrainView {
@@ -15,6 +17,7 @@ export function terrainViewFromLevel(level: Level): TerrainView {
     rows: level.rows,
     cols: level.cols,
     terrain: level.terrain,
+    iso: level.iso,
   };
 }
 

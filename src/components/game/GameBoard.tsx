@@ -11,6 +11,8 @@ import { RouteCanvasOverlay, type DraftRoute } from "@/components/game/RouteCanv
 import { RouteShipOverlay } from "@/components/game/RouteShipOverlay";
 import { SpriteTerrainCanvas } from "@/components/game/SpriteTerrainCanvas";
 import { WoodFrame } from "@/components/ui/woodPlaque";
+import { cellKey } from "@/lib/game/coords";
+import { isoLatticeCells, type IsoSpan } from "@/lib/game/isoBoard";
 import type { Level } from "@/lib/game/level/types";
 import type { CellCoord } from "@/lib/game/types";
 import { createAppearanceContext } from "@/lib/rendering/cellAppearance";
@@ -52,8 +54,13 @@ const BOARD_PADDING = 24;
 const BOARD_CARD_PADDING = 12;
 const BOARD_CARD_BORDER = 1;
 
-function boardCardPixelSize(tileWidth: number, rows: number, cols: number) {
-  const board = isoMetrics(tileWidth, rows, cols);
+function boardCardPixelSize(
+  tileWidth: number,
+  rows: number,
+  cols: number,
+  iso: IsoSpan,
+) {
+  const board = isoMetrics(tileWidth, rows, cols, iso);
   const chrome = BOARD_CARD_PADDING * 2 + BOARD_CARD_BORDER * 2;
   return { width: board.width + chrome, height: board.height + chrome };
 }
@@ -64,6 +71,7 @@ function resolveTileWidth(
   height: number,
   rows: number,
   cols: number,
+  iso: IsoSpan,
   sizing: "play" | "contain",
   maxContainCell = 512,
 ): number {
@@ -74,7 +82,7 @@ function resolveTileWidth(
   }
   let best = min;
   for (let tile = min; tile <= max; tile += TILE_STEP) {
-    const card = boardCardPixelSize(tile, rows, cols);
+    const card = boardCardPixelSize(tile, rows, cols, iso);
     if (card.width <= width && card.height <= height) {
       best = tile;
     } else {
@@ -109,8 +117,12 @@ export function GameBoard({
   );
   const view = useMemo(() => terrainViewFromLevel(level), [level]);
   const metrics = useMemo(
-    () => isoMetrics(tileWidth, level.rows, level.cols),
-    [tileWidth, level.rows, level.cols],
+    () => isoMetrics(tileWidth, level.rows, level.cols, level.iso),
+    [tileWidth, level.rows, level.cols, level.iso],
+  );
+  const playableCells = useMemo(
+    () => isoLatticeCells(level.iso).filter((cell) => cell.role === "play"),
+    [level.iso],
   );
 
   const context = useMemo(
@@ -124,6 +136,16 @@ export function GameBoard({
       ),
     [view, bridges, pathKeys, level, interactive, editable],
   );
+
+  const whirlpools = useMemo(() => {
+    const keys = new Set<string>();
+    for (const object of level.objects) {
+      if (object.defId === "whirlpool") {
+        keys.add(cellKey(object.at.row, object.at.col));
+      }
+    }
+    return keys;
+  }, [level.objects]);
 
   const objectiveMarkers = useMemo(() => {
     if (!showMission) {
@@ -166,6 +188,7 @@ export function GameBoard({
             Math.max(1, element.clientHeight - framePad),
             level.rows,
             level.cols,
+            level.iso,
             sizing,
             maxContainCell,
           ),
@@ -175,7 +198,14 @@ export function GameBoard({
       const width = element.clientWidth - BOARD_PADDING;
       const heightBudget = Math.min(window.innerHeight * 0.58, 640);
       setTileWidth(
-        resolveTileWidth(width, heightBudget, level.rows, level.cols, sizing),
+        resolveTileWidth(
+          width,
+          heightBudget,
+          level.rows,
+          level.cols,
+          level.iso,
+          sizing,
+        ),
       );
     };
     updateSize();
@@ -186,7 +216,7 @@ export function GameBoard({
       observer.disconnect();
       window.removeEventListener("resize", updateSize);
     };
-  }, [level.rows, level.cols, sizing, maxContainCell, framed]);
+  }, [level.rows, level.cols, level.iso, sizing, maxContainCell, framed]);
 
   const grid = (
     <div
@@ -198,70 +228,45 @@ export function GameBoard({
         metrics={metrics}
         bridges={bridges}
         objectives={objectiveMarkers}
+        whirlpools={whirlpools}
       />
       {level.objects.length > 0 ? (
-        <ObjectCanvasOverlay
-          objects={level.objects}
-          rows={level.rows}
-          cols={level.cols}
-          tileWidth={tileWidth}
-        />
+        <ObjectCanvasOverlay objects={level.objects} metrics={metrics} />
       ) : null}
       {level.routes.length > 0 ? (
-        <RouteShipOverlay
-          routes={level.routes}
-          rows={level.rows}
-          cols={level.cols}
-          tileWidth={tileWidth}
-        />
+        <RouteShipOverlay routes={level.routes} metrics={metrics} />
       ) : null}
       {draftRoute && draftRoute.path.length > 0 ? (
         <RouteCanvasOverlay
           routes={emptyRoutes}
           draftRoute={draftRoute}
-          rows={level.rows}
-          cols={level.cols}
-          tileWidth={tileWidth}
+          metrics={metrics}
         />
       ) : null}
-      {Array.from({ length: level.rows }, (_, row) =>
-        Array.from({ length: level.cols }, (_, col) => (
-          <CellView
-            key={`${row}-${col}`}
-            row={row}
-            col={col}
-            context={context}
-            metrics={metrics}
-            interactive={interactive}
-            editable={editable}
-            onToggle={handleCellActivate}
-          />
-        )),
-      )}
-      {showMission ? (
-        <MissionMarkerOverlay
-          mission={level.mission}
-          rows={level.rows}
-          cols={level.cols}
-          tileWidth={tileWidth}
+      {playableCells.map((cell) => (
+        <CellView
+          key={`${cell.row}-${cell.col}`}
+          row={cell.row}
+          col={cell.col}
+          context={context}
+          metrics={metrics}
+          interactive={interactive}
+          editable={editable}
+          onToggle={handleCellActivate}
         />
+      ))}
+      {showMission ? (
+        <MissionMarkerOverlay mission={level.mission} metrics={metrics} />
       ) : null}
       {mapLabels && mapLabels.length > 0 ? (
         <MapLabelOverlay
           labels={mapLabels}
-          rows={level.rows}
-          cols={level.cols}
-          tileWidth={tileWidth}
+          metrics={metrics}
           draggable={mapLabelsDraggable}
           onMoveLabel={onMapLabelMove}
         />
       ) : null}
-      <PathLineOverlay
-        paths={pathLines}
-        rows={level.rows}
-        cols={level.cols}
-        tileWidth={tileWidth}
-      />
+      <PathLineOverlay paths={pathLines} metrics={metrics} />
     </div>
   );
 

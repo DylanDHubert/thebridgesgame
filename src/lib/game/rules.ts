@@ -1,5 +1,6 @@
 import { DIRECTIONS } from "./constants";
 import { cellKey, inBounds, indexFor } from "./coords";
+import { isoCellRole } from "./isoBoard";
 import type { Level, LevelObject } from "./level/types";
 import type { CellCoord, TileKind } from "./types";
 import { resolveEffects, type Effect, type ResolvedEffects } from "./objects/effects";
@@ -10,6 +11,11 @@ import {
 } from "./objects/registry";
 
 const FALLBACK_BRIDGE_COST = 1;
+
+/** INTERIOR OF THE ISO RECTANGLE. THE OUTER TWO LAYERS AND THE ROW/COL CORNERS ARE NOT PLAYABLE. */
+export function isPlayableCell(level: Level, row: number, col: number): boolean {
+  return isoCellRole(row, col, level.iso) === "play";
+}
 
 export function terrainKindAt(
   level: Level,
@@ -69,6 +75,9 @@ export function canPlaceBridgeAt(
   row: number,
   col: number,
 ): boolean {
+  if (!isPlayableCell(level, row, col)) {
+    return false;
+  }
   const kind = terrainKindAt(level, row, col);
   if (!kind) {
     return false;
@@ -104,6 +113,9 @@ export function isWalkableAt(
   col: number,
   bridges: Set<string>,
 ): boolean {
+  if (!isPlayableCell(level, row, col)) {
+    return false;
+  }
   const kind = terrainKindAt(level, row, col);
   if (!kind) {
     return false;
@@ -159,6 +171,9 @@ export function canPlaceObjectAt(
   row: number,
   col: number,
 ): boolean {
+  if (!isPlayableCell(level, row, col)) {
+    return false;
+  }
   const kind = terrainKindAt(level, row, col);
   if (!kind) {
     return false;
@@ -178,6 +193,9 @@ export function canRouteEnter(
   allowedTerrain: TileKind[],
   cell: CellCoord,
 ): boolean {
+  if (!isPlayableCell(level, cell.row, cell.col)) {
+    return false;
+  }
   const kind = terrainKindAt(level, cell.row, cell.col);
   return Boolean(kind && allowedTerrain.includes(kind));
 }
