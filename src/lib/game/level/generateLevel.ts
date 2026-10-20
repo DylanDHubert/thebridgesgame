@@ -163,11 +163,6 @@ export function generateLevel(options: GenerateLevelOptions): Level {
     board.span,
     rng,
   );
-  console.log("[journeyman:gen] start island", {
-    seed,
-    start,
-    flowers: mission,
-  });
 
   const { terrain, objects } = tileGridToLevelParts(tileGrid, board.rows, board.cols);
 

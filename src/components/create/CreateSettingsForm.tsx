@@ -1,8 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { MapPreview } from "@/components/game/MapPreview";
+import { HairlineButton, HairlineRow } from "@/components/ui/hairline";
+import { randomArchipelagoName } from "@/lib/game/archipelagoNames";
 import {
   CREATE_FIXED_GRID,
   createViewSearchParams,
@@ -12,9 +15,22 @@ import {
   saveCreateConfig,
   type CreateGenerationConfig,
 } from "@/lib/game/createConfig";
-import { randomArchipelagoName } from "@/lib/game/archipelagoNames";
+import { generateLevel } from "@/lib/game/level/generateLevel";
 import { hashStringToSeed, mulberry32 } from "@/lib/game/seed";
-import { HairlineButton, HairlineRow } from "@/components/ui/hairline";
+
+const PREVIEW_DELAY_MS = 120;
+
+/** HOLD THE LAST VALUE UNTIL THE SLIDER SETTLES, THEN REDRAW THE MAP */
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), delayMs);
+    return () => window.clearTimeout(timer);
+  }, [value, delayMs]);
+
+  return debounced;
+}
 
 type SliderProps = {
   label: string;
@@ -98,8 +114,18 @@ export function CreateSettingsForm() {
     setSeed(randomCreateSeed());
   }, []);
 
+  const previewSeed = useDebouncedValue(seed.trim(), PREVIEW_DELAY_MS);
+  const previewDraft = useDebouncedValue(draft, PREVIEW_DELAY_MS);
+  const preview = useMemo(() => {
+    if (!previewSeed) {
+      return null;
+    }
+    return generateLevel({ seed: previewSeed, config: previewDraft });
+  }, [previewDraft, previewSeed]);
+
   return (
-    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden border border-black bg-white">
+    <div className="flex h-full min-h-0 w-full flex-col-reverse gap-3 lg:flex-row">
+      <div className="flex min-h-0 w-full max-h-full flex-1 flex-col overflow-hidden border border-black bg-white lg:w-[28rem] lg:flex-none lg:self-center">
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
         <div className="space-y-1 text-center">
           <p className="text-[8px] uppercase tracking-[0.28em] text-black/55">
@@ -194,6 +220,14 @@ export function CreateSettingsForm() {
             Reset
           </HairlineButton>
         </HairlineRow>
+      </div>
+      </div>
+      <div className="min-h-0 min-w-0 flex-1" role="region" aria-label="Map preview">
+        {preview ? (
+          <MapPreview level={preview} />
+        ) : (
+          <div className="h-full w-full border border-black bg-[rgb(12_48_92)]" />
+        )}
       </div>
     </div>
   );

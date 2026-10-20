@@ -10,6 +10,7 @@ import {
   boarFrameSrc,
   boarPose,
   BOAR_FOOT,
+  boarSink,
   BOAR_FRAME_H,
   BOAR_FRAME_W,
   type BoarPlan,
@@ -291,10 +292,11 @@ export function SpriteTerrainCanvas({
           ) {
             const foot = BOAR_FOOT[pose.facing];
             const center = isoCellCenter(pose.row, pose.col, metrics);
+            const sink = boarSink(metrics.halfH * 2);
             ctx.drawImage(
               boarImage,
               center.x - foot.x * scale,
-              center.y - foot.y * scale,
+              center.y - foot.y * scale + sink,
               BOAR_FRAME_W * scale,
               BOAR_FRAME_H * scale,
             );

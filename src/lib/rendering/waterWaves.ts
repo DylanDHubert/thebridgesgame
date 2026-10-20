@@ -9,8 +9,8 @@ const WAVE_PERIOD_OF_WIDTH = 2 / 3;
 /** HOW FAR THE DEPTH WASH MAY SWING. SHORE MOVES LESS THAN OPEN WATER. */
 const WAVE_SWING = 0.16;
 
-/** DEPTH STEPS KEPT SO THE TINT CACHE STAYS FINITE WHILE THE WAVE MOVES. */
-const DEPTH_STEPS = 24;
+/** DEPTH STEPS PER UNIT. FINER SO THE WASH PAST THE CEILING STILL HAS BANDS. */
+const DEPTH_STEPS = 48;
 
 type Noise2D = (x: number, y: number) => number;
 
@@ -68,7 +68,10 @@ export function buildMarshWarmth(seed: string): (row: number, col: number) => nu
   };
 }
 
-/** BASE DEPTH PLUS A SMALL DRIFTING WAVE. SHORE STAYS THE SHALLOW END. */
+/**
+ * BASE DEPTH PLUS A SMALL DRIFTING WAVE. SHORE STAYS THE SHALLOW END.
+ * WATER AT OR UNDER THE PLAYABLE CEILING DOES NOT CREST INTO THE DEEPER LEG.
+ */
 export function animatedWaterDepth(
   field: WaterWaveField,
   base: number,
@@ -76,8 +79,12 @@ export function animatedWaterDepth(
   col: number,
   time: number,
 ): number {
-  const shore = Math.min(1, Math.max(0, base));
+  const depth = Math.max(0, base);
+  const shore = Math.min(1, depth);
   const delta = field.sample(row, col, time) * WAVE_SWING * (0.4 + shore * 0.6);
-  const next = Math.min(1, Math.max(0, shore + delta));
+  let next = Math.max(0, depth + delta);
+  if (depth <= 1) {
+    next = Math.min(1, next);
+  }
   return Math.round(next * DEPTH_STEPS) / DEPTH_STEPS;
 }

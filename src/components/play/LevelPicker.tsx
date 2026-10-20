@@ -1,11 +1,12 @@
 import Link from "next/link";
 
+import { MapPreview } from "@/components/game/MapPreview";
+import { GAME_STAGE_ASPECT } from "@/components/game/GameStage";
 import { HairlineLink } from "@/components/ui/hairline";
-import { LevelMiniMap } from "@/components/play/LevelMiniMap";
-import type { LevelListItem } from "@/lib/game/level/listLevels";
+import type { Level } from "@/lib/game/level/types";
 
 type LevelPickerProps = {
-  levels: LevelListItem[];
+  levels: Level[];
 };
 
 /** LEVEL SELECT — HAIRLINE CARDS */
@@ -27,14 +28,13 @@ export function LevelPicker({ levels }: LevelPickerProps) {
             href={`/play?level=${encodeURIComponent(level.id)}`}
             className="block border border-black transition hover:bg-black hover:text-white"
           >
-            <div className="aspect-[5/3] overflow-hidden border-b border-black bg-[rgb(12_48_92)]">
-              <LevelMiniMap
-                rows={level.rows}
-                cols={level.cols}
-                terrain={level.terrain}
-                mission={level.mission}
-                start={level.start}
-              />
+            <div
+              className="relative overflow-hidden border-b border-black bg-[rgb(12_48_92)]"
+              style={{ aspectRatio: GAME_STAGE_ASPECT }}
+            >
+              <div className="pointer-events-none absolute inset-0" aria-hidden>
+                <MapPreview level={level} borderless cells={false} boarClick={false} />
+              </div>
             </div>
             <div className="px-2 py-2 text-center">
               <h2 className="truncate text-[9px] uppercase tracking-[0.14em]">

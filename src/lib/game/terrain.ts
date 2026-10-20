@@ -55,7 +55,8 @@ export function buildTerrainMaps(view: TerrainView): TerrainMaps {
 
 /**
  * 0 AT THE SHORE, 1 AT THE FARTHEST PLAYABLE WATER.
- * PADDING AND THE BLEED RIM DO NOT RAISE THE CEILING, SO CHANNELS BETWEEN ISLANDS CAN GO DARK.
+ * PADDING AND THE BLEED RIM DO NOT RAISE THAT CEILING, SO CHANNELS STILL GO DARK.
+ * WATER FARTHER THAN THE CEILING KEEPS CLIMBING INSTEAD OF FLATTENING.
  * VOIDS ARE SKIPPED SO THE CORNERS OF THE STORED RECTANGLE DO NOT SHORTCUT DEPTH.
  */
 export function latticeWaterDepth(
@@ -92,7 +93,7 @@ export function latticeWaterDepth(
     for (const { dr, dc } of DIRECTIONS) {
       const nr = current.row + dr;
       const nc = current.col + dc;
-      if (!inBounds(nr, nc, view.rows, view.cols) || !onBoard(nr, nc)) {
+      if (!onBoard(nr, nc)) {
         continue;
       }
       const key = cellKey(nr, nc);
@@ -102,6 +103,9 @@ export function latticeWaterDepth(
       const next = here + 1;
       distance.set(key, next);
       queue.push({ row: nr, col: nc });
+      if (!inBounds(nr, nc, view.rows, view.cols)) {
+        continue;
+      }
       const kind = terrainKindAt(view, nr, nc);
       if (
         (kind === "ocean" || kind === "marsh") &&
@@ -113,13 +117,15 @@ export function latticeWaterDepth(
     }
   }
 
+  const ceiling = Math.max(1, maxWater - 1);
   return (row: number, col: number) => {
     const value = distance.get(cellKey(row, col));
     if (value === undefined) {
       return 1;
     }
-    // FIRST WATER RING TOUCHES LAND, SO IT IS THE SHALLOW END
-    return waterDepthAt(Math.max(0, value - 1), Math.max(1, maxWater - 1));
+    // FIRST WATER RING TOUCHES LAND, SO IT IS THE SHALLOW END.
+    // PAST THE CEILING THE VALUE KEEPS GROWING.
+    return Math.max(0, value - 1) / ceiling;
   };
 }
 

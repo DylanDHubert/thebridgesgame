@@ -219,10 +219,16 @@ type Rgb = { r: number; g: number; b: number };
 
 const SHALLOW_OCEAN: Rgb = { r: 150, g: 206, b: 226 };
 const DEEP_OCEAN: Rgb = { r: 8, g: 32, b: 72 };
+const ABYSS_OCEAN: Rgb = { r: 1, g: 8, b: 22 };
 const SHALLOW_MARSH: Rgb = { r: 28, g: 150, b: 64 };
 const DEEP_MARSH: Rgb = { r: 8, g: 64, b: 32 };
+const ABYSS_MARSH: Rgb = { r: 2, g: 24, b: 14 };
 const SHALLOW_MARSH_YELLOW: Rgb = { r: 176, g: 168, b: 42 };
 const DEEP_MARSH_YELLOW: Rgb = { r: 78, g: 86, b: 18 };
+const ABYSS_MARSH_YELLOW: Rgb = { r: 32, g: 36, b: 6 };
+
+/** HOW FAR PAST THE PLAYABLE CEILING THE WASH IS STILL EASING DARKER */
+const PAST_CEILING = 0.35;
 
 function mixRgb(a: Rgb, b: Rgb, t: number): Rgb {
   return {
@@ -232,9 +238,18 @@ function mixRgb(a: Rgb, b: Rgb, t: number): Rgb {
   };
 }
 
+/** 0 ON THE PLAYABLE RAMP. APPROACHES 1 AS DEPTH CLIMBS PAST THE CEILING. */
+function pastCeiling(depth: number): number {
+  if (depth <= 1) {
+    return 0;
+  }
+  return 1 - Math.exp(-(depth - 1) / PAST_CEILING);
+}
+
 /**
  * WASH OVER THE WATER SPRITE.
- * DEPTH 0 IS NEXT TO LAND. DEPTH 1 IS THE FARTHEST WATER ON THE MAP.
+ * DEPTH 0 IS NEXT TO LAND. DEPTH 1 IS THE FARTHEST PLAYABLE WATER.
+ * PAST 1 THE SAME RAMP KEEPS DARKENING INSTEAD OF HOLDING STILL.
  * MARSH WARMTH 0 IS THE CURRENT GREEN. 1 IS THE YELLOWER END.
  */
 export function waterSurfaceTint(
@@ -242,16 +257,22 @@ export function waterSurfaceTint(
   depth: number,
   warmth = 0,
 ): string {
-  const t = Math.min(1, Math.max(0, depth));
+  const t = Math.max(0, depth);
+  const head = Math.min(1, t);
+  const tail = pastCeiling(t);
   if (kind === "marsh") {
-    const green = mixRgb(SHALLOW_MARSH, DEEP_MARSH, t);
-    const yellow = mixRgb(SHALLOW_MARSH_YELLOW, DEEP_MARSH_YELLOW, t);
+    const green = mixRgb(mixRgb(SHALLOW_MARSH, DEEP_MARSH, head), ABYSS_MARSH, tail);
+    const yellow = mixRgb(
+      mixRgb(SHALLOW_MARSH_YELLOW, DEEP_MARSH_YELLOW, head),
+      ABYSS_MARSH_YELLOW,
+      tail,
+    );
     const color = mixRgb(green, yellow, Math.min(1, Math.max(0, warmth)));
-    const alpha = 0.52 + t * 0.22;
+    const alpha = 0.52 + head * 0.22 + tail * 0.12;
     return `rgb(${color.r} ${color.g} ${color.b} / ${alpha.toFixed(3)})`;
   }
-  const color = mixRgb(SHALLOW_OCEAN, DEEP_OCEAN, t);
-  const alpha = 0.06 + t * 0.56;
+  const color = mixRgb(mixRgb(SHALLOW_OCEAN, DEEP_OCEAN, head), ABYSS_OCEAN, tail);
+  const alpha = 0.06 + head * 0.56 + tail * 0.18;
   return `rgb(${color.r} ${color.g} ${color.b} / ${alpha.toFixed(3)})`;
 }
 

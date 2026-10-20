@@ -14,13 +14,18 @@ const RUN_MS = 80;
 export type BoarFacing = "NE" | "NW" | "SE" | "SW";
 export type BoarAnim = "idle" | "run";
 
-/** FEET IN THE IDLE FRAMES, SO THE BODY STAYS PLANTED ON THE DIAMOND CENTER. */
+/** FEET IN THE IDLE FRAMES. THE DRAW THEN SINKS HIM A QUARTER CELL. */
 export const BOAR_FOOT: Record<BoarFacing, { x: number; y: number }> = {
   NE: { x: 19, y: 30 },
   NW: { x: 27, y: 30 },
   SE: { x: 23, y: 29 },
   SW: { x: 22, y: 30 },
 };
+
+/** SCREEN DROP UNDER THE DIAMOND CENTER. A QUARTER OF THE CELL HEIGHT. */
+export function boarSink(cellHeight: number): number {
+  return cellHeight * 0.25;
+}
 
 export type BoarPose = {
   row: number;

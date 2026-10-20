@@ -5,6 +5,7 @@ import { useEffect, useState, type RefObject } from "react";
 import {
   boarPose,
   BOAR_FOOT,
+  boarSink,
   BOAR_FRAME_H,
   BOAR_FRAME_W,
   type BoarPlan,
@@ -74,9 +75,10 @@ export function BoarClick({ boarRef, metrics, thought, onClick }: BoarClickProps
       const scale = metrics.tileWidth / SPRITE_NATIVE;
       const foot = BOAR_FOOT[pose.facing];
       const center = isoCellCenter(pose.row, pose.col, metrics);
+      const sink = boarSink(metrics.halfH * 2);
       setBox({
         left: center.x - foot.x * scale,
-        top: center.y - foot.y * scale,
+        top: center.y - foot.y * scale + sink,
         width: BOAR_FRAME_W * scale,
         height: BOAR_FRAME_H * scale,
         z: pose.row + pose.col,

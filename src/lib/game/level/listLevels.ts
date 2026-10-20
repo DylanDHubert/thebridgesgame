@@ -2,21 +2,10 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { HOME_LEVEL_ID } from "@/lib/game/homeMap";
-import type { CellCoord, Mission, TileKind } from "../types";
 import { deserializeLevel } from "./serialize";
 import type { Level, LevelFile } from "./types";
 
 const LEVELS_DIR = path.join(process.cwd(), "public", "levels");
-
-export type LevelListItem = {
-  id: string;
-  name: string;
-  rows: number;
-  cols: number;
-  terrain: TileKind[];
-  mission: Mission;
-  start?: CellCoord;
-};
 
 /** SLUG SAFE FOR A FILENAME — REJECTS PATH TRAVERSAL */
 function safeFileId(id: string): string {
@@ -69,7 +58,7 @@ export async function loadSavedLevel(id: string): Promise<Level | null> {
   return deserializeLevel(file);
 }
 
-export async function listSavedLevels(): Promise<LevelListItem[]> {
+export async function listSavedLevels(): Promise<Level[]> {
   let entries: string[];
   try {
     entries = await readdir(LEVELS_DIR);
@@ -79,7 +68,7 @@ export async function listSavedLevels(): Promise<LevelListItem[]> {
     return [];
   }
 
-  const items: LevelListItem[] = [];
+  const items: Level[] = [];
   for (const entry of entries) {
     if (!entry.endsWith(".json")) {
       continue;
@@ -93,15 +82,7 @@ export async function listSavedLevels(): Promise<LevelListItem[]> {
     if (level.id === HOME_LEVEL_ID || fileId === HOME_LEVEL_ID) {
       continue;
     }
-    items.push({
-      id: level.id,
-      name: level.name,
-      rows: level.rows,
-      cols: level.cols,
-      terrain: level.terrain,
-      mission: level.mission,
-      ...(level.start ? { start: level.start } : {}),
-    });
+    items.push(level);
   }
 
   items.sort((a, b) => a.name.localeCompare(b.name));

@@ -66,6 +66,12 @@ type GameBoardProps = {
   framed?: boolean;
   /** SCALE UNTIL THE MAP COVERS THE FRAME. PADDING OCEAN CLIPS UNDER THE BORDER. */
   bleed?: boolean;
+  /** PARENT OWNS THE EDGE */
+  borderless?: boolean;
+  /** DIAMOND HIT TARGETS. OFF FOR THUMBNAILS. */
+  cells?: boolean;
+  /** BOAR HIT TARGET. THE SPRITE STILL DRAWS. */
+  boarClick?: boolean;
   mapLabelsDraggable?: boolean;
   onMapLabelMove?: (id: string, row: number, col: number) => void;
 };
@@ -147,6 +153,9 @@ export function GameBoard({
   maxContainCell = 512,
   framed = false,
   bleed = false,
+  borderless = false,
+  cells = true,
+  boarClick = true,
   mapLabelsDraggable = false,
   onMapLabelMove,
 }: GameBoardProps) {
@@ -362,23 +371,25 @@ export function GameBoard({
           }
         />
       ))}
-      {playableCells.map((cell) => (
-        <CellView
-          key={`${cell.row}-${cell.col}`}
-          row={cell.row}
-          col={cell.col}
-          context={context}
-          metrics={metrics}
-          interactive={interactive}
-          editable={editable}
-          flashToken={
-            accessFlash?.keys.has(cellKey(cell.row, cell.col))
-              ? accessFlash.id
-              : undefined
-          }
-          onToggle={handleCellActivate}
-        />
-      ))}
+      {cells
+        ? playableCells.map((cell) => (
+            <CellView
+              key={`${cell.row}-${cell.col}`}
+              row={cell.row}
+              col={cell.col}
+              context={context}
+              metrics={metrics}
+              interactive={interactive}
+              editable={editable}
+              flashToken={
+                accessFlash?.keys.has(cellKey(cell.row, cell.col))
+                  ? accessFlash.id
+                  : undefined
+              }
+              onToggle={handleCellActivate}
+            />
+          ))
+        : null}
       {mapLabels && mapLabels.length > 0 ? (
         <MapLabelOverlay
           labels={mapLabels}
@@ -387,7 +398,7 @@ export function GameBoard({
           onMoveLabel={onMapLabelMove}
         />
       ) : null}
-      {showMission && level.start ? (
+      {showMission && level.start && boarClick ? (
         <BoarClick
           boarRef={boarRef}
           metrics={metrics}
@@ -402,7 +413,12 @@ export function GameBoard({
     return (
       <div
         ref={containerRef}
-        className="relative h-full min-h-0 w-full min-w-0 overflow-hidden border border-black bg-[rgb(12_48_92)]"
+        className={[
+          "relative h-full min-h-0 w-full min-w-0 overflow-hidden bg-[rgb(12_48_92)]",
+          borderless ? "" : "border border-black",
+        ]
+          .filter(Boolean)
+          .join(" ")}
       >
         <div
           className="absolute origin-top-left"
