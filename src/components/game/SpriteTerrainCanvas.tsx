@@ -8,6 +8,7 @@ import { latticeWaterDepth } from "@/lib/game/terrain";
 import {
   allBoarFrameSrcs,
   boarFrameSrc,
+  boarPlace,
   boarPose,
   BOAR_FOOT,
   boarSink,
@@ -15,12 +16,7 @@ import {
   BOAR_FRAME_W,
   type BoarPlan,
 } from "@/lib/rendering/boar";
-import {
-  isoCellCenter,
-  isoSpriteOrigin,
-  SPRITE_NATIVE,
-  type IsoMetrics,
-} from "@/lib/rendering/isoTiles";
+import { isoSpriteOrigin, SPRITE_NATIVE, type IsoMetrics } from "@/lib/rendering/isoTiles";
 import {
   BRIDGE_MARSH,
   BRIDGE_WOOD,
@@ -255,9 +251,15 @@ export function SpriteTerrainCanvas({
         const boarImage = pose
           ? bySrc.get(boarFrameSrc(pose.facing, pose.anim, pose.frame))
           : undefined;
+        const place = pose ? boarPlace(pose, metrics) : null;
         for (const cell of placements) {
           const origin = isoSpriteOrigin(cell.row, cell.col, metrics);
+          const key = cellKey(cell.row, cell.col);
+          const flowerSrc = objectiveSrc.get(key);
           for (const layer of cell.layers) {
+            if (flowerSrc && layer.src === flowerSrc && pose?.eaten.has(key)) {
+              continue;
+            }
             const image = bySrc.get(layer.src);
             if (!image) {
               continue;
@@ -286,17 +288,17 @@ export function SpriteTerrainCanvas({
           }
           if (
             pose &&
+            place &&
             boarImage &&
-            cell.row === pose.row &&
-            cell.col === pose.col
+            cell.row === place.row &&
+            cell.col === place.col
           ) {
             const foot = BOAR_FOOT[pose.facing];
-            const center = isoCellCenter(pose.row, pose.col, metrics);
             const sink = boarSink(metrics.halfH * 2);
             ctx.drawImage(
               boarImage,
-              center.x - foot.x * scale,
-              center.y - foot.y * scale + sink,
+              place.x - foot.x * scale,
+              place.y - foot.y * scale + sink,
               BOAR_FRAME_W * scale,
               BOAR_FRAME_H * scale,
             );

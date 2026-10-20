@@ -3,6 +3,7 @@
 import { useEffect, useState, type RefObject } from "react";
 
 import {
+  boarPlace,
   boarPose,
   BOAR_FOOT,
   boarSink,
@@ -10,7 +11,7 @@ import {
   BOAR_FRAME_W,
   type BoarPlan,
 } from "@/lib/rendering/boar";
-import { isoCellCenter, SPRITE_NATIVE, type IsoMetrics } from "@/lib/rendering/isoTiles";
+import { SPRITE_NATIVE, type IsoMetrics } from "@/lib/rendering/isoTiles";
 
 export const BOAR_THOUGHTS = [
   "mm, i am hungry.",
@@ -67,21 +68,21 @@ export function BoarClick({ boarRef, metrics, thought, onClick }: BoarClickProps
         return;
       }
       const pose = boarPose(plan, performance.now(), reduced);
-      const key = `${pose.row},${pose.col},${pose.facing},${metrics.tileWidth}`;
+      const place = boarPlace(pose, metrics);
+      const key = `${Math.round(place.x)},${Math.round(place.y)},${pose.facing},${metrics.tileWidth}`;
       if (key === last) {
         return;
       }
       last = key;
       const scale = metrics.tileWidth / SPRITE_NATIVE;
       const foot = BOAR_FOOT[pose.facing];
-      const center = isoCellCenter(pose.row, pose.col, metrics);
       const sink = boarSink(metrics.halfH * 2);
       setBox({
-        left: center.x - foot.x * scale,
-        top: center.y - foot.y * scale + sink,
+        left: place.x - foot.x * scale,
+        top: place.y - foot.y * scale + sink,
         width: BOAR_FRAME_W * scale,
         height: BOAR_FRAME_H * scale,
-        z: pose.row + pose.col,
+        z: place.row + place.col,
       });
     };
 
