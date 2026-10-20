@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import { GameBoard } from "@/components/game/GameBoard";
 import { GameStage } from "@/components/game/GameStage";
+import { useBoarPassage } from "@/components/loading/BoarPassage";
 import type { MapLabel } from "@/components/game/MapLabelOverlay";
 import { HairlineHeader } from "@/components/ui/hairline";
 import { cellKey } from "@/lib/game/coords";
@@ -38,7 +38,7 @@ function destinationHref(destination: HomeDestination): string {
 
 /** TITLE MAP — BOAR RUNS TO PLAY, CREATE, OR HOW BEFORE THE PAGE OPENS */
 export function HomeScreen({ level }: HomeScreenProps) {
-  const router = useRouter();
+  const depart = useBoarPassage();
   const map = useMemo(() => homeMapFromLevel(level), [level]);
   const [bridges, setBridges] = useState<Set<string>>(emptyBridges);
   const [runPath, setRunPath] = useState<CellCoord[]>([]);
@@ -107,9 +107,9 @@ export function HomeScreen({ level }: HomeScreenProps) {
     const wait = reduced ? 0 : boarTravelMs(path);
     console.log("[journeyman:home] bridged to", destination, { steps: path.length, wait });
     window.setTimeout(() => {
-      router.push(destinationHref(destination));
+      depart(destinationHref(destination));
     }, wait);
-  }, [bridges, map, router]);
+  }, [bridges, map, depart]);
 
   return (
     <main className="flex h-dvh w-full flex-col overflow-hidden">
@@ -124,7 +124,6 @@ export function HomeScreen({ level }: HomeScreenProps) {
               runPath={runPath}
               showMission={false}
               showBoar
-              boarClick={false}
               interactive
               sizing="contain"
               bleed

@@ -7,7 +7,7 @@ import { BridgeSplash } from "@/components/game/BridgeSplash";
 import { CellView } from "@/components/game/CellView";
 import { MapLabelOverlay, type MapLabel } from "@/components/game/MapLabelOverlay";
 import type { DraftRoute } from "@/components/game/RouteCanvasOverlay";
-import { SpriteTerrainCanvas } from "@/components/game/SpriteTerrainCanvas";
+import { SpriteTerrainCanvas, type ReachFlash } from "@/components/game/SpriteTerrainCanvas";
 import { WoodFrame } from "@/components/ui/woodPlaque";
 import { cellKey } from "@/lib/game/coords";
 import { bleedRimSpan, isoLatticeCells, type IsoSpan } from "@/lib/game/isoBoard";
@@ -33,11 +33,6 @@ type BridgePickup = {
   row: number;
   col: number;
   tint?: string;
-};
-
-type AccessFlash = {
-  id: number;
-  keys: Set<string>;
 };
 
 type BoarThought = {
@@ -78,6 +73,8 @@ type GameBoardProps = {
   onBoarClick?: () => void;
   /** STAYS IN HIS BUBBLE. A CLICK FLASHES REACH, IT DOES NOT REPLACE THE LINE. */
   boarLine?: string;
+  /** THE LOADING LAP RUNS EVEN WHEN THE VIEWER ASKED FOR LESS MOTION. */
+  alwaysAnimate?: boolean;
   mapLabelsDraggable?: boolean;
   onMapLabelMove?: (id: string, row: number, col: number) => void;
 };
@@ -165,6 +162,7 @@ export function GameBoard({
   showBoar = false,
   onBoarClick,
   boarLine,
+  alwaysAnimate = false,
   mapLabelsDraggable = false,
   onMapLabelMove,
 }: GameBoardProps) {
@@ -182,12 +180,11 @@ export function GameBoard({
     return base;
   }, [level, showMission]);
   const splashId = useRef(0);
-  const accessFlashId = useRef(0);
   const thoughtId = useRef(0);
   const lastThought = useRef(-1);
   const thoughtTimer = useRef(0);
+  const flashRef = useRef<ReachFlash | null>(null);
   const [pickups, setPickups] = useState<BridgePickup[]>([]);
-  const [accessFlash, setAccessFlash] = useState<AccessFlash | null>(null);
   const [thought, setThought] = useState<BoarThought | null>(null);
   const [bubbleRoot, setBubbleRoot] = useState<HTMLDivElement | null>(null);
   const depthAt = useMemo(
@@ -218,12 +215,10 @@ export function GameBoard({
       return;
     }
     if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      const id = accessFlashId.current + 1;
-      accessFlashId.current = id;
-      setAccessFlash({
-        id,
+      flashRef.current = {
         keys: floodReachable(level, bridges, level.start),
-      });
+        beganAt: performance.now(),
+      };
     }
     let index = Math.floor(Math.random() * BOAR_THOUGHTS.length);
     if (BOAR_THOUGHTS.length > 1 && index === lastThought.current) {
@@ -381,6 +376,8 @@ export function GameBoard({
         objectives={objectiveMarkers}
         whirlpools={emptyWhirlpools}
         boarRef={boarOn ? boarRef : undefined}
+        flashRef={flashRef}
+        alwaysAnimate={alwaysAnimate}
       />
       {pickups.map((pickup) => (
         <BridgeSplash
@@ -404,11 +401,6 @@ export function GameBoard({
               metrics={metrics}
               interactive={interactive}
               editable={editable}
-              flashToken={
-                accessFlash?.keys.has(cellKey(cell.row, cell.col))
-                  ? accessFlash.id
-                  : undefined
-              }
               onToggle={handleCellActivate}
             />
           ))
@@ -421,7 +413,7 @@ export function GameBoard({
           onMoveLabel={onMapLabelMove}
         />
       ) : null}
-      {showMission && level.start && boarClick ? (
+      {(showMission || showBoar) && level.start && boarClick ? (
         <BoarClick
           boarRef={boarRef}
           metrics={metrics}
@@ -429,6 +421,7 @@ export function GameBoard({
           pinned={Boolean(boarLine)}
           bubbleRoot={boarLine ? bubbleRoot : null}
           bubbleAnchor={bleed ? bleedPlace : undefined}
+          alwaysAnimate={alwaysAnimate}
           onClick={pokeBoar}
         />
       ) : null}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Press_Start_2P } from "next/font/google";
 
+import { BoarPassage } from "@/components/loading/BoarPassage";
 import "./globals.css";
 
 const pixelFont = Press_Start_2P({
@@ -26,7 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${pixelFont.variable} h-full`}>
       <body className={`${pixelFont.className} relative flex h-dvh flex-col overflow-hidden bg-white text-black`}>
-        {children}
+        <BoarPassage>{children}</BoarPassage>
       </body>
     </html>
   );

@@ -54,6 +54,8 @@ type BoarClickProps = {
   /** OVERLAY OUTSIDE THE MAP CROP. PINNED LINES DRAW HERE. */
   bubbleRoot?: HTMLElement | null;
   bubbleAnchor?: BoarBubbleAnchor;
+  /** FOLLOW THE RUN EVEN WHEN THE VIEWER ASKED FOR LESS MOTION. */
+  alwaysAnimate?: boolean;
   onClick: () => void;
 };
 
@@ -73,12 +75,14 @@ export function BoarClick({
   pinned = false,
   bubbleRoot = null,
   bubbleAnchor,
+  alwaysAnimate = false,
   onClick,
 }: BoarClickProps) {
   const [box, setBox] = useState<BoarBox | null>(null);
 
   useEffect(() => {
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduced =
+      !alwaysAnimate && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let frame = 0;
     let last = "";
 
@@ -109,7 +113,7 @@ export function BoarClick({
 
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [boarRef, metrics]);
+  }, [boarRef, metrics, alwaysAnimate]);
 
   if (!box) {
     return null;

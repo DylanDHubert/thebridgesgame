@@ -16,7 +16,7 @@ import {
   BOAR_FRAME_W,
   type BoarPlan,
 } from "@/lib/rendering/boar";
-import { isoSpriteOrigin, SPRITE_NATIVE, type IsoMetrics } from "@/lib/rendering/isoTiles";
+import { isoCellTop, isoSpriteOrigin, SPRITE_NATIVE, type IsoMetrics } from "@/lib/rendering/isoTiles";
 import {
   BRIDGE_MARSH,
   BRIDGE_WOOD,
@@ -55,7 +55,92 @@ type SpriteTerrainCanvasProps = {
   whirlpools: Set<string>;
   /** READ EACH PAINT. NULL ON THE HOME MAP. */
   boarRef?: RefObject<BoarPlan | null>;
+  /** YELLOW WASH ON REACHABLE TILES. THE BOAR IS PUNCHED OUT SO HE STAYS ON TOP. */
+  flashRef?: RefObject<ReachFlash | null>;
+  /** KEEP THE RUN GOING. THE LOADING LAP DOES NOT HONOR REDUCED MOTION. */
+  alwaysAnimate?: boolean;
 };
+
+/** SAME WASH AS THE OLD CELL OVERLAY. HE IS DRAWN ABOVE IT. */
+export type ReachFlash = {
+  keys: Set<string>;
+  beganAt: number;
+};
+
+const FLASH_MS = 320;
+const FLASH_ALPHA = 0.55;
+
+let washCanvas: HTMLCanvasElement | null = null;
+
+/**
+ * YELLOW DIAMONDS ON REACHABLE GROUND.
+ * THE BOAR'S OPAQUE PIXELS ARE CUT OUT SO THE WASH SITS UNDER HIM.
+ */
+function paintReachFlash(
+  ctx: CanvasRenderingContext2D,
+  metrics: IsoMetrics,
+  flash: ReachFlash | null,
+  place: { x: number; y: number } | null,
+  facing: keyof typeof BOAR_FOOT | null,
+  boarImage: CanvasImageSource | undefined,
+  scale: number,
+) {
+  if (!flash) {
+    return;
+  }
+  const age = performance.now() - flash.beganAt;
+  if (age < 0 || age >= FLASH_MS) {
+    return;
+  }
+  const t = age / FLASH_MS;
+  const eased = 1 - (1 - t) * (1 - t);
+  const alpha = FLASH_ALPHA * (1 - eased);
+  if (alpha <= 0.01) {
+    return;
+  }
+
+  const width = Math.max(1, Math.round(metrics.width));
+  const height = Math.max(1, Math.round(metrics.height));
+  if (!washCanvas) {
+    washCanvas = document.createElement("canvas");
+  }
+  if (washCanvas.width !== width || washCanvas.height !== height) {
+    washCanvas.width = width;
+    washCanvas.height = height;
+  }
+  const wash = washCanvas.getContext("2d");
+  if (!wash) {
+    return;
+  }
+  wash.setTransform(1, 0, 0, 1, 0, 0);
+  wash.clearRect(0, 0, width, height);
+  wash.globalCompositeOperation = "source-over";
+  wash.fillStyle = `rgba(251, 191, 36, ${alpha})`;
+  for (const key of flash.keys) {
+    const [row, col] = key.split(",").map(Number) as [number, number];
+    const top = isoCellTop(row, col, metrics);
+    wash.beginPath();
+    wash.moveTo(top.x, top.y);
+    wash.lineTo(top.x + metrics.halfW, top.y + metrics.halfH);
+    wash.lineTo(top.x, top.y + metrics.halfH * 2);
+    wash.lineTo(top.x - metrics.halfW, top.y + metrics.halfH);
+    wash.closePath();
+    wash.fill();
+  }
+  if (place && facing && boarImage) {
+    const foot = BOAR_FOOT[facing];
+    const sink = boarSink(metrics.halfH * 2);
+    wash.globalCompositeOperation = "destination-out";
+    wash.drawImage(
+      boarImage,
+      place.x - foot.x * scale,
+      place.y - foot.y * scale + sink,
+      BOAR_FRAME_W * scale,
+      BOAR_FRAME_H * scale,
+    );
+  }
+  ctx.drawImage(washCanvas, 0, 0);
+}
 
 const imageCache = new Map<string, Promise<HTMLImageElement>>();
 const tintCache = new Map<string, HTMLCanvasElement>();
@@ -169,6 +254,8 @@ export function SpriteTerrainCanvas({
   objectives,
   whirlpools,
   boarRef,
+  flashRef,
+  alwaysAnimate = false,
 }: SpriteTerrainCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -241,7 +328,9 @@ export function SpriteTerrainCanvas({
       ctx.imageSmoothingEnabled = false;
       const scale = metrics.tileWidth / SPRITE_NATIVE;
 
-      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const reduceMotion =
+        !alwaysAnimate &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
       const paint = (time: number) => {
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -304,6 +393,15 @@ export function SpriteTerrainCanvas({
             );
           }
         }
+        paintReachFlash(
+          ctx,
+          metrics,
+          flashRef?.current ?? null,
+          place,
+          pose?.facing ?? null,
+          boarImage,
+          scale,
+        );
       };
 
       paint(0);
@@ -317,7 +415,9 @@ export function SpriteTerrainCanvas({
           return;
         }
         frame = requestAnimationFrame(tick);
-        if (document.hidden || now - last < 80) {
+        const flash = flashRef?.current;
+        const flashing = Boolean(flash && now - flash.beganAt < FLASH_MS);
+        if (document.hidden || (!flashing && now - last < 80)) {
           return;
         }
         last = now;
@@ -330,7 +430,7 @@ export function SpriteTerrainCanvas({
       cancelled = true;
       cancelAnimationFrame(frame);
     };
-  }, [view, depthIso, metrics, bridges, objectives, whirlpools, boarRef]);
+  }, [view, depthIso, metrics, bridges, objectives, whirlpools, boarRef, flashRef, alwaysAnimate]);
 
   return (
     <canvas

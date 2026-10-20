@@ -11,8 +11,6 @@ type CellViewProps = {
   metrics: IsoMetrics;
   interactive: boolean;
   editable?: boolean;
-  /** CHANGES EACH CLICK SO THE WASH RESTARTS */
-  flashToken?: number;
   onToggle?: (row: number, col: number) => void;
 };
 
@@ -24,7 +22,6 @@ export function CellView({
   metrics,
   interactive,
   editable = false,
-  flashToken,
   onToggle,
 }: CellViewProps) {
   const bridgeable = context.level
@@ -53,15 +50,6 @@ export function CellView({
         clickable ? "cursor-pointer hover:bg-white/25" : "cursor-default",
       ].join(" ")}
       style={style}
-    >
-      {flashToken != null ? (
-        <span
-          key={flashToken}
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{ animation: "accessible-flash 320ms ease-out forwards" }}
-        />
-      ) : null}
-    </button>
+    />
   );
 }
