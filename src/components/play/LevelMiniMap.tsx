@@ -3,14 +3,16 @@
 import { useEffect, useRef } from "react";
 
 import { indexFor } from "@/lib/game/coords";
-import type { Mission, TileKind } from "@/lib/game/types";
+import type { CellCoord, Mission, TileKind } from "@/lib/game/types";
 import { flatTerrainRgb, missionMarkerRgb } from "@/lib/rendering/flatTerrain";
+import { grassKeysOnStartIsland } from "@/lib/rendering/terrainView";
 
 type LevelMiniMapProps = {
   rows: number;
   cols: number;
   terrain: TileKind[];
   mission: Mission;
+  start?: CellCoord;
   className?: string;
 };
 
@@ -34,6 +36,7 @@ export function LevelMiniMap({
   cols,
   terrain,
   mission,
+  start,
   className,
 }: LevelMiniMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -58,12 +61,23 @@ export function LevelMiniMap({
       }
     }
 
+    if (start) {
+      const mud = grassKeysOnStartIsland(terrain, rows, cols, start);
+      for (const key of mud) {
+        const [row, col] = key.split(",").map(Number) as [number, number];
+        paintPixel(image.data, cols, row, col, { r: 168, g: 124, b: 72 });
+      }
+    }
+
     paintPixel(image.data, cols, mission.x.row, mission.x.col, missionMarkerRgb("x"));
     paintPixel(image.data, cols, mission.y.row, mission.y.col, missionMarkerRgb("y"));
     paintPixel(image.data, cols, mission.z.row, mission.z.col, missionMarkerRgb("z"));
+    if (start) {
+      paintPixel(image.data, cols, start.row, start.col, { r: 244, g: 176, b: 198 });
+    }
 
     ctx.putImageData(image, 0, 0);
-  }, [rows, cols, terrain, mission]);
+  }, [rows, cols, terrain, mission, start]);
 
   return (
     <canvas

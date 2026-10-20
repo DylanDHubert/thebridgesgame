@@ -2,20 +2,28 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { BoarClick, BOAR_THOUGHTS } from "@/components/game/BoarClick";
 import { BridgeSplash } from "@/components/game/BridgeSplash";
 import { CellView } from "@/components/game/CellView";
 import { MapLabelOverlay, type MapLabel } from "@/components/game/MapLabelOverlay";
-import { PathLineOverlay, type PathLineStyle } from "@/components/game/PathLineOverlay";
 import type { DraftRoute } from "@/components/game/RouteCanvasOverlay";
 import { SpriteTerrainCanvas } from "@/components/game/SpriteTerrainCanvas";
 import { WoodFrame } from "@/components/ui/woodPlaque";
 import { cellKey } from "@/lib/game/coords";
 import { bleedRimSpan, isoLatticeCells, type IsoSpan } from "@/lib/game/isoBoard";
 import type { Level } from "@/lib/game/level/types";
+import { floodReachable } from "@/lib/game/simulateLevel";
 import { latticeWaterDepth } from "@/lib/game/terrain";
 import type { CellCoord } from "@/lib/game/types";
 import { createAppearanceContext } from "@/lib/rendering/cellAppearance";
-import { isoMetrics } from "@/lib/rendering/isoTiles";
+import {
+  boarPose,
+  BOAR_FOOT,
+  BOAR_FRAME_H,
+  BOAR_FRAME_W,
+  type BoarPlan,
+} from "@/lib/rendering/boar";
+import { isoCellCenter, isoMetrics, SPRITE_NATIVE } from "@/lib/rendering/isoTiles";
 import { FLOWER_VARIANTS, waterSurfaceTint } from "@/lib/rendering/tileCatalog";
 import { terrainKindAt, terrainViewFromLevel } from "@/lib/rendering/terrainView";
 import { buildMarshWarmth } from "@/lib/rendering/waterWaves";
@@ -26,6 +34,18 @@ type BridgePickup = {
   col: number;
   tint?: string;
 };
+
+type AccessFlash = {
+  id: number;
+  keys: Set<string>;
+};
+
+type BoarThought = {
+  id: number;
+  text: string;
+};
+
+const THOUGHT_MS = 2400;
 
 type GameBoardProps = {
   level: Level;
@@ -137,7 +157,13 @@ export function GameBoard({
   const [bleedPlace, setBleedPlace] = useState({ scale: 1, left: 0, top: 0 });
   const view = useMemo(() => terrainViewFromLevel(level), [level]);
   const splashId = useRef(0);
+  const accessFlashId = useRef(0);
+  const thoughtId = useRef(0);
+  const lastThought = useRef(-1);
+  const thoughtTimer = useRef(0);
   const [pickups, setPickups] = useState<BridgePickup[]>([]);
+  const [accessFlash, setAccessFlash] = useState<AccessFlash | null>(null);
+  const [thought, setThought] = useState<BoarThought | null>(null);
   const depthAt = useMemo(
     () => latticeWaterDepth(view, level.iso),
     [view, level.iso],
@@ -161,6 +187,33 @@ export function GameBoard({
     }
     onToggleBridge?.(row, col);
   };
+  const pokeBoar = () => {
+    if (!level.start) {
+      return;
+    }
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const id = accessFlashId.current + 1;
+      accessFlashId.current = id;
+      setAccessFlash({
+        id,
+        keys: floodReachable(level, bridges, level.start),
+      });
+    }
+    let index = Math.floor(Math.random() * BOAR_THOUGHTS.length);
+    if (BOAR_THOUGHTS.length > 1 && index === lastThought.current) {
+      index = (index + 1) % BOAR_THOUGHTS.length;
+    }
+    lastThought.current = index;
+    const id = thoughtId.current + 1;
+    thoughtId.current = id;
+    setThought({ id, text: BOAR_THOUGHTS[index]! });
+    window.clearTimeout(thoughtTimer.current);
+    thoughtTimer.current = window.setTimeout(() => setThought(null), THOUGHT_MS);
+  };
+
+  useEffect(() => {
+    return () => window.clearTimeout(thoughtTimer.current);
+  }, []);
   const drawSpan = useMemo(
     () => (bleed ? bleedRimSpan(level.iso) : level.iso),
     [bleed, level.iso],
@@ -177,6 +230,27 @@ export function GameBoard({
     () => isoLatticeCells(level.iso).filter((cell) => cell.role === "play"),
     [level.iso],
   );
+  const boarRef = useRef<BoarPlan | null>(null);
+  const boarWalkKey = useRef("");
+  const boarPathKey = runPath.map((cell) => `${cell.row},${cell.col}`).join(";");
+  const boarStartKey = level.start ? `${level.start.row},${level.start.col}` : "";
+  const boarKey = `${boarStartKey}|${boarPathKey}`;
+  if (!showMission || !level.start) {
+    boarRef.current = null;
+    boarWalkKey.current = "";
+  } else {
+    const beganAt =
+      boarWalkKey.current === boarKey && boarRef.current
+        ? boarRef.current.beganAt
+        : performance.now();
+    boarWalkKey.current = boarKey;
+    boarRef.current = {
+      start: level.start,
+      path: runPath,
+      flowers: [level.mission.x, level.mission.y, level.mission.z],
+      beganAt,
+    };
+  }
 
   const context = useMemo(
     () =>
@@ -201,20 +275,6 @@ export function GameBoard({
       src: FLOWER_VARIANTS[index]!,
     }));
   }, [showMission, level.mission]);
-
-  const pathLines = useMemo((): PathLineStyle[] => {
-    if (runPath.length < 2) {
-      return [];
-    }
-    return [
-      {
-        id: "run",
-        path: runPath,
-        stroke: "rgb(251 191 36)",
-        opacity: 0.95,
-      },
-    ];
-  }, [runPath]);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -288,6 +348,7 @@ export function GameBoard({
         bridges={bridges}
         objectives={objectiveMarkers}
         whirlpools={emptyWhirlpools}
+        boarRef={showMission && level.start ? boarRef : undefined}
       />
       {pickups.map((pickup) => (
         <BridgeSplash
@@ -310,6 +371,11 @@ export function GameBoard({
           metrics={metrics}
           interactive={interactive}
           editable={editable}
+          flashToken={
+            accessFlash?.keys.has(cellKey(cell.row, cell.col))
+              ? accessFlash.id
+              : undefined
+          }
           onToggle={handleCellActivate}
         />
       ))}
@@ -321,7 +387,14 @@ export function GameBoard({
           onMoveLabel={onMapLabelMove}
         />
       ) : null}
-      <PathLineOverlay paths={pathLines} metrics={metrics} />
+      {showMission && level.start ? (
+        <BoarClick
+          boarRef={boarRef}
+          metrics={metrics}
+          thought={thought}
+          onClick={pokeBoar}
+        />
+      ) : null}
     </div>
   );
 

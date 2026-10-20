@@ -51,6 +51,7 @@ export function buildLevel(
   mission: Mission,
   iso: IsoSpan,
   name?: string,
+  start?: CellCoord,
 ): Level {
   const id = levelIdFromSeed(seed);
   return {
@@ -63,6 +64,7 @@ export function buildLevel(
     objects,
     routes: [],
     mission,
+    ...(start ? { start } : {}),
     iso,
   };
 }

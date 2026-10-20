@@ -12,7 +12,7 @@ export function GameStage({ children }: GameStageProps) {
   return (
     <div className="relative h-full min-h-0 w-full min-w-0 [container-type:size]">
       <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 [&>*]:h-full [&>*]:w-full"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-[calc(-50%)] [&>*]:h-full [&>*]:w-full"
         style={{
           width: `min(100cqw, calc(100cqh * ${GAME_STAGE_ASPECT}))`,
           height: `min(100cqh, calc(100cqw / ${GAME_STAGE_ASPECT}))`,

@@ -7,8 +7,8 @@ export type CellCoord = {
 };
 
 /**
- * MISSION CHECKPOINTS — SHOWN TO PLAYER AS X → Y → Z.
- * WIN LOGIC: ALL THREE MUST BE REACHABLE (ORDER-AGNOSTIC); SEE simulateLevel.ts.
+ * THE THREE FLOWERS. THE BOAR'S START IS Level.start, NOT ONE OF THESE.
+ * WIN LOGIC: ALL THREE MUST BE REACHABLE FROM THE START (ORDER-AGNOSTIC).
  */
 export type Mission = {
   x: CellCoord;
@@ -17,11 +17,11 @@ export type Mission = {
 };
 
 export type SimulationResult = {
-  /** ALL MISSION CHECKPOINTS LIE IN ONE WALKABLE COMPONENT */
+  /** START AND ALL THREE FLOWERS LIE IN ONE WALKABLE COMPONENT */
   connected: boolean;
   bridgeCount: number;
   bridgeCost: number;
-  /** DISPLAY PATH IN X → Y → Z ORDER (UX ONLY) */
+  /** WALK FROM THE START, NEAREST FLOWER FIRST */
   path: CellCoord[];
   reachable: Set<string>;
 };

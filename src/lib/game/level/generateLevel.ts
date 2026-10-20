@@ -7,8 +7,9 @@ import { hashStringToSeed, mulberry32 } from "../seed";
 import {
   buildTileGridFromNoise,
   labelLandComponents,
+  type GenTileKind,
 } from "../terrainFeatures";
-import type { CellCoord } from "../types";
+import type { CellCoord, Mission } from "../types";
 import {
   buildLevel,
   missionFromEndpoints,
@@ -73,6 +74,52 @@ function fallbackMission(
 }
 
 /**
+ * A GRASS CELL ON A RANDOM ISLAND THAT DOES NOT ALREADY HOLD A FLOWER.
+ * THE CELL STAYS GRASS. THE BOARD DRAWS THAT ISLAND'S GRASS AS MUD.
+ */
+function placeStartOnIsland(
+  grid: GenTileKind[][],
+  labels: number[][],
+  mission: Mission,
+  rows: number,
+  cols: number,
+  span: IsoSpan,
+  rng: () => number,
+): CellCoord {
+  const flowers = [mission.x, mission.y, mission.z];
+  const flowerComponents = new Set(
+    flowers
+      .map((cell) => labels[cell.row]?.[cell.col] ?? -1)
+      .filter((id) => id >= 0),
+  );
+  const grassByIsland = new Map<number, CellCoord[]>();
+
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      if (isoCellRole(row, col, span) !== "play" || grid[row]![col] !== "grass") {
+        continue;
+      }
+      const island = labels[row]![col] ?? -1;
+      if (island < 0) {
+        continue;
+      }
+      const cells = grassByIsland.get(island) ?? [];
+      cells.push({ row, col });
+      grassByIsland.set(island, cells);
+    }
+  }
+
+  const open = [...grassByIsland.keys()].filter((id) => !flowerComponents.has(id));
+  const pool = open.length > 0 ? open : [...grassByIsland.keys()];
+  const island = pool[Math.floor(rng() * pool.length)];
+  const cells = island === undefined ? undefined : grassByIsland.get(island);
+  if (!cells || cells.length === 0) {
+    return flowers[0]!;
+  }
+  return cells[Math.floor(rng() * cells.length)]!;
+}
+
+/**
  * CREATE ENTRY — NOISE FILLS THE ISO INTERIOR.
  * THE OUTER TWO LAYERS STAY OCEAN AND ARE NOT PART OF THE PUZZLE.
  */
@@ -107,6 +154,20 @@ export function generateLevel(options: GenerateLevelOptions): Level {
   const mission =
     pickMissionEndpoints(tileGrid, labels, board.rows, board.cols, rng) ??
     fallbackMission(labels, board.rows, board.cols, board.span, rng);
+  const start = placeStartOnIsland(
+    tileGrid,
+    labels,
+    mission,
+    board.rows,
+    board.cols,
+    board.span,
+    rng,
+  );
+  console.log("[journeyman:gen] start island", {
+    seed,
+    start,
+    flowers: mission,
+  });
 
   const { terrain, objects } = tileGridToLevelParts(tileGrid, board.rows, board.cols);
 
@@ -118,5 +179,7 @@ export function generateLevel(options: GenerateLevelOptions): Level {
     objects,
     mission,
     board.span,
+    undefined,
+    start,
   );
 }

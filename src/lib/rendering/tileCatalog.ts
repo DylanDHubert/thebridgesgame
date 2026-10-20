@@ -147,8 +147,14 @@ function filesFrom(indexes: readonly number[]): string[] {
 /** INLAND GRASS — JUNGLE PLANTS 30 THROUGH 36. 37 IS GRASS, NOT A PLANT. */
 export const GRASS_VARIANTS = filesFrom([30, 31, 32, 33, 34, 35, 36]);
 
+/** START ISLAND — EVERY CRACKED MUD TILE. SAME RULES AS GRASS. */
+export const MUD_BLOCK_VARIANTS = filesFrom([17, 18, 21]);
+
 /** GRASS TOUCHING WATER — JUNGLE GRASS 27 AND 28 */
 export const SHORE_GRASS_VARIANTS = filesFrom([27, 28]);
+
+/** GROUND UNDER A FLOWER. STILL GRASS. THE LIGHT BLADE IS THE HIGHLIGHT. */
+export const FLOWER_BED = filesFrom([39])[0]!;
 
 /** OPEN LIGHT WATER — NO LAND NEIGHBORS. SHORE TILES ARE CHOSEN PER CELL. */
 export const OCEAN_VARIANTS = filesFrom([104]);
@@ -296,8 +302,11 @@ function grassTouchesWater(view: TerrainView, row: number, col: number): boolean
   return false;
 }
 
-/** INLAND GRASS IS JUNGLE PLANTS. GRASS ON THE WATER IS JUNGLE GRASS. */
-function grassSprite(view: TerrainView, row: number, col: number): string {
+/** INLAND GRASS IS JUNGLE PLANTS. GRASS ON THE WATER IS JUNGLE GRASS. MUD IS THE START ISLAND. */
+function grassSprite(view: TerrainView, row: number, col: number, mud: boolean): string {
+  if (mud) {
+    return pickVariant(MUD_BLOCK_VARIANTS, view.seed, row, col, "mud-block");
+  }
   const shore = grassTouchesWater(view, row, col);
   return pickVariant(
     shore ? SHORE_GRASS_VARIANTS : GRASS_VARIANTS,
@@ -315,12 +324,13 @@ export function terrainLayers(
   row: number,
   col: number,
   whirlpool = false,
+  mud = false,
 ): SpriteLayer[] {
   if (kind === "cliff") {
     return [{ src: CLIFF_BLOCK, lift: 0 }];
   }
   if (kind === "grass") {
-    return [{ src: grassSprite(view, row, col), lift: 0 }];
+    return [{ src: grassSprite(view, row, col, mud), lift: 0 }];
   }
   return [
     {

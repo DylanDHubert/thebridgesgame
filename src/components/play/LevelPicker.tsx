@@ -33,6 +33,7 @@ export function LevelPicker({ levels }: LevelPickerProps) {
                 cols={level.cols}
                 terrain={level.terrain}
                 mission={level.mission}
+                start={level.start}
               />
             </div>
             <div className="px-2 py-2 text-center">

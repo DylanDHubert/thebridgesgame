@@ -375,19 +375,14 @@ export function appearanceForCell(
   context: AppearanceContext,
   overlayOverride?: OverlayKind,
 ): CellAppearance {
-  const { view, bridges, pathKeys, terrainMaps, maxDepth } = context;
+  const { view, bridges, terrainMaps, maxDepth } = context;
   const kind = terrainKindAt(view, row, col)!;
   const key = `${row},${col}`;
   const hasBridge = bridges.has(key);
-  const onPath = pathKeys.has(key);
 
   let overlay: OverlayKind = overlayOverride ?? "none";
-  if (overlay === "none") {
-    if (hasBridge) {
-      overlay = "bridge";
-    } else if (onPath) {
-      overlay = "path";
-    }
+  if (overlay === "none" && hasBridge) {
+    overlay = "bridge";
   }
 
   let backgroundColor = "transparent";

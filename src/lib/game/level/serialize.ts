@@ -59,6 +59,7 @@ export function serializeLevel(level: Level, author?: string): LevelFile {
       y: coordPair(level.mission.y),
       z: coordPair(level.mission.z),
     },
+    ...(level.start ? { start: coordPair(level.start) } : {}),
     objects: level.objects.map((object) => ({
       defId: object.defId,
       row: object.at.row,
@@ -206,6 +207,8 @@ function embedContentLevel(level: Omit<Level, "iso">): Level {
     routes.push({ ...route, path });
   }
 
+  const start = level.start ? placeMission(level.start) : undefined;
+
   return {
     ...level,
     rows: board.rows,
@@ -218,6 +221,7 @@ function embedContentLevel(level: Omit<Level, "iso">): Level {
       y: placeMission(level.mission.y),
       z: placeMission(level.mission.z),
     },
+    ...(start ? { start } : {}),
     iso: board.span,
   };
 }
@@ -248,6 +252,10 @@ export function deserializeLevel(file: LevelFile): Level {
       }
     : FALLBACK_MISSION;
 
+  const start = file.start
+    ? { row: file.start[0], col: file.start[1] }
+    : undefined;
+
   const decoded = {
     id: file.id,
     name: file.name,
@@ -258,6 +266,7 @@ export function deserializeLevel(file: LevelFile): Level {
     objects: [],
     routes: [],
     mission,
+    ...(start ? { start } : {}),
   };
 
   if (isIsoSpan(file.iso)) {

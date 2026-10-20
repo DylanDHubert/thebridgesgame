@@ -1,11 +1,21 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 
 import { cellKey } from "@/lib/game/coords";
 import { isoLatticeCells, type IsoSpan } from "@/lib/game/isoBoard";
 import { latticeWaterDepth } from "@/lib/game/terrain";
 import {
+  allBoarFrameSrcs,
+  boarFrameSrc,
+  boarPose,
+  BOAR_FOOT,
+  BOAR_FRAME_H,
+  BOAR_FRAME_W,
+  type BoarPlan,
+} from "@/lib/rendering/boar";
+import {
+  isoCellCenter,
   isoSpriteOrigin,
   SPRITE_NATIVE,
   type IsoMetrics,
@@ -14,13 +24,14 @@ import {
   BRIDGE_MARSH,
   BRIDGE_WOOD,
   CLIFF_STONE_LIFT,
+  FLOWER_BED,
   oceanSprite,
   terrainLayers,
   waterSurfaceTint,
   type SpriteLayer,
 } from "@/lib/rendering/tileCatalog";
 import type { TerrainView } from "@/lib/rendering/terrainView";
-import { terrainKindAt } from "@/lib/rendering/terrainView";
+import { grassKeysOnStartIsland, terrainKindAt } from "@/lib/rendering/terrainView";
 import {
   animatedWaterDepth,
   buildMarshWarmth,
@@ -45,6 +56,8 @@ type SpriteTerrainCanvasProps = {
   bridges: Set<string>;
   objectives: ObjectiveMarker[];
   whirlpools: Set<string>;
+  /** READ EACH PAINT. NULL ON THE HOME MAP. */
+  boarRef?: RefObject<BoarPlan | null>;
 };
 
 const imageCache = new Map<string, Promise<HTMLImageElement>>();
@@ -102,6 +115,7 @@ function layersForCell(
   padding: boolean,
   depthAt: (row: number, col: number) => number,
   warmthAt: (row: number, col: number) => number,
+  mudKeys: Set<string>,
 ): PaintedLayer[] {
   const key = cellKey(row, col);
   const whirlpool = whirlpools.has(key);
@@ -124,10 +138,12 @@ function layersForCell(
       src: kind === "marsh" ? BRIDGE_MARSH : BRIDGE_WOOD,
       lift: 0,
     });
+  } else if (objectiveSrc.has(key)) {
+    layers.push({ src: FLOWER_BED, lift: 0 });
   } else {
     const kind = terrainKindAt(view, row, col);
     if (kind) {
-      const painted = terrainLayers(kind, view, row, col, whirlpool);
+      const painted = terrainLayers(kind, view, row, col, whirlpool, mudKeys.has(key));
       if ((kind === "ocean" || kind === "marsh") && !whirlpool) {
         const water = {
           kind,
@@ -155,6 +171,7 @@ export function SpriteTerrainCanvas({
   bridges,
   objectives,
   whirlpools,
+  boarRef,
 }: SpriteTerrainCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -172,6 +189,7 @@ export function SpriteTerrainCanvas({
     const depthAt = latticeWaterDepth(view, depthIso ?? view.iso);
     const waves = buildWaterWaveField(view.seed, view.iso);
     const warmthAt = buildMarshWarmth(view.seed);
+    const mudKeys = grassKeysOnStartIsland(view.terrain, view.rows, view.cols, view.start);
     const placements: { row: number; col: number; layers: PaintedLayer[] }[] = [];
     for (const cell of isoLatticeCells(view.iso)) {
       const layers = layersForCell(
@@ -184,13 +202,17 @@ export function SpriteTerrainCanvas({
         cell.role === "pad",
         depthAt,
         warmthAt,
+        mudKeys,
       );
       if (layers.length > 0) {
         placements.push({ row: cell.row, col: cell.col, layers });
       }
     }
     const sources = [
-      ...new Set(placements.flatMap((cell) => cell.layers.map((layer) => layer.src))),
+      ...new Set([
+        ...placements.flatMap((cell) => cell.layers.map((layer) => layer.src)),
+        ...(boarRef ? allBoarFrameSrcs() : []),
+      ]),
     ];
 
     let frame = 0;
@@ -222,9 +244,16 @@ export function SpriteTerrainCanvas({
       ctx.imageSmoothingEnabled = false;
       const scale = metrics.tileWidth / SPRITE_NATIVE;
 
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
       const paint = (time: number) => {
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, metrics.width, metrics.height);
+        const plan = boarRef?.current;
+        const pose = plan ? boarPose(plan, performance.now(), reduceMotion) : null;
+        const boarImage = pose
+          ? bySrc.get(boarFrameSrc(pose.facing, pose.anim, pose.frame))
+          : undefined;
         for (const cell of placements) {
           const origin = isoSpriteOrigin(cell.row, cell.col, metrics);
           for (const layer of cell.layers) {
@@ -254,10 +283,25 @@ export function SpriteTerrainCanvas({
               metrics.tileWidth,
             );
           }
+          if (
+            pose &&
+            boarImage &&
+            cell.row === pose.row &&
+            cell.col === pose.col
+          ) {
+            const foot = BOAR_FOOT[pose.facing];
+            const center = isoCellCenter(pose.row, pose.col, metrics);
+            ctx.drawImage(
+              boarImage,
+              center.x - foot.x * scale,
+              center.y - foot.y * scale,
+              BOAR_FRAME_W * scale,
+              BOAR_FRAME_H * scale,
+            );
+          }
         }
       };
 
-      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       paint(0);
       if (reduceMotion) {
         return;
@@ -282,7 +326,7 @@ export function SpriteTerrainCanvas({
       cancelled = true;
       cancelAnimationFrame(frame);
     };
-  }, [view, depthIso, metrics, bridges, objectives, whirlpools]);
+  }, [view, depthIso, metrics, bridges, objectives, whirlpools, boarRef]);
 
   return (
     <canvas

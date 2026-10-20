@@ -38,6 +38,8 @@ export type Level = {
   objects: LevelObject[];
   routes: LevelRoute[];
   mission: Mission;
+  /** BOAR'S ISLAND. ABSENT ON THE HOME MAP, WHICH REUSES MISSION AS LABELS. */
+  start?: CellCoord;
   /** U/V BOUNDS OF THE ISO RECTANGLE IN STORED ROW/COL. OUTER TWO LAYERS ARE PADDING. */
   iso: IsoSpan;
 };
@@ -56,6 +58,8 @@ export type LevelFile = {
     y: [number, number];
     z: [number, number];
   };
+  /** BOAR START. OMITTED ON HOME AND OLDER FILES. */
+  start?: [number, number];
   objects: Array<{
     defId: string;
     row: number;
