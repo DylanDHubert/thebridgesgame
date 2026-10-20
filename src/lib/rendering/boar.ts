@@ -9,6 +9,14 @@ export const BOAR_RUN_FRAMES = 4;
 
 /** ONE CELL. A FULL RUN CYCLE IS FOUR FRAMES, SO HE COVERS TWO CELLS PER CYCLE. */
 const STEP_MS = 160;
+
+/** HOW LONG A STRAIGHT RUN OF THIS PATH TAKES. NO STOPS FOR FLOWERS. */
+export function boarTravelMs(path: { length: number }): number {
+  if (path.length < 2) {
+    return 0;
+  }
+  return (path.length - 1) * STEP_MS;
+}
 /** FACING THE FLOWER BEFORE IT IS EATEN */
 const EAT_GAZE_MS = 700;
 /** FLOWER IS GONE. HE IS STILL LOOKING AT THE EMPTY CELL. */

@@ -2,6 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { HOME_LEVEL_ID } from "@/lib/game/homeMap";
+import { HOW_LEVEL_ID } from "@/lib/game/tutorialMap";
 import { deserializeLevel } from "./serialize";
 import type { Level, LevelFile } from "./types";
 
@@ -79,7 +80,12 @@ export async function listSavedLevels(): Promise<Level[]> {
       continue;
     }
     const level = deserializeLevel(file);
-    if (level.id === HOME_LEVEL_ID || fileId === HOME_LEVEL_ID) {
+    if (
+      level.id === HOME_LEVEL_ID ||
+      fileId === HOME_LEVEL_ID ||
+      level.id === HOW_LEVEL_ID ||
+      fileId === HOW_LEVEL_ID
+    ) {
       continue;
     }
     items.push(level);

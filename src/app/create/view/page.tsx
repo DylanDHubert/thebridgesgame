@@ -8,6 +8,7 @@ import {
   normalizeCreateConfig,
 } from "@/lib/game/createConfig";
 import { HOME_LEVEL_ID } from "@/lib/game/homeMap";
+import { HOW_LEVEL_ID } from "@/lib/game/tutorialMap";
 import { generateLevel } from "@/lib/game/level/generateLevel";
 import { loadSavedLevel } from "@/lib/game/level/listLevels";
 
@@ -24,15 +25,21 @@ export default async function CreateViewPage({ searchParams }: CreateViewPagePro
     if (!level) {
       redirect("/create");
     }
+    const isHome = level.id === HOME_LEVEL_ID;
+    const isTutorial = level.id === HOW_LEVEL_ID;
     return (
       <main className="flex h-dvh flex-col overflow-hidden">
         <HairlineHeader
           title="Create"
-          subtitle={level.id === HOME_LEVEL_ID ? "Home map" : level.name}
+          subtitle={isHome ? "Home map" : isTutorial ? "Tutorial" : level.name}
           nav="create"
         />
         <div className="min-h-0 flex-1">
-          <DraftPuzzleView level={level} homeMap={level.id === HOME_LEVEL_ID} />
+          <DraftPuzzleView
+            level={level}
+            homeMap={isHome}
+            tutorialMap={isTutorial}
+          />
         </div>
       </main>
     );

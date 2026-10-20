@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type RefObject } from "react";
+import { createPortal } from "react-dom";
 
 import {
   boarPlace,
@@ -37,10 +38,22 @@ type BoarThought = {
   text: string;
 };
 
+/** WHERE THE SCALED MAP SITS INSIDE THE BOARD, SO THE BUBBLE CAN LEAVE THE CROP. */
+export type BoarBubbleAnchor = {
+  scale: number;
+  left: number;
+  top: number;
+};
+
 type BoarClickProps = {
   boarRef: RefObject<BoarPlan | null>;
   metrics: IsoMetrics;
   thought: BoarThought | null;
+  /** LESSON LINE. STAYS PUT AND IS READ ALOUD. */
+  pinned?: boolean;
+  /** OVERLAY OUTSIDE THE MAP CROP. PINNED LINES DRAW HERE. */
+  bubbleRoot?: HTMLElement | null;
+  bubbleAnchor?: BoarBubbleAnchor;
   onClick: () => void;
 };
 
@@ -53,7 +66,15 @@ type BoarBox = {
 };
 
 /** CLICK THE SPRITE. THE BUBBLE SITS ABOVE HIS HEAD. */
-export function BoarClick({ boarRef, metrics, thought, onClick }: BoarClickProps) {
+export function BoarClick({
+  boarRef,
+  metrics,
+  thought,
+  pinned = false,
+  bubbleRoot = null,
+  bubbleAnchor,
+  onClick,
+}: BoarClickProps) {
   const [box, setBox] = useState<BoarBox | null>(null);
 
   useEffect(() => {
@@ -112,7 +133,51 @@ export function BoarClick({ boarRef, metrics, thought, onClick }: BoarClickProps
           zIndex: box.z,
         }}
       />
-      {thought ? (
+      {thought && pinned && bubbleRoot && bubbleAnchor
+        ? createPortal(
+            <div
+              key={thought.text}
+              className="pointer-events-none absolute"
+              style={{
+                left:
+                  bubbleAnchor.left +
+                  (box.left + box.width / 2) * bubbleAnchor.scale,
+                top: bubbleAnchor.top + (box.top - 4) * bubbleAnchor.scale,
+                zIndex: 5,
+                transform: "translate(-50%, -100%)",
+              }}
+            >
+              <p
+                role="status"
+                className="border border-black bg-white px-2 py-1.5 text-center leading-[1.45] text-black"
+                style={{
+                  maxWidth: `${10 * bubbleAnchor.scale}rem`,
+                  fontSize: `${8 * bubbleAnchor.scale}px`,
+                }}
+              >
+                {thought.text}
+              </p>
+              <span
+                className="absolute left-1/2 top-full -translate-x-1/2 border border-black bg-white"
+                style={{
+                  marginTop: 2 * bubbleAnchor.scale,
+                  width: 6 * bubbleAnchor.scale,
+                  height: 6 * bubbleAnchor.scale,
+                }}
+              />
+              <span
+                className="absolute left-1/2 top-full -translate-x-1/2 border border-black bg-white"
+                style={{
+                  marginTop: 10 * bubbleAnchor.scale,
+                  width: 4 * bubbleAnchor.scale,
+                  height: 4 * bubbleAnchor.scale,
+                }}
+              />
+            </div>,
+            bubbleRoot,
+          )
+        : null}
+      {thought && !(pinned && bubbleRoot && bubbleAnchor) ? (
         <div
           key={thought.id}
           aria-hidden

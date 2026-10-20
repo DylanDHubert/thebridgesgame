@@ -76,6 +76,7 @@ export function HairlineRow({
 const NAV = [
   { id: "home", href: "/", label: "Home" },
   { id: "play", href: "/play", label: "Play" },
+  { id: "how", href: "/how", label: "How" },
   { id: "create", href: "/create", label: "Create" },
 ] as const;
 
@@ -94,7 +95,7 @@ export function HairlineHeader({
 }: {
   title?: string;
   subtitle?: string;
-  nav?: "home" | "play" | "create";
+  nav?: "home" | "play" | "how" | "create";
 }) {
   return (
     <header className="flex shrink-0 items-center justify-between gap-4 border-b border-black px-4 py-3 sm:px-6">

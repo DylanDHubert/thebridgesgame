@@ -1,0 +1,40 @@
+{
+  "version": 3,
+  "id": "how",
+  "name": "A small lunch",
+  "seed": "how-the-boar-eats",
+  "grid": {
+    "rows": 20,
+    "cols": 20
+  },
+  "iso": {
+    "uMin": -10,
+    "uMax": 10,
+    "vMin": 9,
+    "vMax": 29
+  },
+  "terrain": "ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooogoooooooooooooooooogggooommoooooooooooooggocgcmcoooooooooggoooocgmmgcooooooooggoogocommggooooooooogoogooggmgoooooooooooogggoocmooooooooooooogggoomooooooooooooooogooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo",
+  "mission": {
+    "x": [
+      9,
+      8
+    ],
+    "y": [
+      10,
+      11
+    ],
+    "z": [
+      10,
+      15
+    ]
+  },
+  "start": [
+    10,
+    4
+  ],
+  "objects": [],
+  "routes": [],
+  "meta": {
+    "createdAt": "2026-10-20T19:43:48.018Z"
+  }
+}

@@ -9,6 +9,7 @@ import type { DraftRoute } from "@/components/game/RouteCanvasOverlay";
 import { HairlineButton, HairlineRow } from "@/components/ui/hairline";
 import { saveLevelAction } from "@/app/actions/saveLevel";
 import { homeMapFromLevel } from "@/lib/game/homeMap";
+import { tutorialLabels } from "@/lib/game/tutorialMap";
 import { serializeLevel } from "@/lib/game/level/serialize";
 import type { Level } from "@/lib/game/level/types";
 import {
@@ -28,11 +29,16 @@ type DraftPuzzleViewProps = {
   level: Level;
   /** WHEN TRUE — EDITING THE TITLE MAP (X=HOME Y=PLAY Z=CREATE) */
   homeMap?: boolean;
+  /** WHEN TRUE — EDITING THE LESSON (BOAR + FLOWERS 1 2 3) */
+  tutorialMap?: boolean;
 };
 
-function toolHint(tool: EditorTool, homeMap: boolean): string {
+function toolHint(tool: EditorTool, homeMap: boolean, tutorialMap: boolean): string {
   if (homeMap && !tool) {
     return "Drag HOME / PLAY / CREATE onto land. Select a tool to paint.";
+  }
+  if (tutorialMap && !tool) {
+    return "Drag the boar and the flowers onto land. Select a tool to paint.";
   }
   if (!tool) {
     return "Select a tool to start editing.";
@@ -59,6 +65,7 @@ function newRouteId(): string {
 export function DraftPuzzleView({
   level: initialLevel,
   homeMap = false,
+  tutorialMap = false,
 }: DraftPuzzleViewProps) {
   const [level, setLevel] = useState<Level>(initialLevel);
   const [tool, setTool] = useState<EditorTool>(null);
@@ -72,6 +79,10 @@ export function DraftPuzzleView({
   const homeLabels = useMemo(
     () => (homeMap ? homeMapFromLevel(level).labels : undefined),
     [homeMap, level],
+  );
+  const lessonLabels = useMemo(
+    () => (tutorialMap ? tutorialLabels(level) : undefined),
+    [tutorialMap, level],
   );
 
   // SELECTING A ROUTE TOOL STARTS/KEEPS A DRAFT ROUTE; OTHER TOOLS CLEAR IT
@@ -186,6 +197,29 @@ export function DraftPuzzleView({
     }));
   };
 
+  const handleTutorialLabelMove = (id: string, row: number, col: number) => {
+    const kind = terrainKindAt(level, row, col);
+    if (!kind || !isLandKind(kind)) {
+      setStatus("Drop the boar and the flowers on land.");
+      return;
+    }
+    setStatus(null);
+    if (id === "boar") {
+      setLevel((prev) => ({ ...prev, start: { row, col } }));
+      return;
+    }
+    if (id !== "x" && id !== "y" && id !== "z") {
+      return;
+    }
+    setLevel((prev) => ({
+      ...prev,
+      mission: {
+        ...prev.mission,
+        [id]: { row, col },
+      } satisfies Mission,
+    }));
+  };
+
   const handleCellClick = (row: number, col: number) => {
     if (!tool) {
       return;
@@ -253,9 +287,13 @@ export function DraftPuzzleView({
     setStatus(null);
     const toSave: Level = {
       ...level,
-      // HOME MAP ALWAYS SAVES AS id=home
-      id: homeMap ? "home" : level.id,
-      name: homeMap ? "The Bridges Game" : name.trim() || level.id,
+      // HOME AND THE TUTORIAL KEEP THEIR IDS
+      id: homeMap ? "home" : tutorialMap ? "how" : level.id,
+      name: homeMap
+        ? "The Bridges Game"
+        : tutorialMap
+          ? "A small lunch"
+          : name.trim() || level.id,
     };
     try {
       const result = await saveLevelAction(serializeLevel(toSave));
@@ -283,9 +321,16 @@ export function DraftPuzzleView({
               sizing="contain"
               bleed
               showMission={!homeMap}
-              mapLabels={homeLabels}
-              mapLabelsDraggable={homeMap && tool === null}
-              onMapLabelMove={homeMap ? handleHomeLabelMove : undefined}
+              boarClick={!tutorialMap}
+              mapLabels={homeLabels ?? lessonLabels}
+              mapLabelsDraggable={(homeMap || tutorialMap) && tool === null}
+              onMapLabelMove={
+                homeMap
+                  ? handleHomeLabelMove
+                  : tutorialMap
+                    ? handleTutorialLabelMove
+                    : undefined
+              }
             />
           </GameStage>
         </div>
@@ -294,11 +339,11 @@ export function DraftPuzzleView({
           <div className="flex min-w-0 flex-wrap items-center gap-3">
             <EditorPalette tool={tool} onSelect={handleSelectTool} />
             <p className="text-[10px] uppercase tracking-[0.14em]">
-              {status ?? toolHint(tool, homeMap)}
+              {status ?? toolHint(tool, homeMap, tutorialMap)}
             </p>
           </div>
           <HairlineRow className="justify-end">
-            {homeMap ? null : (
+            {homeMap || tutorialMap ? null : (
               <input
                 type="text"
                 value={name}
@@ -309,7 +354,13 @@ export function DraftPuzzleView({
               />
             )}
             <HairlineButton type="button" onClick={handleSave} disabled={isSaving}>
-              {isSaving ? "Saving…" : homeMap ? "Save home map" : "Save level"}
+              {isSaving
+                ? "Saving…"
+                : homeMap
+                  ? "Save home map"
+                  : tutorialMap
+                    ? "Save tutorial"
+                    : "Save level"}
             </HairlineButton>
           </HairlineRow>
         </div>

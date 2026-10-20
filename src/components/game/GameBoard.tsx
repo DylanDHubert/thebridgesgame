@@ -72,6 +72,12 @@ type GameBoardProps = {
   cells?: boolean;
   /** BOAR HIT TARGET. THE SPRITE STILL DRAWS. */
   boarClick?: boolean;
+  /** DRAW THE BOAR AT level.start EVEN WHEN THE FLOWERS ARE HIDDEN. */
+  showBoar?: boolean;
+  /** LESSON HEARS THE POKE. THE YELLOW FLASH STILL HAPPENS. */
+  onBoarClick?: () => void;
+  /** STAYS IN HIS BUBBLE. A CLICK FLASHES REACH, IT DOES NOT REPLACE THE LINE. */
+  boarLine?: string;
   mapLabelsDraggable?: boolean;
   onMapLabelMove?: (id: string, row: number, col: number) => void;
 };
@@ -156,6 +162,9 @@ export function GameBoard({
   borderless = false,
   cells = true,
   boarClick = true,
+  showBoar = false,
+  onBoarClick,
+  boarLine,
   mapLabelsDraggable = false,
   onMapLabelMove,
 }: GameBoardProps) {
@@ -164,7 +173,14 @@ export function GameBoard({
     sizing === "contain" ? CONTAIN_MIN_TILE : MAX_TILE,
   );
   const [bleedPlace, setBleedPlace] = useState({ scale: 1, left: 0, top: 0 });
-  const view = useMemo(() => terrainViewFromLevel(level), [level]);
+  const view = useMemo(() => {
+    const base = terrainViewFromLevel(level);
+    // HOME SHOWS THE BOAR WITHOUT TURNING HIS ISLAND INTO MUD.
+    if (!showMission) {
+      return { ...base, start: undefined };
+    }
+    return base;
+  }, [level, showMission]);
   const splashId = useRef(0);
   const accessFlashId = useRef(0);
   const thoughtId = useRef(0);
@@ -173,6 +189,7 @@ export function GameBoard({
   const [pickups, setPickups] = useState<BridgePickup[]>([]);
   const [accessFlash, setAccessFlash] = useState<AccessFlash | null>(null);
   const [thought, setThought] = useState<BoarThought | null>(null);
+  const [bubbleRoot, setBubbleRoot] = useState<HTMLDivElement | null>(null);
   const depthAt = useMemo(
     () => latticeWaterDepth(view, level.iso),
     [view, level.iso],
@@ -215,7 +232,10 @@ export function GameBoard({
     lastThought.current = index;
     const id = thoughtId.current + 1;
     thoughtId.current = id;
-    setThought({ id, text: BOAR_THOUGHTS[index]! });
+    if (!boarLine) {
+      setThought({ id, text: BOAR_THOUGHTS[index]! });
+    }
+    onBoarClick?.();
     window.clearTimeout(thoughtTimer.current);
     thoughtTimer.current = window.setTimeout(() => setThought(null), THOUGHT_MS);
   };
@@ -244,7 +264,8 @@ export function GameBoard({
   const boarPathKey = runPath.map((cell) => `${cell.row},${cell.col}`).join(";");
   const boarStartKey = level.start ? `${level.start.row},${level.start.col}` : "";
   const boarKey = `${boarStartKey}|${boarPathKey}`;
-  if (!showMission || !level.start) {
+  const boarOn = Boolean(level.start) && (showMission || showBoar);
+  if (!boarOn || !level.start) {
     boarRef.current = null;
     boarWalkKey.current = "";
   } else {
@@ -256,7 +277,9 @@ export function GameBoard({
     boarRef.current = {
       start: level.start,
       path: runPath,
-      flowers: [level.mission.x, level.mission.y, level.mission.z],
+      flowers: showMission
+        ? [level.mission.x, level.mission.y, level.mission.z]
+        : [],
       beganAt,
     };
   }
@@ -357,7 +380,7 @@ export function GameBoard({
         bridges={bridges}
         objectives={objectiveMarkers}
         whirlpools={emptyWhirlpools}
-        boarRef={showMission && level.start ? boarRef : undefined}
+        boarRef={boarOn ? boarRef : undefined}
       />
       {pickups.map((pickup) => (
         <BridgeSplash
@@ -402,7 +425,10 @@ export function GameBoard({
         <BoarClick
           boarRef={boarRef}
           metrics={metrics}
-          thought={thought}
+          thought={boarLine ? { id: 0, text: boarLine } : thought}
+          pinned={Boolean(boarLine)}
+          bubbleRoot={boarLine ? bubbleRoot : null}
+          bubbleAnchor={bleed ? bleedPlace : undefined}
           onClick={pokeBoar}
         />
       ) : null}
@@ -411,27 +437,32 @@ export function GameBoard({
 
   if (bleed) {
     return (
-      <div
-        ref={containerRef}
-        className={[
-          "relative h-full min-h-0 w-full min-w-0 overflow-hidden bg-[rgb(12_48_92)]",
-          borderless ? "" : "border border-black",
-        ]
-          .filter(Boolean)
-          .join(" ")}
-      >
+      <div ref={containerRef} className="relative h-full min-h-0 w-full min-w-0">
         <div
-          className="absolute origin-top-left"
-          style={{
-            width: metrics.width,
-            height: metrics.height,
-            left: bleedPlace.left,
-            top: bleedPlace.top,
-            transform: `scale(${bleedPlace.scale})`,
-          }}
+          className={[
+            "absolute inset-0 overflow-hidden bg-[rgb(12_48_92)]",
+            borderless ? "" : "border border-black",
+          ]
+            .filter(Boolean)
+            .join(" ")}
         >
-          {grid}
+          <div
+            className="absolute origin-top-left"
+            style={{
+              width: metrics.width,
+              height: metrics.height,
+              left: bleedPlace.left,
+              top: bleedPlace.top,
+              transform: `scale(${bleedPlace.scale})`,
+            }}
+          >
+            {grid}
+          </div>
         </div>
+        <div
+          ref={setBubbleRoot}
+          className="pointer-events-none absolute inset-0 overflow-visible"
+        />
       </div>
     );
   }
