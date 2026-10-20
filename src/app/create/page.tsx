@@ -9,6 +9,7 @@ export default function CreatePage() {
         <HairlineRow className="shrink-0 justify-center">
           <HairlineLink href="/create/view?level=home">Edit home map</HairlineLink>
           <HairlineLink href="/create/view?level=how">Edit tutorial</HairlineLink>
+          <HairlineLink href="/create/view?level=loading">Edit loading</HairlineLink>
         </HairlineRow>
         <div className="min-h-0 flex-1 overflow-hidden">
           <CreateSettingsForm />

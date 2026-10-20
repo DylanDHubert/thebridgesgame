@@ -95,16 +95,91 @@ function gapsToward(level: Level, from: Set<string>, island: Set<string>): Gap[]
   return gaps;
 }
 
-function bridgeTouchesCliff(level: Level, bridges: Set<string>): boolean {
-  for (const key of bridges) {
-    const [row, col] = key.split(",").map(Number) as [number, number];
-    for (const { dr, dc } of DIRECTIONS) {
-      if (terrainKindAt(level, row + dr, col + dc) === "cliff") {
-        return true;
-      }
-    }
+/** WHAT HE SAYS, AND THE CELLS THAT ARE ALLOWED TO BE CLICKED. */
+export type TutorialCue = {
+  line: string;
+  cells: string[];
+  allowCheck: boolean;
+};
+
+function cue(line: string, cells: string[] = [], allowCheck = false): TutorialCue {
+  return { line, cells, allowCheck };
+}
+
+/** THE NEXT CLICK. YELLOW CELLS ARE THE ONLY BRIDGE CLICKS. */
+export function tutorialCue(
+  level: Level,
+  bridges: Set<string>,
+  met: boolean,
+  phase: GamePhase,
+): TutorialCue {
+  if (phase === "success") {
+    return cue(
+      "mm. lunch. blue water costs one, marsh costs two, and stone does not shake hands with a bridge. bigger islands are in play.",
+    );
   }
-  return false;
+  if (phase === "disconnected") {
+    return cue("i tried. a flower is still not mine. i am staying on the mud.");
+  }
+
+  const origin = level.start ?? level.mission.x;
+  if (!met) {
+    return cue(
+      "hello. i live on the mud. click me. yellow is the click.",
+      [coordKey(origin)],
+    );
+  }
+
+  const reachable = floodReachable(level, bridges, origin);
+  const flowers = [level.mission.x, level.mission.y, level.mission.z];
+  const next = flowers.find((flower) => !reachable.has(coordKey(flower)));
+  if (!next) {
+    return cue(
+      "three flowers. yellow is check. i stop one step away, stare, and then the flower is gone.",
+      [],
+      true,
+    );
+  }
+
+  const kind = terrainKindAt(level, next.row, next.col);
+  const island = floodLandComponent(level, next);
+  if (!kind || !isLandKind(kind) || island.size === 0) {
+    return cue("that flower is in the water. put it on grass. i do not eat waves.");
+  }
+
+  const gaps = gapsToward(level, reachable, island);
+  const stoneGaps = gaps.filter((gap) => gap.touchesCliff && !gap.touchesGrass);
+  const marshGaps = gaps.filter(
+    (gap) => gap.kind === "marsh" && gap.touchesGrass && !gap.touchesCliff,
+  );
+  const oceanGaps = gaps.filter(
+    (gap) => gap.kind === "ocean" && gap.touchesGrass && !gap.touchesCliff,
+  );
+
+  if (oceanGaps.length > 0 && stoneGaps.length > 0) {
+    return cue(
+      "the grey stone is land. do not bridge onto it. yellow is the water beside the grass.",
+      oceanGaps.map((gap) => gap.key),
+    );
+  }
+  if (oceanGaps.length > 0) {
+    return cue(
+      "yellow is the click. one bridge on the blue water. i do not swim.",
+      oceanGaps.map((gap) => gap.key),
+    );
+  }
+  if (marshGaps.length > 0) {
+    return cue(
+      "yellow is marsh. a bridge there costs two. the blue ones cost one.",
+      marshGaps.map((gap) => gap.key),
+    );
+  }
+  if (stoneGaps.length > 0) {
+    return cue(
+      "the grey stone is land. bridges will not hold my hoof there. i am waiting for grass.",
+    );
+  }
+  return cue("the next flower is further than one bridge. keep going. i am still hungry.");
 }
 
 /** WHAT HE SAYS, FROM THE MAP AS IT IS NOW. */
@@ -114,53 +189,5 @@ export function tutorialNarration(
   met: boolean,
   phase: GamePhase,
 ): string {
-  if (phase === "success") {
-    return "mm. lunch. blue water costs one, marsh costs two, and stone does not shake hands with a bridge. bigger islands are in play.";
-  }
-  if (phase === "disconnected") {
-    return "i tried. a flower is still not mine. i am staying on the mud.";
-  }
-  if (!met) {
-    return "hello. i live on the mud. click me. i will show you what these hooves can reach.";
-  }
-
-  const origin = level.start ?? level.mission.x;
-  const reachable = floodReachable(level, bridges, origin);
-  const flowers = [level.mission.x, level.mission.y, level.mission.z];
-  const next = flowers.find((flower) => !reachable.has(coordKey(flower)));
-  if (!next) {
-    return "three flowers. press check. i stop one step away, stare, and then the flower is gone.";
-  }
-
-  const kind = terrainKindAt(level, next.row, next.col);
-  const island = floodLandComponent(level, next);
-  if (!kind || !isLandKind(kind) || island.size === 0) {
-    return "that flower is in the water. put it on grass. i do not eat waves.";
-  }
-
-  const gaps = gapsToward(level, reachable, island);
-  const stoneGaps = gaps.filter((gap) => gap.touchesCliff && !gap.touchesGrass);
-  const marshGaps = gaps.filter((gap) => gap.kind === "marsh" && gap.touchesGrass);
-  const oceanGaps = gaps.filter((gap) => gap.kind === "ocean" && gap.touchesGrass);
-  const onAGap = gaps.some((gap) => bridges.has(gap.key));
-
-  if (bridgeTouchesCliff(level, bridges) && stoneGaps.length > 0) {
-    return "that bridge touches the stone. i can walk on stone. i cannot step onto it from a bridge. aim for the grass.";
-  }
-  if (stoneGaps.length > 0) {
-    return "the grey stone is land. bridges will not hold my hoof there. bridge to the grass beside the stone.";
-  }
-  if (marshGaps.length > 0 && oceanGaps.length === 0) {
-    return "the green water is marsh. a bridge there costs two. the blue ones cost one. i am expensive in swamps.";
-  }
-  if (oceanGaps.length > 0) {
-    if (bridges.size > 0 && !onAGap) {
-      return "that bridge is not the gap. the blue water between me and the next flower. one bridge.";
-    }
-    return "yellow is me. i do not swim. click the blue water. one bridge to the next flower.";
-  }
-  if (marshGaps.length > 0) {
-    return "the green water is marsh. a bridge there costs two. the blue ones cost one. i am expensive in swamps.";
-  }
-  return "the next flower is further than one bridge. keep going. i am still hungry.";
+  return tutorialCue(level, bridges, met, phase).line;
 }

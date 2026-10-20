@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { cellKey } from "@/lib/game/coords";
 import type { Level } from "@/lib/game/level/types";
+import { terrainKindAt } from "@/lib/game/rules";
 import { canPlaceBridgeAt, simulateLevel } from "@/lib/game/simulateLevel";
 import type { GamePhase, SimulationResult } from "@/lib/game/types";
+import { playBridgeToggle } from "@/lib/sound/bed";
 
 type UseLevelGameResult = {
   bridges: Set<string>;
@@ -27,6 +29,8 @@ function emptyBridges(): Set<string> {
  */
 export function useLevelGame(level: Level): UseLevelGameResult {
   const [bridges, setBridges] = useState<Set<string>>(emptyBridges);
+  const bridgesRef = useRef(bridges);
+  bridgesRef.current = bridges;
   const [phase, setPhase] = useState<GamePhase>("editing");
   const [result, setResult] = useState<SimulationResult | null>(null);
 
@@ -48,6 +52,10 @@ export function useLevelGame(level: Level): UseLevelGameResult {
         return;
       }
       const key = cellKey(row, col);
+      playBridgeToggle(
+        terrainKindAt(level, row, col),
+        bridgesRef.current.has(key),
+      );
       setBridges((prev) => {
         const next = new Set(prev);
         if (next.has(key)) {

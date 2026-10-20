@@ -6,6 +6,7 @@ import { GameBoard } from "@/components/game/GameBoard";
 import { GameStage } from "@/components/game/GameStage";
 import { useBoarPassage } from "@/components/loading/BoarPassage";
 import type { MapLabel } from "@/components/game/MapLabelOverlay";
+import { VolumeControls } from "@/components/sound/VolumeControls";
 import { HairlineHeader } from "@/components/ui/hairline";
 import { cellKey } from "@/lib/game/coords";
 import {
@@ -14,9 +15,11 @@ import {
   type HomeDestination,
 } from "@/lib/game/homeMap";
 import type { Level } from "@/lib/game/level/types";
+import { terrainKindAt } from "@/lib/game/rules";
 import { canPlaceBridgeAt, shortestPath } from "@/lib/game/simulateLevel";
 import type { CellCoord } from "@/lib/game/types";
 import { boarTravelMs } from "@/lib/rendering/boar";
+import { playBridgeToggle } from "@/lib/sound/bed";
 
 type HomeScreenProps = {
   level: Level;
@@ -66,6 +69,7 @@ export function HomeScreen({ level }: HomeScreenProps) {
       return;
     }
     const key = cellKey(row, col);
+    playBridgeToggle(terrainKindAt(map.level, row, col), bridges.has(key));
     setBridges((prev) => {
       const next = new Set(prev);
       if (next.has(key)) {
@@ -132,10 +136,13 @@ export function HomeScreen({ level }: HomeScreenProps) {
             />
           </GameStage>
         </div>
-        <div className="flex w-full shrink-0 items-center justify-between gap-3 border border-black px-3 py-2.5">
-          <p className="inline-flex items-center border border-transparent py-1.5 text-[10px] uppercase tracking-[0.14em]">
+        <div className="flex w-full shrink-0 flex-col gap-2 border border-black px-3 py-2.5">
+          <p className="py-1.5 text-[10px] uppercase tracking-[0.14em]">
             Bridge to play, create, or how
           </p>
+          <div className="flex justify-end">
+            <VolumeControls />
+          </div>
         </div>
       </section>
     </main>

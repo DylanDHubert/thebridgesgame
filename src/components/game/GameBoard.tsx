@@ -27,6 +27,7 @@ import { isoCellCenter, isoMetrics, SPRITE_NATIVE } from "@/lib/rendering/isoTil
 import { FLOWER_VARIANTS, waterSurfaceTint } from "@/lib/rendering/tileCatalog";
 import { terrainKindAt, terrainViewFromLevel } from "@/lib/rendering/terrainView";
 import { buildMarshWarmth } from "@/lib/rendering/waterWaves";
+import { playSfx } from "@/lib/sound/bed";
 
 type BridgePickup = {
   id: number;
@@ -73,6 +74,8 @@ type GameBoardProps = {
   onBoarClick?: () => void;
   /** STAYS IN HIS BUBBLE. A CLICK FLASHES REACH, IT DOES NOT REPLACE THE LINE. */
   boarLine?: string;
+  /** WHEN SET, ONLY THESE CELLS TAKE A BRIDGE CLICK. THEY STAY YELLOW. */
+  hintKeys?: ReadonlySet<string>;
   /** THE LOADING LAP RUNS EVEN WHEN THE VIEWER ASKED FOR LESS MOTION. */
   alwaysAnimate?: boolean;
   mapLabelsDraggable?: boolean;
@@ -162,6 +165,7 @@ export function GameBoard({
   showBoar = false,
   onBoarClick,
   boarLine,
+  hintKeys,
   alwaysAnimate = false,
   mapLabelsDraggable = false,
   onMapLabelMove,
@@ -184,6 +188,8 @@ export function GameBoard({
   const lastThought = useRef(-1);
   const thoughtTimer = useRef(0);
   const flashRef = useRef<ReachFlash | null>(null);
+  const hintRef = useRef<Set<string> | null>(null);
+  hintRef.current = hintKeys ? new Set(hintKeys) : null;
   const [pickups, setPickups] = useState<BridgePickup[]>([]);
   const [thought, setThought] = useState<BoarThought | null>(null);
   const [bubbleRoot, setBubbleRoot] = useState<HTMLDivElement | null>(null);
@@ -214,7 +220,10 @@ export function GameBoard({
     if (!level.start) {
       return;
     }
-    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (
+      !hintKeys &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
       flashRef.current = {
         keys: floodReachable(level, bridges, level.start),
         beganAt: performance.now(),
@@ -230,6 +239,7 @@ export function GameBoard({
     if (!boarLine) {
       setThought({ id, text: BOAR_THOUGHTS[index]! });
     }
+    playSfx("click");
     onBoarClick?.();
     window.clearTimeout(thoughtTimer.current);
     thoughtTimer.current = window.setTimeout(() => setThought(null), THOUGHT_MS);
@@ -377,6 +387,8 @@ export function GameBoard({
         whirlpools={emptyWhirlpools}
         boarRef={boarOn ? boarRef : undefined}
         flashRef={flashRef}
+        hintRef={hintRef}
+        hintMark={hintKeys ? [...hintKeys].sort().join("|") : ""}
         alwaysAnimate={alwaysAnimate}
       />
       {pickups.map((pickup) => (
@@ -401,6 +413,7 @@ export function GameBoard({
               metrics={metrics}
               interactive={interactive}
               editable={editable}
+              open={hintKeys == null || hintKeys.has(cellKey(cell.row, cell.col))}
               onToggle={handleCellActivate}
             />
           ))

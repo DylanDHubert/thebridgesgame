@@ -13,15 +13,16 @@ import {
 
 import { GameBoard } from "@/components/game/GameBoard";
 import { GameStage } from "@/components/game/GameStage";
-import {
-  LOADING_LAP_MS,
-  LOADING_LEVEL,
-  LOADING_PATH,
-} from "@/lib/game/loadingRing";
+import { loadingLapMs, loadingRunPath } from "@/lib/game/loadingRing";
+import { deserializeLevel } from "@/lib/game/level/serialize";
+import type { Level, LevelFile } from "@/lib/game/level/types";
 
 const PassageContext = createContext<((href: string) => void) | null>(null);
 
-/** SEND THE BOAR AROUND THE RING, THEN OPEN THE PAGE. */
+/** HOW LONG A BROKEN NAVIGATION MAY KEEP HIM RUNNING. */
+const GIVE_UP_MS = 15000;
+
+/** SEND HIM AROUND THE SQUARE UNTIL THE NEXT PAGE IS READY. */
 export function useBoarPassage(): (href: string) => void {
   const depart = useContext(PassageContext);
   if (!depart) {
@@ -34,15 +35,46 @@ function here(): string {
   return window.location.pathname + window.location.search;
 }
 
-/** FULL-SCREEN LAP. LINKS AND depart() BOTH WAIT FOR THE WHOLE RUN. */
+async function fetchLoadingLevel(): Promise<Level | null> {
+  try {
+    const response = await fetch("/levels/loading.json");
+    if (!response.ok) {
+      console.error("[journeyman:load] missing loading level", response.status);
+      return null;
+    }
+    const file = (await response.json()) as LevelFile;
+    return deserializeLevel(file);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[journeyman:load] failed to read loading level", message);
+    return null;
+  }
+}
+
+/** FULL-SCREEN RUN. AT LEAST ONE LAP, AND HE STAYS OUT IF THE PAGE IS STILL COMING. */
 export function BoarPassage({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [target, setTarget] = useState<string | null>(null);
   const [lap, setLap] = useState(0);
-  const [lapDone, setLapDone] = useState(false);
   const [arrived, setArrived] = useState(false);
+  const [lapDone, setLapDone] = useState(false);
+  const [level, setLevel] = useState<Level | null>(null);
   const bridges = useMemo(() => new Set<string>(), []);
+  const runPath = useMemo(() => (level ? loadingRunPath(level) : []), [level]);
+  const lapMs = level ? loadingLapMs(level) : null;
+
+  useEffect(() => {
+    let cancel = false;
+    void fetchLoadingLevel().then((next) => {
+      if (!cancel && next) {
+        setLevel(next);
+      }
+    });
+    return () => {
+      cancel = true;
+    };
+  }, []);
 
   const depart = useCallback(
     (href: string) => {
@@ -53,8 +85,13 @@ export function BoarPassage({ children }: { children: ReactNode }) {
       setLapDone(false);
       setLap((value) => value + 1);
       setTarget(href);
-      console.log("[journeyman:load] ring", href, { wait: LOADING_LAP_MS });
+      console.log("[journeyman:load] running until", href);
       router.push(href);
+      void fetchLoadingLevel().then((next) => {
+        if (next) {
+          setLevel(next);
+        }
+      });
     },
     [router],
   );
@@ -104,24 +141,34 @@ export function BoarPassage({ children }: { children: ReactNode }) {
     if (!target) {
       return;
     }
-    const timer = window.setTimeout(() => setLapDone(true), LOADING_LAP_MS);
     const giveUp = window.setTimeout(() => {
       if (here() !== target) {
-        console.error("[journeyman:load] ring gave up", target);
+        console.error("[journeyman:load] gave up waiting", target);
       }
       setTarget(null);
-    }, LOADING_LAP_MS + 8000);
-    return () => {
-      window.clearTimeout(timer);
-      window.clearTimeout(giveUp);
-    };
+    }, GIVE_UP_MS);
+    return () => window.clearTimeout(giveUp);
   }, [target, lap]);
 
   useEffect(() => {
-    if (target && lapDone && arrived) {
+    if (!target || lapMs == null) {
+      return;
+    }
+    if (lapMs <= 0) {
+      setLapDone(true);
+      return;
+    }
+    setLapDone(false);
+    console.log("[journeyman:load] holding for one lap", lapMs);
+    const timer = window.setTimeout(() => setLapDone(true), lapMs);
+    return () => window.clearTimeout(timer);
+  }, [target, lap, lapMs]);
+
+  useEffect(() => {
+    if (target && arrived && lapDone) {
       setTarget(null);
     }
-  }, [target, lapDone, arrived]);
+  }, [target, arrived, lapDone]);
 
   return (
     <PassageContext.Provider value={depart}>
@@ -131,26 +178,28 @@ export function BoarPassage({ children }: { children: ReactNode }) {
           className="fixed inset-0 z-[70] flex flex-col bg-white"
           role="status"
           aria-live="polite"
-          aria-label="The boar is running the ring"
+          aria-label="The boar is running until the page loads"
         >
           <div className="relative min-h-0 flex-1 p-4">
-            <GameStage>
-              <GameBoard
-                key={lap}
-                level={LOADING_LEVEL}
-                bridges={bridges}
-                pathKeys={bridges}
-                runPath={LOADING_PATH}
-                showMission={false}
-                showBoar
-                cells={false}
-                interactive={false}
-                sizing="contain"
-                bleed
-                alwaysAnimate
-                boarLine="i run the ring. then we go."
-              />
-            </GameStage>
+            {level ? (
+              <GameStage>
+                <GameBoard
+                  key={lap}
+                  level={level}
+                  bridges={bridges}
+                  pathKeys={bridges}
+                  runPath={runPath}
+                  showMission={false}
+                  showBoar
+                  cells={false}
+                  interactive={false}
+                  sizing="contain"
+                  bleed
+                  alwaysAnimate
+                  boarLine="i run until the page is here."
+                />
+              </GameStage>
+            ) : null}
           </div>
         </div>
       ) : null}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { GameBoard } from "@/components/game/GameBoard";
 import { GameStage } from "@/components/game/GameStage";
@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/hairline";
 import { useLevelGame } from "@/hooks/useLevelGame";
 import type { Level } from "@/lib/game/level/types";
-import { tutorialNarration } from "@/lib/game/tutorialMap";
+import { tutorialCue } from "@/lib/game/tutorialMap";
 
 type HowLessonProps = {
   level: Level;
@@ -31,7 +31,12 @@ export function HowLesson({ level }: HowLessonProps) {
   } = useLevelGame(level);
   const [met, setMet] = useState(false);
   const success = phase === "success";
-  const line = tutorialNarration(level, bridges, met, phase);
+  const step = tutorialCue(level, bridges, met, phase);
+  const hintCells = step.cells.join("|");
+  const hintKeys = useMemo(
+    () => new Set(hintCells ? hintCells.split("|") : []),
+    [hintCells],
+  );
 
   return (
     <main className="flex h-dvh w-full flex-col overflow-hidden">
@@ -49,7 +54,8 @@ export function HowLesson({ level }: HowLessonProps) {
               bleed
               onToggleBridge={toggleBridge}
               onBoarClick={() => setMet(true)}
-              boarLine={line}
+              boarLine={step.line}
+              hintKeys={hintKeys}
             />
           </GameStage>
         </div>
@@ -58,9 +64,22 @@ export function HowLesson({ level }: HowLessonProps) {
             {success ? (
               <HairlineLink href="/play">Bigger lunch</HairlineLink>
             ) : (
-              <HairlineButton onClick={checkSolution}>Check</HairlineButton>
+              <HairlineButton
+                onClick={checkSolution}
+                disabled={!step.allowCheck}
+                style={step.allowCheck ? { background: "#fbbf24" } : undefined}
+              >
+                Check
+              </HairlineButton>
             )}
-            <HairlineButton onClick={clearBridges}>Clear</HairlineButton>
+            <HairlineButton
+              onClick={() => {
+                clearBridges();
+                setMet(false);
+              }}
+            >
+              Clear
+            </HairlineButton>
           </HairlineRow>
         </div>
       </section>

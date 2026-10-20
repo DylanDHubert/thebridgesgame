@@ -11,6 +11,8 @@ type CellViewProps = {
   metrics: IsoMetrics;
   interactive: boolean;
   editable?: boolean;
+  /** WHEN FALSE THE CELL REFUSES THE CLICK. THE LESSON USES THIS. */
+  open?: boolean;
   onToggle?: (row: number, col: number) => void;
 };
 
@@ -22,12 +24,13 @@ export function CellView({
   metrics,
   interactive,
   editable = false,
+  open = true,
   onToggle,
 }: CellViewProps) {
   const bridgeable = context.level
     ? canPlaceBridgeAt(context.level, row, col)
     : false;
-  const clickable = editable || (interactive && bridgeable);
+  const clickable = open && (editable || (interactive && bridgeable));
   const top = isoCellTop(row, col, metrics);
 
   const style: CSSProperties = {

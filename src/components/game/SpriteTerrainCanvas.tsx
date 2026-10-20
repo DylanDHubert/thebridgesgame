@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useId, useRef, type RefObject } from "react";
 
 import { cellKey } from "@/lib/game/coords";
 import { isoLatticeCells, type IsoSpan } from "@/lib/game/isoBoard";
@@ -17,6 +17,7 @@ import {
   type BoarPlan,
 } from "@/lib/rendering/boar";
 import { isoCellTop, isoSpriteOrigin, SPRITE_NATIVE, type IsoMetrics } from "@/lib/rendering/isoTiles";
+import { playSfx, setWalker } from "@/lib/sound/bed";
 import {
   BRIDGE_MARSH,
   BRIDGE_WOOD,
@@ -57,6 +58,10 @@ type SpriteTerrainCanvasProps = {
   boarRef?: RefObject<BoarPlan | null>;
   /** YELLOW WASH ON REACHABLE TILES. THE BOAR IS PUNCHED OUT SO HE STAYS ON TOP. */
   flashRef?: RefObject<ReachFlash | null>;
+  /** STEADY YELLOW ON THE CELL THE LESSON WANTS CLICKED. */
+  hintRef?: RefObject<Set<string> | null>;
+  /** CHANGES WHEN THE HINT CELLS CHANGE, SO THE WASH REPAINTS. */
+  hintMark?: string;
   /** KEEP THE RUN GOING. THE LOADING LAP DOES NOT HONOR REDUCED MOTION. */
   alwaysAnimate?: boolean;
 };
@@ -73,29 +78,30 @@ const FLASH_ALPHA = 0.55;
 let washCanvas: HTMLCanvasElement | null = null;
 
 /**
- * YELLOW DIAMONDS ON REACHABLE GROUND.
+ * YELLOW DIAMONDS. A HINT STAYS. A REACH FLASH FADES.
  * THE BOAR'S OPAQUE PIXELS ARE CUT OUT SO THE WASH SITS UNDER HIM.
  */
 function paintReachFlash(
   ctx: CanvasRenderingContext2D,
   metrics: IsoMetrics,
+  hints: Set<string> | null,
   flash: ReachFlash | null,
   place: { x: number; y: number } | null,
   facing: keyof typeof BOAR_FOOT | null,
   boarImage: CanvasImageSource | undefined,
   scale: number,
 ) {
-  if (!flash) {
-    return;
+  const hinting = Boolean(hints && hints.size > 0);
+  let flashAlpha = 0;
+  if (flash) {
+    const age = performance.now() - flash.beganAt;
+    if (age >= 0 && age < FLASH_MS) {
+      const t = age / FLASH_MS;
+      const eased = 1 - (1 - t) * (1 - t);
+      flashAlpha = FLASH_ALPHA * (1 - eased);
+    }
   }
-  const age = performance.now() - flash.beganAt;
-  if (age < 0 || age >= FLASH_MS) {
-    return;
-  }
-  const t = age / FLASH_MS;
-  const eased = 1 - (1 - t) * (1 - t);
-  const alpha = FLASH_ALPHA * (1 - eased);
-  if (alpha <= 0.01) {
+  if (!hinting && flashAlpha <= 0.01) {
     return;
   }
 
@@ -115,17 +121,25 @@ function paintReachFlash(
   wash.setTransform(1, 0, 0, 1, 0, 0);
   wash.clearRect(0, 0, width, height);
   wash.globalCompositeOperation = "source-over";
-  wash.fillStyle = `rgba(251, 191, 36, ${alpha})`;
-  for (const key of flash.keys) {
-    const [row, col] = key.split(",").map(Number) as [number, number];
-    const top = isoCellTop(row, col, metrics);
-    wash.beginPath();
-    wash.moveTo(top.x, top.y);
-    wash.lineTo(top.x + metrics.halfW, top.y + metrics.halfH);
-    wash.lineTo(top.x, top.y + metrics.halfH * 2);
-    wash.lineTo(top.x - metrics.halfW, top.y + metrics.halfH);
-    wash.closePath();
-    wash.fill();
+  const fillDiamonds = (keys: Set<string>, alpha: number) => {
+    wash.fillStyle = `rgba(251, 191, 36, ${alpha})`;
+    for (const key of keys) {
+      const [row, col] = key.split(",").map(Number) as [number, number];
+      const top = isoCellTop(row, col, metrics);
+      wash.beginPath();
+      wash.moveTo(top.x, top.y);
+      wash.lineTo(top.x + metrics.halfW, top.y + metrics.halfH);
+      wash.lineTo(top.x, top.y + metrics.halfH * 2);
+      wash.lineTo(top.x - metrics.halfW, top.y + metrics.halfH);
+      wash.closePath();
+      wash.fill();
+    }
+  };
+  if (hints && hinting) {
+    fillDiamonds(hints, 0.5);
+  }
+  if (flash && flashAlpha > 0.01) {
+    fillDiamonds(flash.keys, flashAlpha);
   }
   if (place && facing && boarImage) {
     const foot = BOAR_FOOT[facing];
@@ -255,9 +269,14 @@ export function SpriteTerrainCanvas({
   whirlpools,
   boarRef,
   flashRef,
+  hintRef,
+  hintMark = "",
   alwaysAnimate = false,
 }: SpriteTerrainCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const walkId = useId();
+  const heardEat = useRef(new Set<string>());
+  const eatBegan = useRef(0);
 
   // BACK TO FRONT SO EACH FRONT FACE COVERS THE TILE BEHIND
   useEffect(() => {
@@ -337,6 +356,21 @@ export function SpriteTerrainCanvas({
         ctx.clearRect(0, 0, metrics.width, metrics.height);
         const plan = boarRef?.current;
         const pose = plan ? boarPose(plan, performance.now(), reduceMotion) : null;
+        if (pose && plan) {
+          if (eatBegan.current !== plan.beganAt) {
+            eatBegan.current = plan.beganAt;
+            heardEat.current = new Set();
+          }
+          setWalker(walkId, pose.anim === "run");
+          for (const key of pose.eaten) {
+            if (!heardEat.current.has(key)) {
+              heardEat.current.add(key);
+              playSfx("eat");
+            }
+          }
+        } else {
+          setWalker(walkId, false);
+        }
         const boarImage = pose
           ? bySrc.get(boarFrameSrc(pose.facing, pose.anim, pose.frame))
           : undefined;
@@ -396,6 +430,7 @@ export function SpriteTerrainCanvas({
         paintReachFlash(
           ctx,
           metrics,
+          hintRef?.current ?? null,
           flashRef?.current ?? null,
           place,
           pose?.facing ?? null,
@@ -429,8 +464,9 @@ export function SpriteTerrainCanvas({
     return () => {
       cancelled = true;
       cancelAnimationFrame(frame);
+      setWalker(walkId, false);
     };
-  }, [view, depthIso, metrics, bridges, objectives, whirlpools, boarRef, flashRef, alwaysAnimate]);
+  }, [view, depthIso, metrics, bridges, objectives, whirlpools, boarRef, flashRef, hintRef, hintMark, alwaysAnimate, walkId]);
 
   return (
     <canvas
