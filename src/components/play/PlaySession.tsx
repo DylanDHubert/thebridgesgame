@@ -2,25 +2,36 @@
 
 import { useEffect, useState } from "react";
 
+import { useAuth } from "@/components/auth/AuthProvider";
 import { BoardColumn } from "@/components/game/BoardColumn";
 import { GameBoard } from "@/components/game/GameBoard";
 import { ScoreHome } from "@/components/play/ScoreHome";
 import { HairlineButton, HairlineHeader, HairlineRow } from "@/components/ui/hairline";
 import { useLevelGame } from "@/hooks/useLevelGame";
 import { markOptimal, rememberBestScore } from "@/lib/game/bestScore";
+import {
+  lockFirstScore,
+  readLockedScore,
+  readUsername,
+  saveUsername,
+} from "@/lib/game/lockScore";
 import type { Level } from "@/lib/game/level/types";
 import { perfectBridgeCost } from "@/lib/game/perfectScore";
 import { boarHomeMs } from "@/lib/rendering/boar";
 
 type PlaySessionProps = {
   level: Level;
+  /** PAR FROZEN WHEN THE DAILY WAS BUILT. OMITTED ON SAVED LEVELS. */
+  par?: number | null;
 };
 
 function statusLabel(
-  phase: "editing" | "success" | "disconnected",
+  phase: "editing" | "valid" | "success" | "disconnected",
   cost: number,
 ): string {
   switch (phase) {
+    case "valid":
+      return `Valid route · cost ${cost}`;
     case "success":
       return `Valid route · cost ${cost}`;
     case "disconnected":
@@ -31,21 +42,32 @@ function statusLabel(
 }
 
 /** PLAY SESSION — BOARD + STATUS BAR */
-export function PlaySession({ level }: PlaySessionProps) {
+export function PlaySession({ level, par }: PlaySessionProps) {
   const {
     bridges,
     phase,
     result,
     pathKeys,
     bridgeCost,
-    miss,
+    reach,
     toggleBridge,
     clearBridges,
     checkSolution,
-  } = useLevelGame(level);
+    submitSolution,
+  } = useLevelGame(level, { holdForSubmit: true });
   const [scoreOpen, setScoreOpen] = useState(false);
   const [priorBest, setPriorBest] = useState<number | null>(null);
   const [optimal, setOptimal] = useState(false);
+  const [firstScore, setFirstScore] = useState<number | null>(null);
+  const [username, setUsername] = useState("");
+  const [boarCue, setBoarCue] = useState(0);
+  const auth = useAuth();
+  const submitName = auth.username || username.trim();
+
+  useEffect(() => {
+    setFirstScore(readLockedScore(level.id));
+    setUsername(readUsername());
+  }, [level.id]);
 
   const success = phase === "success";
   const confirmedCost = result?.bridgeCost ?? bridgeCost;
@@ -69,7 +91,7 @@ export function PlaySession({ level }: PlaySessionProps) {
         });
     const timer = window.setTimeout(() => {
       const best = rememberBestScore(level.id, result.bridgeCost);
-      const target = perfectBridgeCost(level);
+      const target = par === undefined ? perfectBridgeCost(level) : par;
       const achieved = target != null && result.bridgeCost <= target;
       if (achieved) {
         markOptimal(level.id);
@@ -85,7 +107,7 @@ export function PlaySession({ level }: PlaySessionProps) {
       });
     }, wait);
     return () => window.clearTimeout(timer);
-  }, [success, result, level, bridges]);
+  }, [success, result, level, bridges, par]);
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
@@ -101,8 +123,10 @@ export function PlaySession({ level }: PlaySessionProps) {
             sizing="contain"
             bleed
             onToggleBridge={runningHome ? undefined : toggleBridge}
-            missId={miss?.id ?? 0}
-            missKeys={miss?.keys}
+            onBoarClick={checkSolution}
+            pokeChecks
+            boarCue={boarCue}
+            reach={reach}
           />
         }
         bar={
@@ -111,9 +135,51 @@ export function PlaySession({ level }: PlaySessionProps) {
               {statusLabel(phase, confirmedCost)}
             </p>
             <HairlineRow className="justify-end">
-              <HairlineButton onClick={checkSolution} disabled={runningHome}>
-                Check
-              </HairlineButton>
+              {phase === "valid" && !auth.username ? (
+                <input
+                  value={username}
+                  onChange={(event) => {
+                    setUsername(event.target.value);
+                    saveUsername(event.target.value);
+                  }}
+                  placeholder="Name"
+                  aria-label="Name"
+                  className="w-28 border border-black bg-white px-2 py-1.5 text-[10px] uppercase tracking-[0.12em] text-black placeholder:text-black/40 focus:outline-none"
+                />
+              ) : null}
+              {phase === "valid" ? (
+                <HairlineButton
+                  onClick={() => {
+                    if (!submitName || !result) {
+                      return;
+                    }
+                    saveUsername(submitName);
+                    void auth.saveUsername(submitName);
+                    const locked = lockFirstScore(
+                      level.id,
+                      result.bridgeCost,
+                      [...bridges],
+                      submitName,
+                      { id: auth.userId, token: auth.accessToken },
+                    );
+                    setFirstScore(locked);
+                    submitSolution();
+                  }}
+                  disabled={!submitName}
+                >
+                  Submit
+                </HairlineButton>
+              ) : (
+                <HairlineButton
+                  onClick={() => {
+                    setBoarCue((cue) => cue + 1);
+                    checkSolution();
+                  }}
+                  disabled={runningHome}
+                >
+                  Check
+                </HairlineButton>
+              )}
               <HairlineButton onClick={clearBridges} disabled={runningHome}>
                 Clear
               </HairlineButton>
@@ -125,7 +191,9 @@ export function PlaySession({ level }: PlaySessionProps) {
         <ScoreHome
           score={confirmedCost}
           best={priorBest}
+          firstScore={firstScore}
           optimal={optimal}
+          levelId={level.id}
           onRetry={() => {
             clearBridges();
             setScoreOpen(false);

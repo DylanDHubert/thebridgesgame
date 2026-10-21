@@ -1,0 +1,232 @@
+import { deserializeLevel, serializeLevel } from "@/lib/game/level/serialize";
+import type { Level, LevelFile } from "@/lib/game/level/types";
+
+type SupabaseEnv = {
+  url: string;
+  key: string;
+};
+
+function env(): SupabaseEnv | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) {
+    return null;
+  }
+  return { url, key };
+}
+
+function headers(key: string, prefer?: string, token?: string | null): HeadersInit {
+  return {
+    apikey: key,
+    Authorization: `Bearer ${token || key}`,
+    "Content-Type": "application/json",
+    ...(prefer ? { Prefer: prefer } : {}),
+  };
+}
+
+/** STORE THE DAILY ONCE. A REPEAT OF THE SAME DAY IS IGNORED. */
+export async function saveDailyLevel(input: {
+  level: Level;
+  day: string;
+  preset: string;
+  par: number | null;
+}): Promise<void> {
+  const remote = env();
+  if (!remote) {
+    console.log("[journeyman:daily] supabase skipped");
+    return;
+  }
+  const response = await fetch(`${remote.url}/rest/v1/levels`, {
+    method: "POST",
+    headers: headers(remote.key, "resolution=ignore-duplicates"),
+    body: JSON.stringify({
+      id: input.level.id,
+      name: input.level.name,
+      kind: "daily",
+      day: input.day,
+      preset: input.preset,
+      par: input.par,
+      body: serializeLevel(input.level),
+    }),
+  });
+  console.log("[journeyman:daily] stored", {
+    levelId: input.level.id,
+    status: response.status,
+  });
+}
+
+/** THE FIRST SUBMISSION FOR THIS PLAYER AND LEVEL. LATER ROWS ARE REFUSED. */
+export async function saveFirstSubmission(input: {
+  levelId: string;
+  playerId: string;
+  username: string;
+  cost: number;
+  bridges: string[];
+  token?: string | null;
+}): Promise<void> {
+  const remote = env();
+  if (!remote || typeof window === "undefined") {
+    return;
+  }
+  const response = await fetch(`${remote.url}/rest/v1/submissions`, {
+    method: "POST",
+    headers: headers(remote.key, "resolution=ignore-duplicates", input.token),
+    body: JSON.stringify({
+      level_id: input.levelId,
+      player_id: input.playerId,
+      username: input.username,
+      cost: input.cost,
+      bridges: input.bridges,
+      counts: true,
+    }),
+  });
+  console.log("[journeyman:play] submission", {
+    levelId: input.levelId,
+    status: response.status,
+  });
+}
+
+export type LevelCard = {
+  id: string;
+  name: string;
+};
+
+/** NAMES ONLY. THE MAP ITSELF LOADS WHEN A CARD IS NEAR THE SCREEN. */
+export async function listLevelCards(): Promise<LevelCard[]> {
+  const remote = env();
+  if (!remote) {
+    return [];
+  }
+  const response = await fetch(
+    `${remote.url}/rest/v1/levels?kind=in.(player,catalog)&select=id,name&order=name.asc`,
+    { headers: headers(remote.key), cache: "no-store" },
+  );
+  if (!response.ok) {
+    console.log("[journeyman:levels] list failed", { status: response.status });
+    return [];
+  }
+  const rows: unknown = await response.json();
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+  return rows.flatMap((row) => {
+    if (!row || typeof row !== "object") {
+      return [];
+    }
+    const id = "id" in row && typeof row.id === "string" ? row.id : "";
+    const name = "name" in row && typeof row.name === "string" ? row.name : "";
+    return id && name ? [{ id, name }] : [];
+  });
+}
+
+export async function loadRemoteLevel(id: string): Promise<Level | null> {
+  const remote = env();
+  if (!remote) {
+    return null;
+  }
+  const response = await fetch(
+    `${remote.url}/rest/v1/levels?id=eq.${encodeURIComponent(id)}&select=body`,
+    { headers: headers(remote.key), cache: "no-store" },
+  );
+  if (!response.ok) {
+    console.log("[journeyman:levels] load failed", { id, status: response.status });
+    return null;
+  }
+  const rows: unknown = await response.json();
+  const body = Array.isArray(rows) ? (rows[0] as { body?: unknown } | undefined)?.body : null;
+  if (!isBody(body)) {
+    return null;
+  }
+  return deserializeLevel(body);
+}
+
+function isBody(value: unknown): value is LevelFile {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const file = value as Partial<LevelFile>;
+  return (
+    typeof file.version === "number" &&
+    typeof file.id === "string" &&
+    typeof file.name === "string" &&
+    typeof file.terrain === "string" &&
+    !!file.grid &&
+    typeof file.grid.rows === "number"
+  );
+}
+
+/** SAVE A PLAYER ISLAND. A SECOND SAVE OF THE SAME ID REPLACES THE BOARD. */
+export async function savePlayerLevel(
+  level: Level,
+  authorId: string | null,
+  token: string | null,
+  par: number | null,
+  kind: "player" | "home" | "how" = "player",
+): Promise<{ ok: boolean; error?: string }> {
+  const remote = env();
+  if (!remote) {
+    return { ok: false, error: "Supabase is not configured." };
+  }
+  const response = await fetch(`${remote.url}/rest/v1/levels?on_conflict=id`, {
+    method: "POST",
+    headers: headers(
+      remote.key,
+      "resolution=merge-duplicates,return=representation",
+      token,
+    ),
+    body: JSON.stringify({
+      id: level.id,
+      name: level.name,
+      kind,
+      author_id: authorId,
+      par,
+      body: serializeLevel(level),
+    }),
+  });
+  const detail = await response.text();
+  console.log("[journeyman:levels] player save", {
+    levelId: level.id,
+    kind,
+    status: response.status,
+    detail: detail.slice(0, 300),
+  });
+  if (!response.ok) {
+    return { ok: false, error: detail.slice(0, 180) || `Save failed (${response.status})` };
+  }
+  if (!detail.trim() || detail.trim() === "[]") {
+    return { ok: false, error: "Save did not write a row." };
+  }
+  return { ok: true };
+}
+
+export type ScoreRow = {
+  cost: number;
+  username: string;
+};
+
+export async function listScoreRows(levelId: string): Promise<ScoreRow[]> {
+  const remote = env();
+  if (!remote) {
+    return [];
+  }
+  const response = await fetch(
+    `${remote.url}/rest/v1/submissions?level_id=eq.${encodeURIComponent(levelId)}&select=cost,username&order=cost.asc`,
+    { headers: headers(remote.key), cache: "no-store" },
+  );
+  if (!response.ok) {
+    return [];
+  }
+  const rows: unknown = await response.json();
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+  return rows.flatMap((row) => {
+    if (!row || typeof row !== "object") {
+      return [];
+    }
+    const cost = "cost" in row && typeof row.cost === "number" ? row.cost : null;
+    const username =
+      "username" in row && typeof row.username === "string" ? row.username : "";
+    return cost == null ? [] : [{ cost, username }];
+  });
+}

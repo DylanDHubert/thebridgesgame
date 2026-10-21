@@ -7,7 +7,7 @@ import { isoLatticeCells } from "@/lib/game/isoBoard";
 import type { Level } from "@/lib/game/level/types";
 import { isLandKind, terrainKindAt } from "@/lib/game/rules";
 import { canPlaceBridgeAt, simulateLevel } from "@/lib/game/simulateLevel";
-import type { GamePhase, SimulationResult } from "@/lib/game/types";
+import type { CellCoord, GamePhase, SimulationResult } from "@/lib/game/types";
 import { playBridgeToggle } from "@/lib/sound/bed";
 
 type UseLevelGameResult = {
@@ -16,16 +16,24 @@ type UseLevelGameResult = {
   result: SimulationResult | null;
   pathKeys: Set<string>;
   bridgeCost: number;
-  /** PLAYABLE CELLS OUTSIDE HIS REACH AFTER A FAILED CHECK. */
-  miss: { id: number; keys: string[] } | null;
+  /** GOLD IS REACHABLE. RED IS LAND HE CANNOT REACH. A NEW ID RESTARTS THE FLOOD. */
+  reach: BoardReach | null;
   toggleBridge: (row: number, col: number) => void;
   clearBridges: () => void;
   checkSolution: () => void;
+  submitSolution: () => void;
 };
 
 function emptyBridges(): Set<string> {
   return new Set();
 }
+
+export type BoardReach = {
+  id: number;
+  gold: string[];
+  red: string[];
+  origin: CellCoord;
+};
 
 /** LAND AND BRIDGES HE CANNOT REACH. OPEN WATER STAYS UNLIT. */
 function unreachablePlayKeys(
@@ -50,17 +58,39 @@ function unreachablePlayKeys(
   return keys;
 }
 
+/** THE PLAY CHECK FLOOD. A NEW ID RESTARTS THE WASH. */
+export function boardReach(
+  level: Level,
+  bridges: Set<string>,
+  id: number,
+  origin: CellCoord,
+): BoardReach {
+  const next = simulateLevel(level, bridges);
+  return {
+    id,
+    gold: [...next.reachable],
+    red: unreachablePlayKeys(level, bridges, next.reachable),
+    origin,
+  };
+}
+
 /**
  * PLAY SESSION — BRIDGES EDIT FREELY; CHECK RUNS simulateLevel TO CONFIRM.
  */
-export function useLevelGame(level: Level): UseLevelGameResult {
+export function useLevelGame(
+  level: Level,
+  options?: { holdForSubmit?: boolean },
+): UseLevelGameResult {
   const [bridges, setBridges] = useState<Set<string>>(emptyBridges);
   const bridgesRef = useRef(bridges);
   bridgesRef.current = bridges;
   const [phase, setPhase] = useState<GamePhase>("editing");
   const [result, setResult] = useState<SimulationResult | null>(null);
-  const [miss, setMiss] = useState<{ id: number; keys: string[] } | null>(null);
-  const missSerial = useRef(0);
+  const [reach, setReach] = useState<UseLevelGameResult["reach"]>(null);
+  const reachSerial = useRef(0);
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
+  const holdForSubmit = options?.holdForSubmit ?? false;
 
   const bridgeCost = useMemo(
     () => simulateLevel(level, bridges).bridgeCost,
@@ -95,7 +125,7 @@ export function useLevelGame(level: Level): UseLevelGameResult {
       });
       setPhase("editing");
       setResult(null);
-      setMiss(null);
+      setReach(null);
     },
     [level],
   );
@@ -104,21 +134,27 @@ export function useLevelGame(level: Level): UseLevelGameResult {
     setBridges(emptyBridges());
     setPhase("editing");
     setResult(null);
-    setMiss(null);
+    setReach(null);
   }, []);
 
   const checkSolution = useCallback(() => {
+    if (phaseRef.current === "success") {
+      return;
+    }
     const next = simulateLevel(level, bridges);
     setResult(next);
+    reachSerial.current += 1;
+    setReach(
+      boardReach(
+        level,
+        bridges,
+        reachSerial.current,
+        level.start ?? level.mission.x,
+      ),
+    );
     if (next.connected) {
-      setMiss(null);
-      setPhase("success");
+      setPhase(holdForSubmit ? "valid" : "success");
     } else {
-      missSerial.current += 1;
-      setMiss({
-        id: missSerial.current,
-        keys: unreachablePlayKeys(level, bridges, next.reachable),
-      });
       setPhase("disconnected");
     }
     console.log("[journeyman:play] check solution", {
@@ -127,7 +163,15 @@ export function useLevelGame(level: Level): UseLevelGameResult {
       bridgeCost: next.bridgeCost,
       bridgeCount: next.bridgeCount,
     });
-  }, [level, bridges]);
+  }, [level, bridges, holdForSubmit]);
+
+  const submitSolution = useCallback(() => {
+    if (phaseRef.current !== "valid") {
+      return;
+    }
+    setPhase("success");
+    console.log("[journeyman:play] submit", { levelId: level.id });
+  }, [level.id]);
 
   return {
     bridges,
@@ -135,9 +179,10 @@ export function useLevelGame(level: Level): UseLevelGameResult {
     result,
     pathKeys,
     bridgeCost,
-    miss,
+    reach,
     toggleBridge,
     clearBridges,
     checkSolution,
+    submitSolution,
   };
 }

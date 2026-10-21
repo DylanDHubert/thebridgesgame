@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { EditorPalette, type EditorTool } from "@/components/create/EditorPalette";
@@ -7,11 +8,11 @@ import { BoardColumn } from "@/components/game/BoardColumn";
 import { GameBoard } from "@/components/game/GameBoard";
 import type { DraftRoute } from "@/components/game/RouteCanvasOverlay";
 import { HairlineButton, HairlineRow } from "@/components/ui/hairline";
-import { saveLevelAction } from "@/app/actions/saveLevel";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { perfectBridgeCost } from "@/lib/game/perfectScore";
+import { savePlayerLevel } from "@/lib/supabase/scores";
 import { homeMapFromLevel } from "@/lib/game/homeMap";
-import { loadingLabels } from "@/lib/game/loadingRing";
 import { tutorialLabels } from "@/lib/game/tutorialMap";
-import { serializeLevel } from "@/lib/game/level/serialize";
 import type { Level } from "@/lib/game/level/types";
 import {
   objectDefinition,
@@ -32,24 +33,14 @@ type DraftPuzzleViewProps = {
   homeMap?: boolean;
   /** WHEN TRUE — EDITING THE LESSON (BOAR + FLOWERS 1 2 3) */
   tutorialMap?: boolean;
-  /** WHEN TRUE — EDITING THE LOADING SQUARE (BOAR + THE TRACK HE RUNS) */
-  loadingMap?: boolean;
 };
 
-function toolHint(
-  tool: EditorTool,
-  homeMap: boolean,
-  tutorialMap: boolean,
-  loadingMap: boolean,
-): string {
+function toolHint(tool: EditorTool, homeMap: boolean, tutorialMap: boolean): string {
   if (homeMap && !tool) {
-    return "Drag HOME / PLAY / CREATE onto land. Select a tool to paint.";
+    return "Drag HOME / PLAY / CREATE / DAILY onto land. Select a tool to paint.";
   }
   if (tutorialMap && !tool) {
     return "Drag the boar and the flowers onto land. Select a tool to paint.";
-  }
-  if (loadingMap && !tool) {
-    return "Drag the boar onto land. He runs the edge. Select a tool to paint.";
   }
   if (!tool) {
     return "Select a tool to start editing.";
@@ -77,7 +68,6 @@ export function DraftPuzzleView({
   level: initialLevel,
   homeMap = false,
   tutorialMap = false,
-  loadingMap = false,
 }: DraftPuzzleViewProps) {
   const [level, setLevel] = useState<Level>(initialLevel);
   const [tool, setTool] = useState<EditorTool>(null);
@@ -85,6 +75,8 @@ export function DraftPuzzleView({
   const [name, setName] = useState(() => initialLevel.name);
   const [status, setStatus] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const auth = useAuth();
+  const router = useRouter();
 
   const emptyBridges = useMemo(() => new Set<string>(), []);
   const emptyPath = useMemo(() => new Set<string>(), []);
@@ -96,11 +88,6 @@ export function DraftPuzzleView({
     () => (tutorialMap ? tutorialLabels(level) : undefined),
     [tutorialMap, level],
   );
-  const squareLabels = useMemo(
-    () => (loadingMap ? loadingLabels(level) : undefined),
-    [loadingMap, level],
-  );
-
   // SELECTING A ROUTE TOOL STARTS/KEEPS A DRAFT ROUTE; OTHER TOOLS CLEAR IT
   const handleSelectTool = (next: EditorTool) => {
     setTool(next);
@@ -195,7 +182,12 @@ export function DraftPuzzleView({
   const handleHomeLabelMove = (id: string, row: number, col: number) => {
     const kind = terrainKindAt(level, row, col);
     if (!kind || !isLandKind(kind)) {
-      setStatus("Drop HOME / PLAY / CREATE on land.");
+      setStatus("Drop HOME / PLAY / CREATE / DAILY on land.");
+      return;
+    }
+    if (id === "daily") {
+      setStatus(null);
+      setLevel((prev) => ({ ...prev, daily: { row, col } }));
       return;
     }
     const missionKey =
@@ -211,19 +203,6 @@ export function DraftPuzzleView({
         [missionKey]: { row, col },
       } satisfies Mission,
     }));
-  };
-
-  const handleLoadingLabelMove = (id: string, row: number, col: number) => {
-    if (id !== "boar") {
-      return;
-    }
-    const kind = terrainKindAt(level, row, col);
-    if (!kind || !isLandKind(kind)) {
-      setStatus("Drop the boar on land.");
-      return;
-    }
-    setStatus(null);
-    setLevel((prev) => ({ ...prev, start: { row, col } }));
   };
 
   const handleTutorialLabelMove = (id: string, row: number, col: number) => {
@@ -317,18 +296,26 @@ export function DraftPuzzleView({
     const toSave: Level = {
       ...level,
       // HOME AND THE TUTORIAL KEEP THEIR IDS
-      id: homeMap ? "home" : tutorialMap ? "how" : loadingMap ? "loading" : level.id,
+      id: homeMap ? "home" : tutorialMap ? "how" : level.id,
       name: homeMap
         ? "The Bridges Game"
         : tutorialMap
           ? "A small lunch"
-          : loadingMap
-            ? "The square"
-            : name.trim() || level.id,
+          : name.trim() || level.id,
     };
     try {
-      const result = await saveLevelAction(serializeLevel(toSave));
-      setStatus(result.ok ? `Saved to ${result.path}` : `Save failed: ${result.error}`);
+      const par = homeMap || tutorialMap ? null : perfectBridgeCost(toSave);
+      const result = await savePlayerLevel(
+        toSave,
+        auth.userId,
+        auth.accessToken,
+        par,
+        homeMap ? "home" : tutorialMap ? "how" : "player",
+      );
+      setStatus(result.ok ? "Saved" : `Save failed: ${result.error ?? "unknown"}`);
+      if (result.ok) {
+        router.refresh();
+      }
     } catch (error) {
       setStatus(`Save failed: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
@@ -350,19 +337,16 @@ export function DraftPuzzleView({
             draftRoute={draftRoute}
             sizing="contain"
             bleed
-            showMission={!homeMap && !loadingMap}
-            showBoar={loadingMap}
-            boarClick={!tutorialMap && !loadingMap}
-            mapLabels={homeLabels ?? lessonLabels ?? squareLabels}
-            mapLabelsDraggable={(homeMap || tutorialMap || loadingMap) && tool === null}
+            showMission={!homeMap}
+            boarClick={!tutorialMap}
+            mapLabels={homeLabels ?? lessonLabels}
+            mapLabelsDraggable={(homeMap || tutorialMap) && tool === null}
             onMapLabelMove={
               homeMap
                 ? handleHomeLabelMove
                 : tutorialMap
                   ? handleTutorialLabelMove
-                  : loadingMap
-                    ? handleLoadingLabelMove
-                    : undefined
+                  : undefined
             }
           />
         }
@@ -371,11 +355,11 @@ export function DraftPuzzleView({
           <div className="flex min-w-0 flex-wrap items-center gap-3">
             <EditorPalette tool={tool} onSelect={handleSelectTool} />
             <p className="text-[10px] uppercase tracking-[0.14em]">
-              {status ?? toolHint(tool, homeMap, tutorialMap, loadingMap)}
+              {status ?? toolHint(tool, homeMap, tutorialMap)}
             </p>
           </div>
           <HairlineRow className="justify-end">
-            {homeMap || tutorialMap || loadingMap ? null : (
+            {homeMap || tutorialMap ? null : (
               <input
                 type="text"
                 value={name}
@@ -390,11 +374,9 @@ export function DraftPuzzleView({
                 ? "Saving…"
                 : homeMap
                   ? "Save home map"
-                  : tutorialMap
-                    ? "Save tutorial"
-                    : loadingMap
-                      ? "Save loading"
-                      : "Save level"}
+                : tutorialMap
+                  ? "Save tutorial"
+                  : "Save level"}
             </HairlineButton>
           </HairlineRow>
         </div>

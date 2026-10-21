@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Press_Start_2P } from "next/font/google";
 
+import { AuthGate } from "@/components/auth/AuthGate";
+import { AuthProvider } from "@/components/auth/AuthProvider";
 import { BoarPassage } from "@/components/loading/BoarPassage";
 import { VisitGate } from "@/components/loading/VisitGate";
 import { SoundBed } from "@/components/sound/SoundBed";
@@ -49,9 +51,13 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${pixelFont.variable} h-full`}>
       <body className={`${pixelFont.className} relative flex h-dvh flex-col overflow-hidden bg-white text-black`}>
-        <SoundBed />
-        <BoarPassage>{children}</BoarPassage>
-        <VisitGate />
+        <AuthProvider>
+          <SoundBed />
+          <BoarPassage>
+            <AuthGate>{children}</AuthGate>
+          </BoarPassage>
+          <VisitGate />
+        </AuthProvider>
       </body>
     </html>
   );

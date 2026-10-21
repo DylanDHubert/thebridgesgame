@@ -3,8 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { useAuth } from "@/components/auth/AuthProvider";
 import { MapPreview } from "@/components/game/MapPreview";
 import { HairlineButton, HairlineRow } from "@/components/ui/hairline";
+import { perfectBridgeCost } from "@/lib/game/perfectScore";
+import { savePlayerLevel } from "@/lib/supabase/scores";
 import { randomArchipelagoName } from "@/lib/game/archipelagoNames";
 import {
   CREATE_FIXED_GRID,
@@ -77,8 +80,11 @@ function randomCreateSeed(): string {
 
 export function CreateSettingsForm() {
   const router = useRouter();
+  const auth = useAuth();
   const [draft, setDraft] = useState<CreateGenerationConfig>(DEFAULT_CREATE_CONFIG);
   const [seed, setSeed] = useState("");
+  const [note, setNote] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setDraft(loadCreateConfig());
@@ -113,6 +119,19 @@ export function CreateSettingsForm() {
     setDraft(DEFAULT_CREATE_CONFIG);
     setSeed(randomCreateSeed());
   }, []);
+
+  const handleSave = useCallback(async () => {
+    const normalized = normalizeCreateConfig(draft);
+    const nextSeed = seed.trim() || randomCreateSeed();
+    const level = generateLevel({ seed: nextSeed, config: normalized });
+    setSaving(true);
+    setNote(null);
+    const par = perfectBridgeCost(level);
+    const result = await savePlayerLevel(level, auth.userId, auth.accessToken, par);
+    setNote(result.ok ? `Saved ${level.name}` : (result.error ?? "Save failed"));
+    setSaving(false);
+    console.log("[journeyman:create] direct save", { levelId: level.id, ok: result.ok });
+  }, [auth.accessToken, auth.userId, draft, seed]);
 
   const previewSeed = useDebouncedValue(seed.trim(), PREVIEW_DELAY_MS);
   const previewDraft = useDebouncedValue(draft, PREVIEW_DELAY_MS);
@@ -214,12 +233,18 @@ export function CreateSettingsForm() {
       <div className="shrink-0 border-t border-black px-4 py-4 sm:px-5">
         <HairlineRow>
           <HairlineButton type="button" onClick={handleGenerate}>
-            Generate archipelago
+            Edit
+          </HairlineButton>
+          <HairlineButton type="button" onClick={handleSave} disabled={saving}>
+            {saving ? "Saving…" : "Save"}
           </HairlineButton>
           <HairlineButton type="button" onClick={handleReset}>
             Reset
           </HairlineButton>
         </HairlineRow>
+        {note ? (
+          <p className="pt-3 text-center text-[10px] uppercase tracking-[0.14em]">{note}</p>
+        ) : null}
       </div>
       </div>
       <div className="min-h-0 min-w-0 flex-1" role="region" aria-label="Map preview">

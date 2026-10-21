@@ -40,6 +40,8 @@ export type Level = {
   mission: Mission;
   /** BOAR'S ISLAND. ABSENT ON THE HOME MAP, WHICH REUSES MISSION AS LABELS. */
   start?: CellCoord;
+  /** DAILY ISLAND ON THE HOME MAP. */
+  daily?: CellCoord;
   /** U/V BOUNDS OF THE ISO RECTANGLE IN STORED ROW/COL. OUTER TWO LAYERS ARE PADDING. */
   iso: IsoSpan;
 };
@@ -60,6 +62,8 @@ export type LevelFile = {
   };
   /** BOAR START. OMITTED ON HOME AND OLDER FILES. */
   start?: [number, number];
+  /** DAILY ISLAND ORIGIN. HOME MAP ONLY. */
+  daily?: [number, number];
   objects: Array<{
     defId: string;
     row: number;

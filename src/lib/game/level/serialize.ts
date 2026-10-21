@@ -60,6 +60,7 @@ export function serializeLevel(level: Level, author?: string): LevelFile {
       z: coordPair(level.mission.z),
     },
     ...(level.start ? { start: coordPair(level.start) } : {}),
+    ...(level.daily ? { daily: coordPair(level.daily) } : {}),
     objects: level.objects.map((object) => ({
       defId: object.defId,
       row: object.at.row,
@@ -255,6 +256,9 @@ export function deserializeLevel(file: LevelFile): Level {
   const start = file.start
     ? { row: file.start[0], col: file.start[1] }
     : undefined;
+  const daily = file.daily
+    ? { row: file.daily[0], col: file.daily[1] }
+    : undefined;
 
   const decoded = {
     id: file.id,
@@ -267,6 +271,7 @@ export function deserializeLevel(file: LevelFile): Level {
     routes: [],
     mission,
     ...(start ? { start } : {}),
+    ...(daily ? { daily } : {}),
   };
 
   if (isIsoSpan(file.iso)) {

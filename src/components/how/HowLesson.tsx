@@ -25,12 +25,13 @@ export function HowLesson({ level }: HowLessonProps) {
     phase,
     result,
     pathKeys,
-    miss,
+    reach,
     toggleBridge,
     clearBridges,
     checkSolution,
   } = useLevelGame(level);
   const [met, setMet] = useState(false);
+  const [boarCue, setBoarCue] = useState(0);
   const success = phase === "success";
   const step = tutorialCue(level, bridges, met, phase);
   const hintCells = step.cells.join("|");
@@ -41,7 +42,7 @@ export function HowLesson({ level }: HowLessonProps) {
 
   return (
     <main className="flex h-dvh w-full flex-col overflow-hidden">
-      <HairlineHeader nav="how" />
+      <HairlineHeader nav="tutorial" />
       <BoardColumn
         board={
           <GameBoard
@@ -54,10 +55,10 @@ export function HowLesson({ level }: HowLessonProps) {
             bleed
             onToggleBridge={toggleBridge}
             onBoarClick={() => setMet(true)}
+            boarCue={boarCue}
             boarLine={step.line}
             hintKeys={hintKeys}
-            missId={miss?.id ?? 0}
-            missKeys={miss?.keys}
+            reach={reach}
           />
         }
         bar={
@@ -67,7 +68,10 @@ export function HowLesson({ level }: HowLessonProps) {
                 <HairlineLink href="/play">Bigger lunch</HairlineLink>
               ) : (
                 <HairlineButton
-                  onClick={checkSolution}
+                  onClick={() => {
+                    setBoarCue((cue) => cue + 1);
+                    checkSolution();
+                  }}
                   disabled={!step.allowCheck}
                   style={step.allowCheck ? { background: "#fbbf24" } : undefined}
                 >

@@ -8,6 +8,7 @@ import { useBoarPassage } from "@/components/loading/BoarPassage";
 import type { MapLabel } from "@/components/game/MapLabelOverlay";
 import { VolumeControls } from "@/components/sound/VolumeControls";
 import { HairlineHeader } from "@/components/ui/hairline";
+import { boardReach, type BoardReach } from "@/hooks/useLevelGame";
 import { cellKey } from "@/lib/game/coords";
 import {
   homeMapFromLevel,
@@ -18,7 +19,6 @@ import type { Level } from "@/lib/game/level/types";
 import { terrainKindAt } from "@/lib/game/rules";
 import { canPlaceBridgeAt, shortestPath } from "@/lib/game/simulateLevel";
 import type { CellCoord } from "@/lib/game/types";
-import { CREATE_OPEN } from "@/lib/devMode";
 import { boarTravelMs } from "@/lib/rendering/boar";
 import { playBridgeToggle } from "@/lib/sound/bed";
 
@@ -34,17 +34,22 @@ function destinationHref(destination: HomeDestination): string {
   if (destination === "play") {
     return "/play";
   }
+  if (destination === "daily") {
+    return "/play?daily=1";
+  }
   if (destination === "create") {
     return "/create";
   }
-  return "/how";
+  return "/tutorial";
 }
 
-/** TITLE MAP — BOAR RUNS TO PLAY, CREATE, OR HOW BEFORE THE PAGE OPENS */
+/** TITLE MAP — BOAR RUNS TO PLAY, CREATE, OR TUTORIAL BEFORE THE PAGE OPENS */
 export function HomeScreen({ level }: HomeScreenProps) {
   const depart = useBoarPassage();
   const map = useMemo(() => homeMapFromLevel(level), [level]);
   const [bridges, setBridges] = useState<Set<string>>(emptyBridges);
+  const [reach, setReach] = useState<BoardReach | null>(null);
+  const reachId = useRef(0);
   const [runPath, setRunPath] = useState<CellCoord[]>([]);
   const emptyPath = useMemo(() => new Set<string>(), []);
   const navigatedRef = useRef(false);
@@ -53,17 +58,11 @@ export function HomeScreen({ level }: HomeScreenProps) {
     [map.level, map.homeOrigin],
   );
   const labels = useMemo(() => {
-    const shown: MapLabel[] = map.labels
-      .filter((label) => label.id !== "home")
-      .map((label) =>
-        label.id === "create" && !CREATE_OPEN
-          ? { ...label, label: "COMING SOON", color: "#ef4444" }
-          : label,
-      );
+    const shown: MapLabel[] = map.labels.filter((label) => label.id !== "home");
     if (map.howAt) {
       shown.push({
         id: "how",
-        label: "HOW",
+        label: "TUTORIAL",
         at: map.howAt,
         color: "#fbbf24",
       });
@@ -77,15 +76,22 @@ export function HomeScreen({ level }: HomeScreenProps) {
     }
     const key = cellKey(row, col);
     playBridgeToggle(terrainKindAt(map.level, row, col), bridges.has(key));
-    setBridges((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      return next;
-    });
+    const next = new Set(bridges);
+    if (next.has(key)) {
+      next.delete(key);
+    } else {
+      next.add(key);
+    }
+    setBridges(next);
+    reachId.current += 1;
+    setReach(
+      boardReach(
+        map.level,
+        next,
+        reachId.current,
+        map.homeOrigin ?? map.level.mission.x,
+      ),
+    );
   };
 
   useEffect(() => {
@@ -98,18 +104,20 @@ export function HomeScreen({ level }: HomeScreenProps) {
       map.homeOrigin,
       map.playCells,
       map.createCells,
+      map.dailyCells,
       map.howCells,
-      CREATE_OPEN,
     );
     if (!destination) {
       return;
     }
     const target =
-      destination === "play"
+        destination === "play"
         ? map.level.mission.y
-        : destination === "create"
-          ? map.level.mission.z
-          : map.howAt;
+        : destination === "daily"
+          ? map.level.daily
+          : destination === "create"
+            ? map.level.mission.z
+            : map.howAt;
     const path = target
       ? shortestPath(map.level, bridges, map.homeOrigin, target)
       : [];
@@ -140,6 +148,7 @@ export function HomeScreen({ level }: HomeScreenProps) {
             bleed
             mapLabels={labels}
             onToggleBridge={toggleBridge}
+            reach={reach}
           />
         }
         bar={

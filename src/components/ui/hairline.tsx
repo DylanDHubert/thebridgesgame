@@ -1,5 +1,11 @@
+"use client";
+
 import Link from "next/link";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+
+import { AccountLink } from "@/components/auth/AccountLink";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 const CONTROL =
   "inline-flex items-center justify-center border border-black bg-white px-3 py-1.5 text-[10px] uppercase tracking-[0.16em] text-black transition hover:bg-black hover:text-white disabled:pointer-events-none disabled:opacity-40";
@@ -76,7 +82,8 @@ export function HairlineRow({
 const NAV = [
   { id: "home", href: "/", label: "Home" },
   { id: "play", href: "/play", label: "Play" },
-  { id: "how", href: "/how", label: "How" },
+  { id: "calendar", href: "/play/calendar", label: "Calendar" },
+  { id: "tutorial", href: "/tutorial", label: "Tutorial" },
   { id: "create", href: "/create", label: "Create" },
 ] as const;
 
@@ -89,14 +96,31 @@ const NAV_LINK = [
   "aria-[current=page]:hover:bg-[#fbbf24] aria-[current=page]:hover:text-black",
 ].join(" ");
 
-/** THIN BAR — GAME NAME ON THE LEFT, SECTION LINKS ON THE RIGHT */
+/** THIN BAR — GAME NAME ON THE LEFT, MENU ON THE RIGHT */
 export function HairlineHeader({
   nav,
 }: {
   title?: string;
   subtitle?: string;
-  nav?: "home" | "play" | "how" | "create";
+  nav?: "home" | "play" | "calendar" | "tutorial" | "create";
 }) {
+  const { userId } = useAuth();
+  const [open, setOpen] = useState(false);
+  const close = () => setOpen(false);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   return (
     <header className="flex shrink-0 items-center justify-between gap-4 border-b border-black px-4 py-3 sm:px-6">
       <h1
@@ -108,18 +132,50 @@ export function HairlineHeader({
       >
         The Bridges Game
       </h1>
-      <nav className="flex shrink-0 items-center gap-2">
-        {NAV.map((item) => (
-          <Link
-            key={item.id}
-            href={item.href}
-            aria-current={nav === item.id ? "page" : undefined}
-            className={NAV_LINK}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
+      {userId ? (
+        <button
+          type="button"
+          className={[NAV_LINK, open ? "bg-black text-white" : ""].filter(Boolean).join(" ")}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          onClick={() => setOpen(true)}
+        >
+          Menu
+        </button>
+      ) : null}
+      {open && userId
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[80] flex items-center justify-center bg-white/80 px-4"
+              onClick={close}
+            >
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Menu"
+                className="flex w-full max-w-[22rem] flex-col gap-2 border border-black bg-white p-4"
+                onClick={(event) => event.stopPropagation()}
+              >
+                {NAV.map((item) => (
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    aria-current={nav === item.id ? "page" : undefined}
+                    className={`${NAV_LINK} w-full`}
+                    onClick={close}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+                <AccountLink onDone={close} />
+                <button type="button" className={`${NAV_LINK} w-full`} onClick={close}>
+                  Close
+                </button>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </header>
   );
 }

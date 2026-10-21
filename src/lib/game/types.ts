@@ -26,4 +26,4 @@ export type SimulationResult = {
   reachable: Set<string>;
 };
 
-export type GamePhase = "editing" | "success" | "disconnected";
+export type GamePhase = "editing" | "valid" | "success" | "disconnected";

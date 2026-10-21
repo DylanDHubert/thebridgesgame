@@ -1,57 +1,48 @@
 import { redirect } from "next/navigation";
 
-import { ComingSoon } from "@/components/create/ComingSoon";
 import { DraftPuzzleView } from "@/components/create/DraftPuzzleView";
 import { HairlineHeader } from "@/components/ui/hairline";
-import { CREATE_OPEN } from "@/lib/devMode";
+import { DEV_EDITOR } from "@/lib/devMode";
 import {
   createConfigFromSearchParams,
   DEFAULT_CREATE_CONFIG,
   normalizeCreateConfig,
 } from "@/lib/game/createConfig";
 import { HOME_LEVEL_ID } from "@/lib/game/homeMap";
-import { LOADING_LEVEL_ID } from "@/lib/game/loadingRing";
 import { HOW_LEVEL_ID } from "@/lib/game/tutorialMap";
 import { generateLevel } from "@/lib/game/level/generateLevel";
-import { loadSavedLevel } from "@/lib/game/level/listLevels";
+import { loadRemoteLevel } from "@/lib/supabase/scores";
 
 type CreateViewPageProps = {
   searchParams: Promise<Record<string, string | undefined>>;
 };
 
 export default async function CreateViewPage({ searchParams }: CreateViewPageProps) {
-  if (!CREATE_OPEN) {
-    console.log("[journeyman:create] coming soon");
-    return <ComingSoon />;
-  }
-
   const params = await searchParams;
   const levelId = params.level?.trim();
 
   if (levelId) {
-    const level = await loadSavedLevel(levelId);
-    if (!level) {
+    if (!DEV_EDITOR) {
+      redirect("/create");
+    }
+    const level = await loadRemoteLevel(levelId);
+    if (!level || level.id === "loading") {
       redirect("/create");
     }
     const isHome = level.id === HOME_LEVEL_ID;
     const isTutorial = level.id === HOW_LEVEL_ID;
-    const isLoading = level.id === LOADING_LEVEL_ID;
+    if (!isHome && !isTutorial) {
+      redirect("/create");
+    }
     return (
       <main className="flex h-dvh flex-col overflow-hidden">
         <HairlineHeader
           title="Create"
-          subtitle={
-            isHome ? "Home map" : isTutorial ? "Tutorial" : isLoading ? "Loading" : level.name
-          }
+          subtitle={isHome ? "Home map" : "Tutorial"}
           nav="create"
         />
         <div className="min-h-0 flex-1">
-          <DraftPuzzleView
-            level={level}
-            homeMap={isHome}
-            tutorialMap={isTutorial}
-            loadingMap={isLoading}
-          />
+          <DraftPuzzleView level={level} homeMap={isHome} tutorialMap={isTutorial} />
         </div>
       </main>
     );

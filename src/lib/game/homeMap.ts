@@ -7,10 +7,10 @@ import type { CellCoord } from "@/lib/game/types";
 
 export const HOME_LEVEL_ID = "home";
 
-export type HomeDestination = "play" | "create" | "how";
+export type HomeDestination = "play" | "create" | "how" | "daily";
 
 export type HomeIslandLabel = {
-  id: "home" | "play" | "create";
+  id: "home" | "play" | "create" | "daily";
   label: string;
   at: CellCoord;
   color: string;
@@ -21,6 +21,7 @@ export type HomeMapMeta = {
   homeOrigin: CellCoord;
   playCells: Set<string>;
   createCells: Set<string>;
+  dailyCells: Set<string>;
   /** LAND ABOVE THE HOME ISLAND. NOT STORED ON THE FILE. */
   howCells: Set<string>;
   howAt: CellCoord | null;
@@ -152,12 +153,15 @@ function islandAboveHome(
 /**
  * HOME MAP FROM A LEVEL FILE.
  * Mission convention: X = HOME origin, Y = PLAY island, Z = CREATE island.
- * HOW IS THE ISLAND ABOVE HOME. IT IS NOT A FOURTH SAVED POINT.
+ * DAILY IS level.daily. HOW IS THE ISLAND ABOVE HOME.
  */
 export function homeMapFromLevel(level: Level): HomeMapMeta {
   const homeOrigin = level.mission.x;
   const playCells = floodLandComponent(level, level.mission.y);
   const createCells = floodLandComponent(level, level.mission.z);
+  const dailyCells = level.daily
+    ? floodLandComponent(level, level.daily)
+    : new Set<string>();
 
   if (playCells.size === 0) {
     console.error("[journeyman:home] PLAY mission Y is not on land", level.mission.y);
@@ -167,7 +171,7 @@ export function homeMapFromLevel(level: Level): HomeMapMeta {
   }
 
   const homeCells = floodLandComponent(level, homeOrigin);
-  const reserved = new Set<string>([...playCells, ...createCells]);
+  const reserved = new Set<string>([...playCells, ...createCells, ...dailyCells]);
   const howIsland = islandAboveHome(level, homeCells, reserved);
   const howCells = howIsland ?? new Set<string>();
   const howAt = howIsland ? labelCell(howIsland) : null;
@@ -193,24 +197,42 @@ export function homeMapFromLevel(level: Level): HomeMapMeta {
       color: yellow,
     },
   ];
+  if (level.daily && dailyCells.size > 0) {
+    labels.push({
+      id: "daily",
+      label: "DAILY",
+      at: level.daily,
+      color: yellow,
+    });
+  }
 
-  return { level, homeOrigin, playCells, createCells, howCells, howAt, labels };
+  return {
+    level,
+    homeOrigin,
+    playCells,
+    createCells,
+    dailyCells,
+    howCells,
+    howAt,
+    labels,
+  };
 }
 
-/** LIVE: HOME CONNECTED TO PLAY, CREATE, OR THE ISLAND ABOVE */
+/** LIVE: HOME CONNECTED TO PLAY, DAILY, CREATE, OR THE ISLAND ABOVE */
 export function resolveHomeDestination(
   level: Level,
   bridges: Set<string>,
   homeOrigin: CellCoord,
   playCells: Set<string>,
   createCells: Set<string>,
+  dailyCells: Set<string>,
   howCells: Set<string>,
-  createOpen = true,
 ): HomeDestination | null {
   const reachable = floodReachable(level, bridges, homeOrigin);
 
   let playHit = false;
   let createHit = false;
+  let dailyHit = false;
   let howHit = false;
   for (const key of reachable) {
     if (playCells.has(key)) {
@@ -218,6 +240,9 @@ export function resolveHomeDestination(
     }
     if (createCells.has(key)) {
       createHit = true;
+    }
+    if (dailyCells.has(key)) {
+      dailyHit = true;
     }
     if (howCells.has(key)) {
       howHit = true;
@@ -227,7 +252,10 @@ export function resolveHomeDestination(
   if (playHit) {
     return "play";
   }
-  if (createHit && createOpen) {
+  if (dailyHit) {
+    return "daily";
+  }
+  if (createHit) {
     return "create";
   }
   if (howHit) {

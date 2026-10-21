@@ -84,9 +84,17 @@ type GameBoardProps = {
   onBoarClick?: () => void;
   /** STAYS IN HIS BUBBLE. A CLICK FLASHES REACH, IT DOES NOT REPLACE THE LINE. */
   boarLine?: string;
-  /** FAILED CHECK. THESE CELLS FLASH RED. A NEW ID RESTARTS THE FLASH. */
-  missId?: number;
-  missKeys?: readonly string[];
+  /** CHECK FLOOD. GOLD IS IN REACH. RED IS NOT. A NEW ID RESTARTS IT. */
+  reach?: {
+    id: number;
+    gold: readonly string[];
+    red: readonly string[];
+    origin: CellCoord;
+  } | null;
+  /** A CLICK ON THE BOAR RUNS THE CHECK. HE STILL GRUNTS AND TALKS. */
+  pokeChecks?: boolean;
+  /** BUMP TO GRUNT AND TALK. THE CHECK BUTTON USES THIS. */
+  boarCue?: number;
   /** WHEN SET, ONLY THESE CELLS TAKE A BRIDGE CLICK. THEY STAY YELLOW. */
   hintKeys?: ReadonlySet<string>;
   /** THE LOADING LAP RUNS EVEN WHEN THE VIEWER ASKED FOR LESS MOTION. */
@@ -178,8 +186,9 @@ export function GameBoard({
   showBoar = false,
   onBoarClick,
   boarLine,
-  missId = 0,
-  missKeys,
+  reach = null,
+  pokeChecks = false,
+  boarCue = 0,
   hintKeys,
   alwaysAnimate = false,
   mapLabelsDraggable = false,
@@ -204,17 +213,31 @@ export function GameBoard({
   const lastThought = useRef(-1);
   const thoughtTimer = useRef(0);
   const flashRef = useRef<ReachFlash | null>(null);
-  const seenMiss = useRef(0);
-  if (missId !== seenMiss.current) {
-    seenMiss.current = missId;
-    if (missId > 0 && missKeys && missKeys.length > 0) {
-      flashRef.current = {
-        keys: new Set(missKeys),
-        beganAt: performance.now(),
-        color: "red",
-        duration: 1100,
-      };
-    }
+  const seenReach = useRef(0);
+  if (reach && reach.id !== seenReach.current) {
+    seenReach.current = reach.id;
+    const reduced =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const cells: ReachFlash["cells"] = [];
+    let maxDist = 0;
+    const push = (keys: readonly string[], red: boolean) => {
+      for (const key of keys) {
+        const [row, col] = key.split(",").map(Number) as [number, number];
+        const dist =
+          Math.abs(row - reach.origin.row) + Math.abs(col - reach.origin.col);
+        maxDist = Math.max(maxDist, dist);
+        cells.push({ key, dist, red });
+      }
+    };
+    push(reach.gold, false);
+    push(reach.red, true);
+    flashRef.current = {
+      beganAt: performance.now(),
+      cells,
+      maxDist,
+      stepMs: reduced ? 0 : 36,
+    };
   }
   const hintRef = useRef<Set<string> | null>(null);
   hintRef.current = hintKeys ? new Set(hintKeys) : null;
@@ -258,18 +281,9 @@ export function GameBoard({
     }
     onToggleBridge?.(row, col);
   };
-  const pokeBoar = () => {
+  const grunt = () => {
     if (!level.start) {
       return;
-    }
-    if (
-      !hintKeys &&
-      !window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
-      flashRef.current = {
-        keys: floodReachable(level, bridges, level.start),
-        beganAt: performance.now(),
-      };
     }
     let index = Math.floor(Math.random() * BOAR_THOUGHTS.length);
     if (BOAR_THOUGHTS.length > 1 && index === lastThought.current) {
@@ -282,9 +296,38 @@ export function GameBoard({
       setThought({ id, text: BOAR_THOUGHTS[index]! });
     }
     playSfx("click");
-    onBoarClick?.();
     window.clearTimeout(thoughtTimer.current);
     thoughtTimer.current = window.setTimeout(() => setThought(null), THOUGHT_MS);
+  };
+  const gruntRef = useRef(grunt);
+  gruntRef.current = grunt;
+  const heardCue = useRef(0);
+  useEffect(() => {
+    if (!boarCue || boarCue === heardCue.current) {
+      return;
+    }
+    heardCue.current = boarCue;
+    gruntRef.current();
+  }, [boarCue]);
+  const pokeBoar = () => {
+    if (!level.start) {
+      return;
+    }
+    if (
+      !pokeChecks &&
+      !hintKeys &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      const keys = floodReachable(level, bridges, level.start);
+      flashRef.current = {
+        beganAt: performance.now(),
+        cells: [...keys].map((key) => ({ key, dist: 0, red: false })),
+        maxDist: 0,
+        stepMs: 0,
+      };
+    }
+    grunt();
+    onBoarClick?.();
   };
 
   useEffect(() => {
@@ -433,7 +476,7 @@ export function GameBoard({
         flashRef={flashRef}
         hintRef={hintRef}
         hintMark={hintKeys ? [...hintKeys].sort().join("|") : ""}
-        flashMark={missId}
+        flashMark={reach?.id ?? 0}
         alwaysAnimate={alwaysAnimate}
       />
       {pickups.map((pickup) => (

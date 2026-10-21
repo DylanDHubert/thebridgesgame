@@ -67,7 +67,12 @@ function SwatchButton({
         selected ? "bg-black text-white" : "bg-white text-black",
       ].join(" ")}
     >
-      <span className="block overflow-hidden bg-white">{children}</span>
+      <span
+        className="block overflow-hidden bg-transparent"
+        style={{ clipPath: "polygon(50% 0, 100% 50%, 50% 100%, 0 50%)" }}
+      >
+        {children}
+      </span>
       {label}
     </button>
   );

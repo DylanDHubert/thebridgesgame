@@ -68,17 +68,27 @@ type SpriteTerrainCanvasProps = {
   alwaysAnimate?: boolean;
 };
 
-/** SAME WASH AS THE OLD CELL OVERLAY. HE IS DRAWN ABOVE IT. */
-export type ReachFlash = {
-  keys: Set<string>;
-  beganAt: number;
-  /** YELLOW IS A REACH PEEK. RED MARKS CELLS HE CANNOT REACH. */
-  color?: "yellow" | "red";
-  duration?: number;
+/** ONE CELL IN THE CHECK FLOOD. DISTANCE IS MANHATTAN FROM THE BOAR. */
+export type ReachCell = {
+  key: string;
+  dist: number;
+  red: boolean;
 };
 
-const FLASH_MS = 320;
-const FLASH_ALPHA = 0.55;
+/** GOLD AND RED SPREAD OUT FROM THE BOAR, THEN FADE TOGETHER. */
+export type ReachFlash = {
+  beganAt: number;
+  cells: ReachCell[];
+  maxDist: number;
+  stepMs: number;
+};
+
+const FLASH_ALPHA = 0.62;
+const FLASH_TAIL_MS = 700;
+
+function flashLifetime(flash: ReachFlash): number {
+  return flash.maxDist * flash.stepMs + FLASH_TAIL_MS;
+}
 
 let washCanvas: HTMLCanvasElement | null = null;
 
@@ -97,17 +107,9 @@ function paintReachFlash(
   scale: number,
 ) {
   const hinting = Boolean(hints && hints.size > 0);
-  let flashAlpha = 0;
-  const flashMs = flash?.duration ?? FLASH_MS;
-  if (flash) {
-    const age = performance.now() - flash.beganAt;
-    if (age >= 0 && age < flashMs) {
-      const t = age / flashMs;
-      const eased = 1 - (1 - t) * (1 - t);
-      flashAlpha = FLASH_ALPHA * (1 - eased);
-    }
-  }
-  if (!hinting && flashAlpha <= 0.01) {
+  const age = flash ? performance.now() - flash.beganAt : 0;
+  const alive = Boolean(flash && age >= 0 && age < flashLifetime(flash));
+  if (!hinting && !alive) {
     return;
   }
 
@@ -146,8 +148,28 @@ function paintReachFlash(
   if (hints && hinting) {
     fillDiamonds(hints, 0.5);
   }
-  if (flash && flashAlpha > 0.01) {
-    fillDiamonds(flash.keys, flashAlpha, flash.color === "red");
+  if (flash && alive) {
+    const fadeStart = flash.maxDist * flash.stepMs + 280;
+    const fade =
+      age < fadeStart ? 1 : Math.max(0, 1 - (age - fadeStart) / 420);
+    const gold = new Set<string>();
+    const red = new Set<string>();
+    for (const cell of flash.cells) {
+      if (age < cell.dist * flash.stepMs) {
+        continue;
+      }
+      if (cell.red) {
+        red.add(cell.key);
+      } else {
+        gold.add(cell.key);
+      }
+    }
+    if (gold.size > 0) {
+      fillDiamonds(gold, FLASH_ALPHA * fade);
+    }
+    if (red.size > 0) {
+      fillDiamonds(red, FLASH_ALPHA * fade, true);
+    }
   }
   if (place && facing && boarImage) {
     const foot = BOAR_FOOT[facing];
@@ -461,7 +483,7 @@ export function SpriteTerrainCanvas({
         frame = requestAnimationFrame(tick);
         const flash = flashRef?.current;
         const flashing = Boolean(
-          flash && now - flash.beganAt < (flash.duration ?? FLASH_MS),
+          flash && now - flash.beganAt < flashLifetime(flash),
         );
         if (document.hidden || (!flashing && now - last < 80)) {
           return;
