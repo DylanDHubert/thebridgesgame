@@ -1,8 +1,8 @@
 {
   "version": 3,
-  "id": "balmy-reef",
-  "name": "Balmy Reef",
-  "seed": "Balmy Reef",
+  "id": "papaya-reef",
+  "name": "Papaya Reef",
+  "seed": "Papaya Reef",
   "grid": {
     "rows": 71,
     "cols": 71
