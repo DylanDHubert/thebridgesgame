@@ -49,6 +49,7 @@ export function PlaySession({ level }: PlaySessionProps) {
 
   const success = phase === "success";
   const confirmedCost = result?.bridgeCost ?? bridgeCost;
+  const runningHome = success && !scoreOpen;
 
   useEffect(() => {
     if (!success || !result?.connected || !level.start) {
@@ -96,10 +97,10 @@ export function PlaySession({ level }: PlaySessionProps) {
             bridges={bridges}
             pathKeys={pathKeys}
             runPath={success ? (result?.path ?? []) : []}
-            interactive
+            interactive={!runningHome}
             sizing="contain"
             bleed
-            onToggleBridge={toggleBridge}
+            onToggleBridge={runningHome ? undefined : toggleBridge}
             missId={miss?.id ?? 0}
             missKeys={miss?.keys}
           />
@@ -110,14 +111,26 @@ export function PlaySession({ level }: PlaySessionProps) {
               {statusLabel(phase, confirmedCost)}
             </p>
             <HairlineRow className="justify-end">
-              <HairlineButton onClick={checkSolution}>Check</HairlineButton>
-              <HairlineButton onClick={clearBridges}>Clear</HairlineButton>
+              <HairlineButton onClick={checkSolution} disabled={runningHome}>
+                Check
+              </HairlineButton>
+              <HairlineButton onClick={clearBridges} disabled={runningHome}>
+                Clear
+              </HairlineButton>
             </HairlineRow>
           </div>
         }
       />
       {scoreOpen ? (
-        <ScoreHome score={confirmedCost} best={priorBest} optimal={optimal} />
+        <ScoreHome
+          score={confirmedCost}
+          best={priorBest}
+          optimal={optimal}
+          onRetry={() => {
+            clearBridges();
+            setScoreOpen(false);
+          }}
+        />
       ) : null}
     </div>
   );
