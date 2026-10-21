@@ -62,6 +62,8 @@ type SpriteTerrainCanvasProps = {
   hintRef?: RefObject<Set<string> | null>;
   /** CHANGES WHEN THE HINT CELLS CHANGE, SO THE WASH REPAINTS. */
   hintMark?: string;
+  /** BUMPED WHEN A RED MISS FLASH SHOULD PAINT, INCLUDING REDUCED MOTION. */
+  flashMark?: number;
   /** KEEP THE RUN GOING. THE LOADING LAP DOES NOT HONOR REDUCED MOTION. */
   alwaysAnimate?: boolean;
 };
@@ -70,6 +72,9 @@ type SpriteTerrainCanvasProps = {
 export type ReachFlash = {
   keys: Set<string>;
   beganAt: number;
+  /** YELLOW IS A REACH PEEK. RED MARKS CELLS HE CANNOT REACH. */
+  color?: "yellow" | "red";
+  duration?: number;
 };
 
 const FLASH_MS = 320;
@@ -93,10 +98,11 @@ function paintReachFlash(
 ) {
   const hinting = Boolean(hints && hints.size > 0);
   let flashAlpha = 0;
+  const flashMs = flash?.duration ?? FLASH_MS;
   if (flash) {
     const age = performance.now() - flash.beganAt;
-    if (age >= 0 && age < FLASH_MS) {
-      const t = age / FLASH_MS;
+    if (age >= 0 && age < flashMs) {
+      const t = age / flashMs;
       const eased = 1 - (1 - t) * (1 - t);
       flashAlpha = FLASH_ALPHA * (1 - eased);
     }
@@ -121,8 +127,10 @@ function paintReachFlash(
   wash.setTransform(1, 0, 0, 1, 0, 0);
   wash.clearRect(0, 0, width, height);
   wash.globalCompositeOperation = "source-over";
-  const fillDiamonds = (keys: Set<string>, alpha: number) => {
-    wash.fillStyle = `rgba(251, 191, 36, ${alpha})`;
+  const fillDiamonds = (keys: Set<string>, alpha: number, red = false) => {
+    wash.fillStyle = red
+      ? `rgba(239, 68, 68, ${alpha})`
+      : `rgba(251, 191, 36, ${alpha})`;
     for (const key of keys) {
       const [row, col] = key.split(",").map(Number) as [number, number];
       const top = isoCellTop(row, col, metrics);
@@ -139,7 +147,7 @@ function paintReachFlash(
     fillDiamonds(hints, 0.5);
   }
   if (flash && flashAlpha > 0.01) {
-    fillDiamonds(flash.keys, flashAlpha);
+    fillDiamonds(flash.keys, flashAlpha, flash.color === "red");
   }
   if (place && facing && boarImage) {
     const foot = BOAR_FOOT[facing];
@@ -271,6 +279,7 @@ export function SpriteTerrainCanvas({
   flashRef,
   hintRef,
   hintMark = "",
+  flashMark = 0,
   alwaysAnimate = false,
 }: SpriteTerrainCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -451,7 +460,9 @@ export function SpriteTerrainCanvas({
         }
         frame = requestAnimationFrame(tick);
         const flash = flashRef?.current;
-        const flashing = Boolean(flash && now - flash.beganAt < FLASH_MS);
+        const flashing = Boolean(
+          flash && now - flash.beganAt < (flash.duration ?? FLASH_MS),
+        );
         if (document.hidden || (!flashing && now - last < 80)) {
           return;
         }
@@ -466,7 +477,7 @@ export function SpriteTerrainCanvas({
       cancelAnimationFrame(frame);
       setWalker(walkId, false);
     };
-  }, [view, depthIso, metrics, bridges, objectives, whirlpools, boarRef, flashRef, hintRef, hintMark, alwaysAnimate, walkId]);
+  }, [view, depthIso, metrics, bridges, objectives, whirlpools, boarRef, flashRef, hintRef, hintMark, flashMark, alwaysAnimate, walkId]);
 
   return (
     <canvas

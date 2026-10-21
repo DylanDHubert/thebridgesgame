@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 
+import { ComingSoon } from "@/components/create/ComingSoon";
 import { DraftPuzzleView } from "@/components/create/DraftPuzzleView";
 import { HairlineHeader } from "@/components/ui/hairline";
+import { CREATE_OPEN } from "@/lib/devMode";
 import {
   createConfigFromSearchParams,
   DEFAULT_CREATE_CONFIG,
@@ -18,6 +20,11 @@ type CreateViewPageProps = {
 };
 
 export default async function CreateViewPage({ searchParams }: CreateViewPageProps) {
+  if (!CREATE_OPEN) {
+    console.log("[journeyman:create] coming soon");
+    return <ComingSoon />;
+  }
+
   const params = await searchParams;
   const levelId = params.level?.trim();
 

@@ -1,8 +1,12 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { MapPreview } from "@/components/game/MapPreview";
 import { GAME_STAGE_ASPECT } from "@/components/game/GameStage";
 import { HairlineLink } from "@/components/ui/hairline";
+import { readBestScores, readOptimalLevels } from "@/lib/game/bestScore";
 import type { Level } from "@/lib/game/level/types";
 
 type LevelPickerProps = {
@@ -11,6 +15,14 @@ type LevelPickerProps = {
 
 /** LEVEL SELECT — HAIRLINE CARDS */
 export function LevelPicker({ levels }: LevelPickerProps) {
+  const [bests, setBests] = useState<Record<string, number>>({});
+  const [optimal, setOptimal] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setBests(readBestScores());
+    setOptimal(readOptimalLevels());
+  }, [levels]);
+
   if (levels.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 px-4 text-center">
@@ -40,8 +52,12 @@ export function LevelPicker({ levels }: LevelPickerProps) {
               <h2 className="truncate text-[9px] uppercase tracking-[0.14em]">
                 {level.name}
               </h2>
-              <p className="mt-1 text-[8px] uppercase tracking-[0.16em] opacity-60">
-                {level.rows}×{level.cols}
+              <p
+                className={`mt-1 text-[8px] uppercase tracking-[0.16em]${
+                  optimal.has(level.id) ? " text-[#fbbf24]" : ""
+                }`}
+              >
+                {bests[level.id] != null ? `Best ${bests[level.id]}` : "Best ?"}
               </p>
             </div>
           </Link>

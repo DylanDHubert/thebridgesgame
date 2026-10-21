@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { BoardColumn } from "@/components/game/BoardColumn";
 import { GameBoard } from "@/components/game/GameBoard";
-import { GameStage } from "@/components/game/GameStage";
 import { useBoarPassage } from "@/components/loading/BoarPassage";
 import type { MapLabel } from "@/components/game/MapLabelOverlay";
 import { VolumeControls } from "@/components/sound/VolumeControls";
@@ -18,6 +18,7 @@ import type { Level } from "@/lib/game/level/types";
 import { terrainKindAt } from "@/lib/game/rules";
 import { canPlaceBridgeAt, shortestPath } from "@/lib/game/simulateLevel";
 import type { CellCoord } from "@/lib/game/types";
+import { CREATE_OPEN } from "@/lib/devMode";
 import { boarTravelMs } from "@/lib/rendering/boar";
 import { playBridgeToggle } from "@/lib/sound/bed";
 
@@ -52,7 +53,13 @@ export function HomeScreen({ level }: HomeScreenProps) {
     [map.level, map.homeOrigin],
   );
   const labels = useMemo(() => {
-    const shown: MapLabel[] = map.labels.filter((label) => label.id !== "home");
+    const shown: MapLabel[] = map.labels
+      .filter((label) => label.id !== "home")
+      .map((label) =>
+        label.id === "create" && !CREATE_OPEN
+          ? { ...label, label: "COMING SOON", color: "#ef4444" }
+          : label,
+      );
     if (map.howAt) {
       shown.push({
         id: "how",
@@ -92,6 +99,7 @@ export function HomeScreen({ level }: HomeScreenProps) {
       map.playCells,
       map.createCells,
       map.howCells,
+      CREATE_OPEN,
     );
     if (!destination) {
       return;
@@ -118,33 +126,28 @@ export function HomeScreen({ level }: HomeScreenProps) {
   return (
     <main className="flex h-dvh w-full flex-col overflow-hidden">
       <HairlineHeader title="Home" subtitle="The Bridges Game" nav="home" />
-      <section className="flex min-h-0 flex-1 flex-col gap-3 p-3 sm:p-4">
-        <div className="relative min-h-0 min-w-0 flex-1">
-          <GameStage>
-            <GameBoard
-              level={boardLevel}
-              bridges={bridges}
-              pathKeys={emptyPath}
-              runPath={runPath}
-              showMission={false}
-              showBoar
-              interactive
-              sizing="contain"
-              bleed
-              mapLabels={labels}
-              onToggleBridge={toggleBridge}
-            />
-          </GameStage>
-        </div>
-        <div className="flex w-full shrink-0 flex-col gap-2 border border-black px-3 py-2.5">
-          <p className="py-1.5 text-[10px] uppercase tracking-[0.14em]">
-            Bridge to play, create, or how
-          </p>
-          <div className="flex justify-end">
+      <BoardColumn
+        board={
+          <GameBoard
+            level={boardLevel}
+            bridges={bridges}
+            pathKeys={emptyPath}
+            runPath={runPath}
+            showMission={false}
+            showBoar
+            interactive
+            sizing="contain"
+            bleed
+            mapLabels={labels}
+            onToggleBridge={toggleBridge}
+          />
+        }
+        bar={
+          <div className="flex w-full items-center justify-end border border-black px-3 py-2.5">
             <VolumeControls />
           </div>
-        </div>
-      </section>
+        }
+      />
     </main>
   );
 }

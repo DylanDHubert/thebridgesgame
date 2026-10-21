@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 
 import { EditorPalette, type EditorTool } from "@/components/create/EditorPalette";
+import { BoardColumn } from "@/components/game/BoardColumn";
 import { GameBoard } from "@/components/game/GameBoard";
-import { GameStage } from "@/components/game/GameStage";
 import type { DraftRoute } from "@/components/game/RouteCanvasOverlay";
 import { HairlineButton, HairlineRow } from "@/components/ui/hairline";
 import { saveLevelAction } from "@/app/actions/saveLevel";
@@ -338,38 +338,36 @@ export function DraftPuzzleView({
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
-      <section className="flex min-h-0 flex-1 flex-col gap-3 p-3 sm:p-4">
-        <div className="relative min-h-0 min-w-0 flex-1">
-          <GameStage>
-            <GameBoard
-              level={level}
-              bridges={emptyBridges}
-              pathKeys={emptyPath}
-              interactive={false}
-              editable={tool !== null}
-              onCellClick={handleCellClick}
-              draftRoute={draftRoute}
-              sizing="contain"
-              bleed
-              showMission={!homeMap && !loadingMap}
-              showBoar={loadingMap}
-              boarClick={!tutorialMap && !loadingMap}
-              mapLabels={homeLabels ?? lessonLabels ?? squareLabels}
-              mapLabelsDraggable={(homeMap || tutorialMap || loadingMap) && tool === null}
-              onMapLabelMove={
-                homeMap
-                  ? handleHomeLabelMove
-                  : tutorialMap
-                    ? handleTutorialLabelMove
-                    : loadingMap
-                      ? handleLoadingLabelMove
-                      : undefined
-              }
-            />
-          </GameStage>
-        </div>
-
-        <div className="flex w-full shrink-0 flex-wrap items-center justify-between gap-3 border border-black px-3 py-2.5">
+      <BoardColumn
+        board={
+          <GameBoard
+            level={level}
+            bridges={emptyBridges}
+            pathKeys={emptyPath}
+            interactive={false}
+            editable={tool !== null}
+            onCellClick={handleCellClick}
+            draftRoute={draftRoute}
+            sizing="contain"
+            bleed
+            showMission={!homeMap && !loadingMap}
+            showBoar={loadingMap}
+            boarClick={!tutorialMap && !loadingMap}
+            mapLabels={homeLabels ?? lessonLabels ?? squareLabels}
+            mapLabelsDraggable={(homeMap || tutorialMap || loadingMap) && tool === null}
+            onMapLabelMove={
+              homeMap
+                ? handleHomeLabelMove
+                : tutorialMap
+                  ? handleTutorialLabelMove
+                  : loadingMap
+                    ? handleLoadingLabelMove
+                    : undefined
+            }
+          />
+        }
+        bar={
+        <div className="flex w-full flex-wrap items-center justify-between gap-3 border border-black px-3 py-2.5">
           <div className="flex min-w-0 flex-wrap items-center gap-3">
             <EditorPalette tool={tool} onSelect={handleSelectTool} />
             <p className="text-[10px] uppercase tracking-[0.14em]">
@@ -400,7 +398,8 @@ export function DraftPuzzleView({
             </HairlineButton>
           </HairlineRow>
         </div>
-      </section>
+        }
+      />
     </div>
   );
 }

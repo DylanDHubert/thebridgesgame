@@ -1,7 +1,14 @@
+import { ComingSoon } from "@/components/create/ComingSoon";
 import { CreateSettingsForm } from "@/components/create/CreateSettingsForm";
 import { HairlineHeader, HairlineLink, HairlineRow } from "@/components/ui/hairline";
+import { CREATE_OPEN } from "@/lib/devMode";
 
 export default function CreatePage() {
+  if (!CREATE_OPEN) {
+    console.log("[journeyman:create] coming soon");
+    return <ComingSoon />;
+  }
+
   return (
     <main className="flex h-dvh flex-col overflow-hidden">
       <HairlineHeader title="Create" subtitle="The Bridges Game" nav="create" />

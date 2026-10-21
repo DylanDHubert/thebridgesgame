@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { BoarClick, BOAR_THOUGHTS } from "@/components/game/BoarClick";
+import { BridgeCostPop } from "@/components/game/BridgeCostPop";
 import { BridgeSplash } from "@/components/game/BridgeSplash";
 import { CellView } from "@/components/game/CellView";
 import { MapLabelOverlay, type MapLabel } from "@/components/game/MapLabelOverlay";
@@ -12,6 +14,7 @@ import { WoodFrame } from "@/components/ui/woodPlaque";
 import { cellKey } from "@/lib/game/coords";
 import { bleedRimSpan, isoLatticeCells, type IsoSpan } from "@/lib/game/isoBoard";
 import type { Level } from "@/lib/game/level/types";
+import { bridgeCostAt } from "@/lib/game/rules";
 import { floodReachable } from "@/lib/game/simulateLevel";
 import { latticeWaterDepth } from "@/lib/game/terrain";
 import type { CellCoord } from "@/lib/game/types";
@@ -34,6 +37,13 @@ type BridgePickup = {
   row: number;
   col: number;
   tint?: string;
+};
+
+type CostPop = {
+  id: number;
+  row: number;
+  col: number;
+  cost: number;
 };
 
 type BoarThought = {
@@ -74,6 +84,9 @@ type GameBoardProps = {
   onBoarClick?: () => void;
   /** STAYS IN HIS BUBBLE. A CLICK FLASHES REACH, IT DOES NOT REPLACE THE LINE. */
   boarLine?: string;
+  /** FAILED CHECK. THESE CELLS FLASH RED. A NEW ID RESTARTS THE FLASH. */
+  missId?: number;
+  missKeys?: readonly string[];
   /** WHEN SET, ONLY THESE CELLS TAKE A BRIDGE CLICK. THEY STAY YELLOW. */
   hintKeys?: ReadonlySet<string>;
   /** THE LOADING LAP RUNS EVEN WHEN THE VIEWER ASKED FOR LESS MOTION. */
@@ -165,6 +178,8 @@ export function GameBoard({
   showBoar = false,
   onBoarClick,
   boarLine,
+  missId = 0,
+  missKeys,
   hintKeys,
   alwaysAnimate = false,
   mapLabelsDraggable = false,
@@ -184,13 +199,27 @@ export function GameBoard({
     return base;
   }, [level, showMission]);
   const splashId = useRef(0);
+  const costId = useRef(0);
   const thoughtId = useRef(0);
   const lastThought = useRef(-1);
   const thoughtTimer = useRef(0);
   const flashRef = useRef<ReachFlash | null>(null);
+  const seenMiss = useRef(0);
+  if (missId !== seenMiss.current) {
+    seenMiss.current = missId;
+    if (missId > 0 && missKeys && missKeys.length > 0) {
+      flashRef.current = {
+        keys: new Set(missKeys),
+        beganAt: performance.now(),
+        color: "red",
+        duration: 1100,
+      };
+    }
+  }
   const hintRef = useRef<Set<string> | null>(null);
   hintRef.current = hintKeys ? new Set(hintKeys) : null;
   const [pickups, setPickups] = useState<BridgePickup[]>([]);
+  const [costs, setCosts] = useState<CostPop[]>([]);
   const [thought, setThought] = useState<BoarThought | null>(null);
   const [bubbleRoot, setBubbleRoot] = useState<HTMLDivElement | null>(null);
   const depthAt = useMemo(
@@ -200,7 +229,9 @@ export function GameBoard({
   const warmthAt = useMemo(() => buildMarshWarmth(view.seed), [view.seed]);
 
   const handleCellActivate = (row: number, col: number) => {
-    if (!editable && bridges.has(cellKey(row, col))) {
+    const key = cellKey(row, col);
+    const placed = bridges.has(key);
+    if (!editable && placed) {
       const kind = terrainKindAt(view, row, col);
       const tint =
         kind === "marsh"
@@ -209,6 +240,17 @@ export function GameBoard({
       const id = splashId.current;
       splashId.current += 1;
       setPickups((prev) => [...prev, { id, row, col, tint }]);
+    }
+    if (!editable) {
+      const amount = bridgeCostAt(level, row, col);
+      if (amount > 0) {
+        const id = costId.current;
+        costId.current += 1;
+        setCosts((prev) => [
+          ...prev,
+          { id, row, col, cost: placed ? -amount : amount },
+        ]);
+      }
     }
     if (editable) {
       onCellClick?.(row, col);
@@ -286,6 +328,8 @@ export function GameBoard({
         ? [level.mission.x, level.mission.y, level.mission.z]
         : [],
       beganAt,
+      level,
+      bridges,
     };
   }
 
@@ -389,6 +433,7 @@ export function GameBoard({
         flashRef={flashRef}
         hintRef={hintRef}
         hintMark={hintKeys ? [...hintKeys].sort().join("|") : ""}
+        flashMark={missId}
         alwaysAnimate={alwaysAnimate}
       />
       {pickups.map((pickup) => (
@@ -403,6 +448,31 @@ export function GameBoard({
           }
         />
       ))}
+      {costs.map((pop) => {
+        const center = isoCellCenter(pop.row, pop.col, metrics);
+        const at = bleed
+          ? {
+              left: bleedPlace.left + center.x * bleedPlace.scale,
+              top: bleedPlace.top + center.y * bleedPlace.scale,
+            }
+          : { left: center.x, top: center.y };
+        const mark = (
+          <BridgeCostPop
+            left={at.left}
+            top={at.top}
+            cost={pop.cost}
+            onDone={() =>
+              setCosts((prev) => prev.filter((entry) => entry.id !== pop.id))
+            }
+          />
+        );
+        if (bleed && bubbleRoot) {
+          return (
+            <Fragment key={pop.id}>{createPortal(mark, bubbleRoot)}</Fragment>
+          );
+        }
+        return <Fragment key={pop.id}>{mark}</Fragment>;
+      })}
       {cells
         ? playableCells.map((cell) => (
             <CellView

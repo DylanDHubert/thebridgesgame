@@ -1,3 +1,5 @@
+import type { Level } from "@/lib/game/level/types";
+import { shortestPath } from "@/lib/game/simulateLevel";
 import type { CellCoord } from "@/lib/game/types";
 import { isoCellCenter, type IsoMetrics } from "@/lib/rendering/isoTiles";
 
@@ -63,6 +65,8 @@ export type BoarPlan = {
   path: CellCoord[];
   flowers: CellCoord[];
   beganAt: number;
+  level: Level;
+  bridges: Set<string>;
 };
 
 export function boarFrameSrc(facing: BoarFacing, anim: BoarAnim, frame: number): string {
@@ -99,6 +103,18 @@ export function facingBetween(from: CellCoord, to: CellCoord): BoarFacing {
     return "SE";
   }
   return "NW";
+}
+
+/** STANDING STILL LOOKS SOUTH. A NORTH FACING FLIPS TO ITS SOUTH PAIR. */
+function southFacing(facing: BoarFacing): BoarFacing {
+  switch (facing) {
+    case "NE":
+      return "SW";
+    case "NW":
+      return "SE";
+    default:
+      return facing;
+  }
 }
 
 function oppositeFacing(facing: BoarFacing): BoarFacing {
@@ -139,9 +155,9 @@ function towardNearest(start: CellCoord, flowers: CellCoord[]): BoarFacing {
   const dr = best.row - start.row;
   const dc = best.col - start.col;
   if (Math.abs(dr) >= Math.abs(dc)) {
-    return dr < 0 ? "NE" : "SW";
+    return southFacing(dr < 0 ? "NE" : "SW");
   }
-  return dc > 0 ? "SE" : "NW";
+  return southFacing(dc > 0 ? "SE" : "NW");
 }
 
 type Mark =
@@ -181,7 +197,7 @@ function laterFlower(
 
 /**
  * WALK THE TOUR, BUT STOP ONE CELL SHORT OF EACH FLOWER.
- * FACE IT, PAUSE, EAT IT, THEN AFTER THE LAST ONE TURN AND WALK HOME.
+ * FACE IT, PAUSE, EAT IT, THEN AFTER THE LAST ONE TAKE THE SHORTEST WALK HOME.
  */
 function buildScript(plan: BoarPlan): BoarScript {
   const resting = towardNearest(plan.start, plan.flowers);
@@ -213,9 +229,9 @@ function buildScript(plan: BoarPlan): BoarScript {
     }
   };
   const finishAt = (at: CellCoord, facing: BoarFacing) => {
-    marks.push({ kind: "idle", at, facing, t0: time, t1: Infinity });
+    marks.push({ kind: "idle", at, facing: southFacing(facing), t0: time, t1: Infinity });
   };
-  const walkHome = (awayFromFlower: BoarFacing) => {
+  const retrace = (awayFromFlower: BoarFacing) => {
     if (stood.length < 2) {
       finishAt(boarAt, oppositeFacing(awayFromFlower));
       return;
@@ -225,6 +241,27 @@ function buildScript(plan: BoarPlan): BoarScript {
     for (let step = stood.length - 2; step >= 0; step -= 1) {
       const dest = stood[step]!;
       const from = step === stood.length - 2 ? boarAt : stood[step + 1]!;
+      pushRun(dest, facingBetween(from, dest), false);
+    }
+    finishAt(boarAt, marks[marks.length - 1]?.facing ?? resting);
+  };
+  const walkHome = (awayFromFlower: BoarFacing) => {
+    if (sameCell(boarAt, plan.start)) {
+      finishAt(boarAt, oppositeFacing(awayFromFlower));
+      return;
+    }
+    const direct = shortestPath(plan.level, plan.bridges, boarAt, plan.start);
+    if (direct.length < 2) {
+      retrace(awayFromFlower);
+      return;
+    }
+    const heading = facingBetween(boarAt, direct[1]!);
+    if (heading !== awayFromFlower) {
+      pushIdle(boarAt, heading, TURN_MS);
+    }
+    for (let index = 1; index < direct.length; index += 1) {
+      const dest = direct[index]!;
+      const from = direct[index - 1]!;
       pushRun(dest, facingBetween(from, dest), false);
     }
     finishAt(boarAt, marks[marks.length - 1]?.facing ?? resting);
@@ -256,6 +293,16 @@ function buildScript(plan: BoarPlan): BoarScript {
 
   finishAt(boarAt, marks[marks.length - 1]?.facing ?? resting);
   return { marks, eats };
+}
+
+/** HOW LONG UNTIL HE IS STANDING AT HOME AFTER THE TOUR. */
+export function boarHomeMs(plan: BoarPlan): number {
+  const script = buildScript(plan);
+  const last = script.marks[script.marks.length - 1];
+  if (!last) {
+    return 0;
+  }
+  return last.t0;
 }
 
 function eatenBy(eats: Eat[], elapsed: number): ReadonlySet<string> {

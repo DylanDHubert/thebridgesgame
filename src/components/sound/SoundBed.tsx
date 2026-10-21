@@ -4,7 +4,7 @@ import { useEffect } from "react";
 
 import { armAudio } from "@/lib/sound/bed";
 
-/** KEEPS THE MUSIC ELEMENT ALIVE FOR EVERY PAGE. THE FIRST TAP STARTS IT. */
+/** KEEPS THE SONG READY FOR EVERY PAGE. THE VISIT SCREEN, OR THE FIRST TAP AFTER IT, STARTS IT. */
 export function SoundBed() {
   useEffect(() => {
     const arm = () => armAudio();

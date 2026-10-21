@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+import { BoardColumn } from "@/components/game/BoardColumn";
 import { GameBoard } from "@/components/game/GameBoard";
-import { GameStage } from "@/components/game/GameStage";
 import {
   HairlineButton,
   HairlineHeader,
@@ -25,6 +25,7 @@ export function HowLesson({ level }: HowLessonProps) {
     phase,
     result,
     pathKeys,
+    miss,
     toggleBridge,
     clearBridges,
     checkSolution,
@@ -41,48 +42,50 @@ export function HowLesson({ level }: HowLessonProps) {
   return (
     <main className="flex h-dvh w-full flex-col overflow-hidden">
       <HairlineHeader nav="how" />
-      <section className="flex min-h-0 flex-1 flex-col gap-3 p-3 sm:p-4">
-        <div className="relative min-h-0 min-w-0 flex-1">
-          <GameStage>
-            <GameBoard
-              level={level}
-              bridges={bridges}
-              pathKeys={pathKeys}
-              runPath={success ? (result?.path ?? []) : []}
-              interactive
-              sizing="contain"
-              bleed
-              onToggleBridge={toggleBridge}
-              onBoarClick={() => setMet(true)}
-              boarLine={step.line}
-              hintKeys={hintKeys}
-            />
-          </GameStage>
-        </div>
-        <div className="flex w-full shrink-0 items-center justify-end gap-3 border border-black px-3 py-2.5">
-          <HairlineRow className="justify-end">
-            {success ? (
-              <HairlineLink href="/play">Bigger lunch</HairlineLink>
-            ) : (
+      <BoardColumn
+        board={
+          <GameBoard
+            level={level}
+            bridges={bridges}
+            pathKeys={pathKeys}
+            runPath={success ? (result?.path ?? []) : []}
+            interactive
+            sizing="contain"
+            bleed
+            onToggleBridge={toggleBridge}
+            onBoarClick={() => setMet(true)}
+            boarLine={step.line}
+            hintKeys={hintKeys}
+            missId={miss?.id ?? 0}
+            missKeys={miss?.keys}
+          />
+        }
+        bar={
+          <div className="flex w-full items-center justify-end gap-3 border border-black px-3 py-2.5">
+            <HairlineRow className="justify-end">
+              {success ? (
+                <HairlineLink href="/play">Bigger lunch</HairlineLink>
+              ) : (
+                <HairlineButton
+                  onClick={checkSolution}
+                  disabled={!step.allowCheck}
+                  style={step.allowCheck ? { background: "#fbbf24" } : undefined}
+                >
+                  Check
+                </HairlineButton>
+              )}
               <HairlineButton
-                onClick={checkSolution}
-                disabled={!step.allowCheck}
-                style={step.allowCheck ? { background: "#fbbf24" } : undefined}
+                onClick={() => {
+                  clearBridges();
+                  setMet(false);
+                }}
               >
-                Check
+                Clear
               </HairlineButton>
-            )}
-            <HairlineButton
-              onClick={() => {
-                clearBridges();
-                setMet(false);
-              }}
-            >
-              Clear
-            </HairlineButton>
-          </HairlineRow>
-        </div>
-      </section>
+            </HairlineRow>
+          </div>
+        }
+      />
     </main>
   );
 }

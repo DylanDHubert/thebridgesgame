@@ -16,21 +16,21 @@
   "terrain": "oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooccooooooooooooooooooooooooooooooocgggoooooooooooooooooooooooooooooocggoooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooogggooooooooooooooooooooooooooooccccgcccccgcccoooooooooooooooooooggcgoccgccmmccggooooooooooooooooogcogggggggggmgggggooooooooooooooocggggggggggggommggoooooooooooooooooocggggoogggooooogoooooooooooooooooocmooooommoooocooooooooooooooocooooooooooooooggccooooooooooooooogoooommmoooooogggggoooooogoooooooooooomgggoooommgcgggoooooooooooooooooomggggmooommccggcogoooooooooooooooomgcgcmoooommoggogggooooooooooooooooccgmoooooooommggcooooooooooooooooooooooooooogggoogoooooooooooooooooooooooooooccgggooooooooooooooooooooooooooocooocooooooooooooooooooooooooooogggcoooooooooooooooooooooooooooooogccgggoooooooooooooooooooooooooooooogcgoooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo",
   "mission": {
     "x": [
-      13,
-      11
+      11,
+      12
     ],
     "y": [
       18,
-      20
+      19
     ],
     "z": [
-      19,
-      10
+      20,
+      9
     ]
   },
   "objects": [],
   "routes": [],
   "meta": {
-    "createdAt": "2026-10-19T21:53:30.577Z"
+    "createdAt": "2026-10-20T23:43:56.776Z"
   }
 }

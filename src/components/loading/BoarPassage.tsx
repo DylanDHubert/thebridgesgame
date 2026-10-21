@@ -6,23 +6,20 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useMemo,
   useState,
   type ReactNode,
 } from "react";
 
-import { GameBoard } from "@/components/game/GameBoard";
-import { GameStage } from "@/components/game/GameStage";
-import { loadingLapMs, loadingRunPath } from "@/lib/game/loadingRing";
-import { deserializeLevel } from "@/lib/game/level/serialize";
-import type { Level, LevelFile } from "@/lib/game/level/types";
+import { LoadingScreen } from "@/components/loading/LoadingScreen";
 
 const PassageContext = createContext<((href: string) => void) | null>(null);
 
-/** HOW LONG A BROKEN NAVIGATION MAY KEEP HIM RUNNING. */
+/** HOW LONG A BROKEN NAVIGATION MAY KEEP THE BAR UP. */
 const GIVE_UP_MS = 15000;
+/** ONE SW RUN CYCLE, SO THE SCREEN DOES NOT FLASH. */
+const HOLD_MS = 320;
 
-/** SEND HIM AROUND THE SQUARE UNTIL THE NEXT PAGE IS READY. */
+/** SEND THE LOADING MARK UP UNTIL THE NEXT PAGE IS READY. */
 export function useBoarPassage(): (href: string) => void {
   const depart = useContext(PassageContext);
   if (!depart) {
@@ -35,46 +32,14 @@ function here(): string {
   return window.location.pathname + window.location.search;
 }
 
-async function fetchLoadingLevel(): Promise<Level | null> {
-  try {
-    const response = await fetch("/levels/loading.json");
-    if (!response.ok) {
-      console.error("[journeyman:load] missing loading level", response.status);
-      return null;
-    }
-    const file = (await response.json()) as LevelFile;
-    return deserializeLevel(file);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("[journeyman:load] failed to read loading level", message);
-    return null;
-  }
-}
-
-/** FULL-SCREEN RUN. AT LEAST ONE LAP, AND HE STAYS OUT IF THE PAGE IS STILL COMING. */
+/** FULL-SCREEN LOADING MARK. HE STAYS UP WHILE THE PAGE IS STILL COMING. */
 export function BoarPassage({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [target, setTarget] = useState<string | null>(null);
-  const [lap, setLap] = useState(0);
+  const [trip, setTrip] = useState(0);
   const [arrived, setArrived] = useState(false);
-  const [lapDone, setLapDone] = useState(false);
-  const [level, setLevel] = useState<Level | null>(null);
-  const bridges = useMemo(() => new Set<string>(), []);
-  const runPath = useMemo(() => (level ? loadingRunPath(level) : []), [level]);
-  const lapMs = level ? loadingLapMs(level) : null;
-
-  useEffect(() => {
-    let cancel = false;
-    void fetchLoadingLevel().then((next) => {
-      if (!cancel && next) {
-        setLevel(next);
-      }
-    });
-    return () => {
-      cancel = true;
-    };
-  }, []);
+  const [held, setHeld] = useState(false);
 
   const depart = useCallback(
     (href: string) => {
@@ -82,16 +47,11 @@ export function BoarPassage({ children }: { children: ReactNode }) {
         return;
       }
       setArrived(false);
-      setLapDone(false);
-      setLap((value) => value + 1);
+      setHeld(false);
+      setTrip((value) => value + 1);
       setTarget(href);
       console.log("[journeyman:load] running until", href);
       router.push(href);
-      void fetchLoadingLevel().then((next) => {
-        if (next) {
-          setLevel(next);
-        }
-      });
     },
     [router],
   );
@@ -135,7 +95,7 @@ export function BoarPassage({ children }: { children: ReactNode }) {
     if (here() === target) {
       setArrived(true);
     }
-  }, [pathname, target, lap]);
+  }, [pathname, target, trip]);
 
   useEffect(() => {
     if (!target) {
@@ -148,59 +108,40 @@ export function BoarPassage({ children }: { children: ReactNode }) {
       setTarget(null);
     }, GIVE_UP_MS);
     return () => window.clearTimeout(giveUp);
-  }, [target, lap]);
+  }, [target, trip]);
 
   useEffect(() => {
-    if (!target || lapMs == null) {
+    if (!target) {
       return;
     }
-    if (lapMs <= 0) {
-      setLapDone(true);
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const wait = reduced ? 0 : HOLD_MS;
+    if (wait <= 0) {
+      setHeld(true);
       return;
     }
-    setLapDone(false);
-    console.log("[journeyman:load] holding for one lap", lapMs);
-    const timer = window.setTimeout(() => setLapDone(true), lapMs);
+    setHeld(false);
+    const timer = window.setTimeout(() => setHeld(true), wait);
     return () => window.clearTimeout(timer);
-  }, [target, lap, lapMs]);
+  }, [target, trip]);
 
   useEffect(() => {
-    if (target && arrived && lapDone) {
+    if (target && arrived && held) {
       setTarget(null);
     }
-  }, [target, arrived, lapDone]);
+  }, [target, arrived, held]);
 
   return (
     <PassageContext.Provider value={depart}>
       {children}
       {target ? (
         <div
-          className="fixed inset-0 z-[70] flex flex-col bg-white"
+          className="fixed inset-0 z-[70] bg-white"
           role="status"
           aria-live="polite"
-          aria-label="The boar is running until the page loads"
+          aria-label="Loading"
         >
-          <div className="relative min-h-0 flex-1 p-4">
-            {level ? (
-              <GameStage>
-                <GameBoard
-                  key={lap}
-                  level={level}
-                  bridges={bridges}
-                  pathKeys={bridges}
-                  runPath={runPath}
-                  showMission={false}
-                  showBoar
-                  cells={false}
-                  interactive={false}
-                  sizing="contain"
-                  bleed
-                  alwaysAnimate
-                  boarLine="i run until the page is here."
-                />
-              </GameStage>
-            ) : null}
-          </div>
+          <LoadingScreen />
         </div>
       ) : null}
     </PassageContext.Provider>

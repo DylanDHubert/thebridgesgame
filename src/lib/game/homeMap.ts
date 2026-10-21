@@ -205,6 +205,7 @@ export function resolveHomeDestination(
   playCells: Set<string>,
   createCells: Set<string>,
   howCells: Set<string>,
+  createOpen = true,
 ): HomeDestination | null {
   const reachable = floodReachable(level, bridges, homeOrigin);
 
@@ -226,7 +227,7 @@ export function resolveHomeDestination(
   if (playHit) {
     return "play";
   }
-  if (createHit) {
+  if (createHit && createOpen) {
     return "create";
   }
   if (howHit) {

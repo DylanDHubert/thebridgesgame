@@ -196,3 +196,123 @@ body {
     inset 0 1px 0 rgb(251 191 36 / 0.55),
     0 0 0 1px rgb(74 44 20);
 }
+
+/** SW RUN IN PLACE. FOUR FRAMES, 80MS EACH, 4× THE 46×32 ART. */
+.boar-sw-run {
+  position: relative;
+  width: 184px;
+  height: 128px;
+}
+
+.boar-sw-run img {
+  position: absolute;
+  inset: 0;
+  width: 184px;
+  height: 128px;
+  image-rendering: pixelated;
+  opacity: 0;
+  animation: boar-sw-frame 320ms infinite linear;
+}
+
+.boar-sw-run img:nth-child(2) {
+  animation-delay: 80ms;
+}
+
+.boar-sw-run img:nth-child(3) {
+  animation-delay: 160ms;
+}
+
+.boar-sw-run img:nth-child(4) {
+  animation-delay: 240ms;
+}
+
+@keyframes boar-sw-frame {
+  0%,
+  24.9% {
+    opacity: 1;
+  }
+  25%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/** INDETERMINATE BAR UNDER THE BOAR. */
+.loading-track {
+  width: 184px;
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid black;
+  background: white;
+}
+
+.loading-fill {
+  height: 100%;
+  width: 40%;
+  background: black;
+  animation: loading-slide 900ms linear infinite;
+}
+
+@keyframes loading-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+/** SCORE MARK OVER A NEW BRIDGE. YELLOW, ONE PIXEL OF BLACK. */
+.bridge-cost-pop {
+  z-index: 6;
+  font-size: 11px;
+  line-height: 1;
+  color: #fbbf24;
+  text-shadow:
+    1px 0 0 black,
+    -1px 0 0 black,
+    0 1px 0 black,
+    0 -1px 0 black;
+  animation: bridge-cost-pop 700ms ease-out forwards;
+}
+
+@keyframes bridge-cost-pop {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -70%);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -220%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bridge-cost-pop {
+    animation: bridge-cost-fade 420ms linear forwards;
+  }
+
+  .boar-sw-run img {
+    animation: none;
+  }
+
+  .boar-sw-run img:first-child {
+    opacity: 1;
+  }
+
+  .loading-fill {
+    width: 55%;
+    animation: none;
+    transform: none;
+  }
+}
+
+@keyframes bridge-cost-fade {
+  0%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}

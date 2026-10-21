@@ -1,4 +1,4 @@
-/** ONE MUSIC ELEMENT FOR THE WHOLE VISIT. PAGES MUST NOT BUILD ANOTHER. */
+/** ONE SONG FOR THE WHOLE VISIT. PAGES MUST NOT START ANOTHER. */
 
 const MUSIC_SRC = "/assets/sfx/music.mp3";
 const WALK_SRC = "/assets/sfx/walking.mp3";
@@ -21,11 +21,25 @@ type Levels = { music: number; sfx: number };
 const listeners = new Set<() => void>();
 const runners = new Set<string>();
 
+/** LOGIC WROTE THIS GAPLESS MAP INTO THE MP3. A MEDIA ELEMENT PLAYS THE PADDING EVERY LOOP. */
+const GAPLESS_DELAY = 528;
+const GAPLESS_PADDING = 2270;
+const GAPLESS_RATE = 48000;
+const FULL_SECONDS = 34.344;
+const GAPLESS_SECONDS = 34.2857;
+
 let musicVolume = 0.55;
 let sfxVolume = 0.8;
 let snapshot: Levels = { music: musicVolume, sfx: sfxVolume };
 let armed = false;
-let music: HTMLAudioElement | null = null;
+/** HELD UNTIL THE VISIT SCREEN SAYS THE SONG MAY START. */
+let audioBlocked = true;
+let context: AudioContext | null = null;
+let musicGain: GainNode | null = null;
+let musicSource: AudioBufferSourceNode | null = null;
+let musicPending = false;
+let musicLoad: Promise<AudioBuffer> | null = null;
+let musicElement: HTMLAudioElement | null = null;
 let walking: HTMLAudioElement | null = null;
 let hydrated = false;
 
@@ -75,21 +89,132 @@ function mount(audio: HTMLAudioElement, id: string, src: string, loop: boolean) 
   }
 }
 
-function ensureElements() {
+function ensureWalking() {
   hydrate();
   if (typeof window === "undefined") {
     return;
   }
-  if (!music) {
-    music = new Audio();
-    mount(music, "journeyman-music", MUSIC_SRC, true);
-  }
-  music.volume = musicVolume;
   if (!walking) {
     walking = new Audio();
     mount(walking, "journeyman-walking", WALK_SRC, true);
   }
   walking.volume = sfxVolume;
+}
+
+function musicContext(): AudioContext {
+  if (!context) {
+    context = new AudioContext();
+    musicGain = context.createGain();
+    musicGain.gain.value = musicVolume;
+    musicGain.connect(context.destination);
+  }
+  return context;
+}
+
+/** DROP THE ENCODER SILENCE WHEN THE DECODER STILL LEFT IT ON THE BUFFER. */
+function trimGapless(audio: AudioContext, buffer: AudioBuffer): AudioBuffer {
+  const slack = Math.round(0.02 * buffer.sampleRate);
+  const gaplessLength = Math.round(GAPLESS_SECONDS * buffer.sampleRate);
+  if (Math.abs(buffer.length - gaplessLength) <= slack) {
+    return buffer;
+  }
+  const fullLength = Math.round(FULL_SECONDS * buffer.sampleRate);
+  if (Math.abs(buffer.length - fullLength) > slack) {
+    return buffer;
+  }
+  const scale = buffer.sampleRate / GAPLESS_RATE;
+  const delay = Math.round(GAPLESS_DELAY * scale);
+  const padding = Math.round(GAPLESS_PADDING * scale);
+  const length = buffer.length - delay - padding;
+  if (length < buffer.sampleRate) {
+    return buffer;
+  }
+  const trimmed = audio.createBuffer(buffer.numberOfChannels, length, buffer.sampleRate);
+  for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
+    trimmed.getChannelData(channel).set(buffer.getChannelData(channel).subarray(delay, delay + length));
+  }
+  console.log("[journeyman:sfx] music loop trimmed", {
+    cutStartMs: Math.round((delay / buffer.sampleRate) * 1000),
+    cutEndMs: Math.round((padding / buffer.sampleRate) * 1000),
+  });
+  return trimmed;
+}
+
+function loadMusic(audio: AudioContext): Promise<AudioBuffer> {
+  if (!musicLoad) {
+    musicLoad = fetch(MUSIC_SRC)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(String(response.status));
+        }
+        return response.arrayBuffer();
+      })
+      .then((bytes) => audio.decodeAudioData(bytes.slice(0)))
+      .then((decoded) => trimGapless(audio, decoded))
+      .catch((error: unknown) => {
+        musicLoad = null;
+        throw error;
+      });
+  }
+  return musicLoad;
+}
+
+function startElementMusic(first: boolean) {
+  if (!musicElement) {
+    musicElement = new Audio();
+    mount(musicElement, "journeyman-music", MUSIC_SRC, true);
+  }
+  musicElement.volume = musicVolume;
+  if (!musicElement.paused) {
+    return;
+  }
+  void musicElement.play().then(
+    () => {
+      if (first) {
+        console.log("[journeyman:sfx] music started");
+      }
+    },
+    () => undefined,
+  );
+}
+
+/** PCM LOOP. THE MEDIA ELEMENT RESTARTS THE MP3 AND PLAYS THE GAP. */
+function startMusic(first: boolean) {
+  if (musicSource || musicElement || musicPending) {
+    return;
+  }
+  let audio: AudioContext;
+  try {
+    audio = musicContext();
+  } catch (error) {
+    console.error("[journeyman:sfx] music context failed", error);
+    startElementMusic(first);
+    return;
+  }
+  musicPending = true;
+  void audio.resume();
+  void loadMusic(audio).then(
+    (buffer) => {
+      musicPending = false;
+      if (!armed || musicSource || musicElement || !musicGain) {
+        return;
+      }
+      const source = audio.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+      source.connect(musicGain);
+      source.start();
+      musicSource = source;
+      if (first) {
+        console.log("[journeyman:sfx] music started", audio.state);
+      }
+    },
+    (error: unknown) => {
+      musicPending = false;
+      console.error("[journeyman:sfx] gapless music failed", error);
+      startElementMusic(first);
+    },
+  );
 }
 
 function syncWalking() {
@@ -107,25 +232,21 @@ function syncWalking() {
   }
 }
 
+/** THE VISIT SCREEN HOLDS THE SONG UNTIL CONTINUE. */
+export function setAudioBlocked(blocked: boolean) {
+  audioBlocked = blocked;
+}
+
 /** START THE LOOP ON THE FIRST GESTURE. A LATER CALL DOES NOT REWIND IT. */
 export function armAudio() {
   hydrate();
-  if (typeof window === "undefined") {
+  if (typeof window === "undefined" || audioBlocked) {
     return;
   }
   const first = !armed;
   armed = true;
-  ensureElements();
-  if (music && music.paused) {
-    void music.play().then(
-      () => {
-        if (first) {
-          console.log("[journeyman:sfx] music started");
-        }
-      },
-      () => undefined,
-    );
-  }
+  ensureWalking();
+  startMusic(first);
   syncWalking();
 }
 
@@ -145,8 +266,11 @@ export function setMusicVolume(next: number) {
   if (typeof window !== "undefined") {
     window.localStorage.setItem(MUSIC_KEY, String(musicVolume));
   }
-  if (music) {
-    music.volume = musicVolume;
+  if (musicGain) {
+    musicGain.gain.value = musicVolume;
+  }
+  if (musicElement) {
+    musicElement.volume = musicVolume;
   }
   armAudio();
   emit();
@@ -196,6 +320,6 @@ export function setWalker(id: string, running: boolean) {
   if (!armed) {
     return;
   }
-  ensureElements();
+  ensureWalking();
   syncWalking();
 }
