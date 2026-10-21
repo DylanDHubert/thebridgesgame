@@ -89,16 +89,73 @@ export async function saveFirstSubmission(input: {
 export type LevelCard = {
   id: string;
   name: string;
+  thumb: string | null;
 };
 
-/** NAMES ONLY. THE MAP ITSELF LOADS WHEN A CARD IS NEAR THE SCREEN. */
+/** PUBLIC STILL FOR A LEVEL CARD. REVISION BUSTS THE CACHE AFTER A RE-SAVE. */
+export function levelThumbSrc(id: string, revision: string): string {
+  const remote = env();
+  if (!remote) {
+    return "";
+  }
+  return `${remote.url}/storage/v1/object/public/level-thumbs/${encodeURIComponent(id)}.png?v=${encodeURIComponent(revision)}`;
+}
+
+/** WRITE THE PNG, THEN REMEMBER THE REVISION ON THE LEVEL ROW. */
+export async function uploadLevelThumb(id: string, png: Uint8Array): Promise<string | null> {
+  const remote = env();
+  if (!remote) {
+    console.log("[journeyman:levels] thumb skipped");
+    return null;
+  }
+  const revision = String(Date.now());
+  const response = await fetch(
+    `${remote.url}/storage/v1/object/level-thumbs/${encodeURIComponent(id)}.png`,
+    {
+      method: "POST",
+      headers: {
+        apikey: remote.key,
+        Authorization: `Bearer ${remote.key}`,
+        "Content-Type": "image/png",
+        "x-upsert": "true",
+        "cache-control": "public, max-age=31536000",
+      },
+      body: new Blob([png as BlobPart]),
+    },
+  );
+  if (!response.ok) {
+    const detail = await response.text();
+    console.log("[journeyman:levels] thumb upload failed", {
+      levelId: id,
+      status: response.status,
+      detail: detail.slice(0, 300),
+    });
+    return null;
+  }
+  const patch = await fetch(`${remote.url}/rest/v1/levels?id=eq.${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: headers(remote.key, "return=minimal"),
+    body: JSON.stringify({ thumb: revision }),
+  });
+  console.log("[journeyman:levels] thumb stored", {
+    levelId: id,
+    bytes: png.byteLength,
+    status: patch.status,
+  });
+  if (!patch.ok) {
+    return null;
+  }
+  return revision;
+}
+
+/** NAMES AND THUMB REVISIONS. THE MAP LOADS ONLY WHEN A CARD HAS NO STILL. */
 export async function listLevelCards(): Promise<LevelCard[]> {
   const remote = env();
   if (!remote) {
     return [];
   }
   const response = await fetch(
-    `${remote.url}/rest/v1/levels?kind=in.(player,catalog)&select=id,name&order=name.asc`,
+    `${remote.url}/rest/v1/levels?kind=in.(player,catalog)&select=id,name,thumb&order=name.asc`,
     { headers: headers(remote.key), cache: "no-store" },
   );
   if (!response.ok) {
@@ -115,7 +172,8 @@ export async function listLevelCards(): Promise<LevelCard[]> {
     }
     const id = "id" in row && typeof row.id === "string" ? row.id : "";
     const name = "name" in row && typeof row.name === "string" ? row.name : "";
-    return id && name ? [{ id, name }] : [];
+    const thumb = "thumb" in row && typeof row.thumb === "string" ? row.thumb : null;
+    return id && name ? [{ id, name, thumb }] : [];
   });
 }
 

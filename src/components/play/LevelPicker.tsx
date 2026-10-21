@@ -11,14 +11,31 @@ import { HairlineLink } from "@/components/ui/hairline";
 import { readBestScores, readOptimalLevels } from "@/lib/game/bestScore";
 import { readLockedScores } from "@/lib/game/lockScore";
 import type { Level } from "@/lib/game/level/types";
-import { loadRemoteLevel, type LevelCard } from "@/lib/supabase/scores";
+import { levelThumbSrc, loadRemoteLevel, type LevelCard } from "@/lib/supabase/scores";
 
 type LevelPickerProps = {
   cards: LevelCard[];
 };
 
-/** THE MAP DRAWS WHEN THE CARD NEARS THE SCREEN. */
-function LazyMap({ id }: { id: string }) {
+/** THE SAVED STILL, OR ONE PAINT THAT STORES IT. */
+function CardShot({ id, thumb }: { id: string; thumb: string | null }) {
+  const [revision, setRevision] = useState(thumb);
+  if (revision) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={levelThumbSrc(id, revision)}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover"
+        style={{ imageRendering: "pixelated" }}
+      />
+    );
+  }
+  return <LazyMap id={id} onPublished={setRevision} />;
+}
+
+/** THE MAP DRAWS WHEN THE CARD NEARS THE SCREEN AND NO STILL EXISTS YET. */
+function LazyMap({ id, onPublished }: { id: string; onPublished: (revision: string) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [level, setLevel] = useState<Level | null>(null);
 
@@ -51,7 +68,16 @@ function LazyMap({ id }: { id: string }) {
 
   return (
     <div ref={ref} className="pointer-events-none absolute inset-0" aria-hidden>
-      {level ? <MapPreview level={level} borderless cells={false} boarClick={false} /> : null}
+      {level ? (
+        <MapPreview
+          level={level}
+          borderless
+          cells={false}
+          boarClick={false}
+          publish
+          onPublished={onPublished}
+        />
+      ) : null}
     </div>
   );
 }
@@ -101,7 +127,7 @@ export function LevelPicker({ cards }: LevelPickerProps) {
               className="relative overflow-hidden border-b border-black bg-[rgb(12_48_92)]"
               style={{ aspectRatio: GAME_STAGE_ASPECT }}
             >
-              <LazyMap id={card.id} />
+              <CardShot id={card.id} thumb={card.thumb} />
             </div>
             <div className="px-2 py-2 text-center">
               <h2 className="truncate text-[9px] uppercase tracking-[0.14em]">{card.name}</h2>

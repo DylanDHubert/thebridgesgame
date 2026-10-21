@@ -1,12 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { storeLevelThumb } from "@/app/actions/levelThumb";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { MapPreview } from "@/components/game/MapPreview";
+import type { StillGrab } from "@/components/game/GameBoard";
 import { HairlineButton, HairlineRow } from "@/components/ui/hairline";
 import { perfectBridgeCost } from "@/lib/game/perfectScore";
+import { stillPngBase64 } from "@/lib/rendering/stillPng";
 import { savePlayerLevel } from "@/lib/supabase/scores";
 import { randomArchipelagoName } from "@/lib/game/archipelagoNames";
 import {
@@ -120,18 +123,7 @@ export function CreateSettingsForm() {
     setSeed(randomCreateSeed());
   }, []);
 
-  const handleSave = useCallback(async () => {
-    const normalized = normalizeCreateConfig(draft);
-    const nextSeed = seed.trim() || randomCreateSeed();
-    const level = generateLevel({ seed: nextSeed, config: normalized });
-    setSaving(true);
-    setNote(null);
-    const par = perfectBridgeCost(level);
-    const result = await savePlayerLevel(level, auth.userId, auth.accessToken, par);
-    setNote(result.ok ? `Saved ${level.name}` : (result.error ?? "Save failed"));
-    setSaving(false);
-    console.log("[journeyman:create] direct save", { levelId: level.id, ok: result.ok });
-  }, [auth.accessToken, auth.userId, draft, seed]);
+  const stillRef = useRef<StillGrab | null>(null);
 
   const previewSeed = useDebouncedValue(seed.trim(), PREVIEW_DELAY_MS);
   const previewDraft = useDebouncedValue(draft, PREVIEW_DELAY_MS);
@@ -142,9 +134,27 @@ export function CreateSettingsForm() {
     return generateLevel({ seed: previewSeed, config: previewDraft });
   }, [previewDraft, previewSeed]);
 
+  const handleSave = useCallback(async () => {
+    const normalized = normalizeCreateConfig(draft);
+    const nextSeed = seed.trim() || randomCreateSeed();
+    const level = generateLevel({ seed: nextSeed, config: normalized });
+    setSaving(true);
+    setNote(null);
+    const par = perfectBridgeCost(level);
+    const result = await savePlayerLevel(level, auth.userId, auth.accessToken, par);
+    if (result.ok && preview?.id === level.id) {
+      const still = await stillRef.current?.();
+      if (still) {
+        await storeLevelThumb(level.id, await stillPngBase64(still));
+      }
+    }
+    setNote(result.ok ? `Saved ${level.name}` : (result.error ?? "Save failed"));
+    setSaving(false);
+  }, [auth.accessToken, auth.userId, draft, preview, seed]);
+
   return (
     <div className="flex h-full min-h-0 w-full flex-col-reverse gap-3 lg:flex-row">
-      <div className="flex min-h-0 w-full max-h-full flex-1 flex-col overflow-hidden border border-black bg-white lg:w-[28rem] lg:flex-none lg:self-center">
+      <div className="flex min-h-0 w-full max-h-full flex-1 flex-col overflow-hidden border border-black bg-white lg:w-[28rem] lg:flex-none">
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
         <div className="space-y-1 text-center">
           <p className="text-[8px] uppercase tracking-[0.28em] text-black/55">
@@ -247,9 +257,9 @@ export function CreateSettingsForm() {
         ) : null}
       </div>
       </div>
-      <div className="min-h-0 min-w-0 flex-1" role="region" aria-label="Map preview">
+      <div className="h-full min-h-0 min-w-0 flex-1" role="region" aria-label="Map preview">
         {preview ? (
-          <MapPreview level={preview} />
+          <MapPreview level={preview} stillRef={stillRef} />
         ) : (
           <div className="h-full w-full border border-black bg-[rgb(12_48_92)]" />
         )}

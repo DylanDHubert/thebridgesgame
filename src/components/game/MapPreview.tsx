@@ -1,8 +1,12 @@
 "use client";
 
-import { GameBoard } from "@/components/game/GameBoard";
+import { useRef, type RefObject } from "react";
+
+import { storeLevelThumb } from "@/app/actions/levelThumb";
+import { GameBoard, type StillGrab } from "@/components/game/GameBoard";
 import { GameStage } from "@/components/game/GameStage";
 import type { Level } from "@/lib/game/level/types";
+import { stillPngBase64 } from "@/lib/rendering/stillPng";
 
 const EMPTY_KEYS = new Set<string>();
 
@@ -14,6 +18,11 @@ type MapPreviewProps = {
   cells?: boolean;
   /** SKIP THE BOAR BUTTON. THE SPRITE STILL DRAWS. */
   boarClick?: boolean;
+  /** UPLOAD A STILL ONCE THE BOARD HAS PAINTED. */
+  publish?: boolean;
+  onPublished?: (revision: string) => void;
+  /** PARENT READS THE CURRENT STILL. SAVE USES THIS. */
+  stillRef?: RefObject<StillGrab | null>;
 };
 
 /** ISO BOARD IN THE PLAY FRAME. SAME CROP AS THE GAME. */
@@ -22,7 +31,35 @@ export function MapPreview({
   borderless = false,
   cells = true,
   boarClick = true,
+  publish = false,
+  onPublished,
+  stillRef: stillRefProp,
 }: MapPreviewProps) {
+  const ownStill = useRef<StillGrab | null>(null);
+  const stillRef = stillRefProp ?? ownStill;
+  const ticket = useRef(0);
+  const published = useRef<string | null>(null);
+
+  const handleStill = () => {
+    if (!publish) {
+      return;
+    }
+    const mine = ++ticket.current;
+    void (async () => {
+      const blob = await stillRef.current?.();
+      if (!blob || mine !== ticket.current || published.current === level.id) {
+        return;
+      }
+      const png = await stillPngBase64(blob);
+      const revision = await storeLevelThumb(level.id, png);
+      if (!revision || mine !== ticket.current) {
+        return;
+      }
+      published.current = level.id;
+      onPublished?.(revision);
+    })();
+  };
+
   return (
     <GameStage>
       <GameBoard
@@ -36,6 +73,8 @@ export function MapPreview({
         borderless={borderless}
         cells={cells}
         boarClick={boarClick}
+        stillRef={stillRef}
+        onStill={publish ? handleStill : undefined}
       />
     </GameStage>
   );

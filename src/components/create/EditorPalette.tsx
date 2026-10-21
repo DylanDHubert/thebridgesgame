@@ -16,13 +16,31 @@ export type EditorTool =
 
 const SWATCH_SIZE = 22;
 
+/** SQUARE STAMP. THE MARK IS A 5×5 GRID WITH THAT MANY BOXES FILLED. */
+export const BRUSH_SIZES = [1, 2, 3, 5] as const;
+export type BrushSize = (typeof BRUSH_SIZES)[number];
+
+const BRUSH_GRID = 5;
+
 // TERRAIN ORDER FOR THE BOTTOM BAR
 const TERRAIN_ORDER: TileKind[] = ["ocean", "marsh", "grass", "cliff"];
 
 type EditorPaletteProps = {
   tool: EditorTool;
   onSelect: (tool: EditorTool) => void;
+  brush: BrushSize;
+  onBrush: (size: BrushSize) => void;
 };
+
+/** WHERE THE FILLED BOXES START INSIDE THE 5×5 MARK. */
+function brushOrigin(size: BrushSize): number {
+  return Math.floor((BRUSH_GRID - size) / 2);
+}
+
+/** CELL OFFSET FROM THE CLICK. MATCHES THE MARK, WHOSE CENTER IS THE CLICK. */
+export function brushOffset(size: BrushSize): number {
+  return brushOrigin(size) - Math.floor(BRUSH_GRID / 2);
+}
 
 function sameTool(a: EditorTool, b: EditorTool): boolean {
   if (a === null || b === null) {
@@ -73,7 +91,30 @@ function SwatchButton({
   );
 }
 
-export function EditorPalette({ tool, onSelect }: EditorPaletteProps) {
+function BrushMark({ size, selected }: { size: BrushSize; selected: boolean }) {
+  const origin = brushOrigin(size);
+  return (
+    <span className="grid h-[22px] w-[22px] grid-cols-5 gap-px" aria-hidden>
+      {Array.from({ length: BRUSH_GRID * BRUSH_GRID }, (_, index) => {
+        const row = Math.floor(index / BRUSH_GRID);
+        const col = index % BRUSH_GRID;
+        const filled =
+          row >= origin &&
+          row < origin + size &&
+          col >= origin &&
+          col < origin + size;
+        return (
+          <span
+            key={index}
+            className={filled ? (selected ? "bg-white" : "bg-black") : "bg-transparent"}
+          />
+        );
+      })}
+    </span>
+  );
+}
+
+export function EditorPalette({ tool, onSelect, brush, onBrush }: EditorPaletteProps) {
   const pick = (next: NonNullable<EditorTool>) => {
     onSelect(sameTool(tool, next) ? null : next);
   };
@@ -93,6 +134,25 @@ export function EditorPalette({ tool, onSelect }: EditorPaletteProps) {
           >
             <TileSwatch kind={kind} size={SWATCH_SIZE} />
           </SwatchButton>
+        );
+      })}
+      <span className="mx-0.5 h-6 w-px bg-black" aria-hidden />
+      {BRUSH_SIZES.map((size) => {
+        const selected = brush === size;
+        return (
+          <button
+            key={size}
+            type="button"
+            aria-pressed={selected}
+            title={`${size}×${size}`}
+            onClick={() => onBrush(size)}
+            className={[
+              "inline-flex h-[30px] w-[30px] items-center justify-center border border-black",
+              selected ? "bg-black" : "bg-white",
+            ].join(" ")}
+          >
+            <BrushMark size={size} selected={selected} />
+          </button>
         );
       })}
     </div>

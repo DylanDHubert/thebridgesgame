@@ -68,6 +68,8 @@ type SpriteTerrainCanvasProps = {
   hoverKey?: string | null;
   /** KEEP THE RUN GOING. THE LOADING LAP DOES NOT HONOR REDUCED MOTION. */
   alwaysAnimate?: boolean;
+  /** FIRST FRAME OF THIS SCENE IS ON THE MAP CANVAS. */
+  onStill?: () => void;
 };
 
 /** ONE CELL IN THE CHECK FLOOD. DISTANCE IS MANHATTAN FROM THE BOAR. */
@@ -431,6 +433,7 @@ export function SpriteTerrainCanvas({
   flashMark = 0,
   hoverKey = null,
   alwaysAnimate = false,
+  onStill,
 }: SpriteTerrainCanvasProps) {
   const mapRef = useRef<HTMLCanvasElement>(null);
   const flashLayerRef = useRef<HTMLCanvasElement>(null);
@@ -441,7 +444,9 @@ export function SpriteTerrainCanvas({
   const paintMarksRef = useRef<() => void>(() => {});
   const startFlashRef = useRef<() => void>(() => {});
   const patchBridgesRef = useRef<(next: Set<string>) => void>(() => {});
+  const onStillRef = useRef(onStill);
   bridgesRef.current = bridges;
+  onStillRef.current = onStill;
   const walkId = useId();
   const heardEat = useRef(new Set<string>());
   const eatBegan = useRef(0);
@@ -851,6 +856,7 @@ export function SpriteTerrainCanvas({
       paintMarksRef.current();
       startFlashRef.current();
       patchBridgesRef.current = patchBridges;
+      onStillRef.current?.();
       if (reduceMotion) {
         return;
       }

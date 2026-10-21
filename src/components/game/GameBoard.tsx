@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 
 import { BoarClick, BOAR_THOUGHTS } from "@/components/game/BoarClick";
@@ -101,7 +101,65 @@ type GameBoardProps = {
   alwaysAnimate?: boolean;
   mapLabelsDraggable?: boolean;
   onMapLabelMove?: (id: string, row: number, col: number) => void;
+  /** FILLED WITH A GRAB OF THE BOARD AS IT IS DRAWN, CROP AND ALL. */
+  stillRef?: RefObject<StillGrab | null>;
+  /** THE MAP CANVAS HAS ITS FIRST FRAME. */
+  onStill?: () => void;
 };
+
+/** PNG OF THE VISIBLE BOARD. */
+export type StillGrab = () => Promise<Blob | null>;
+
+const THUMB_LONG = 640;
+
+function captureBoard(
+  view: HTMLDivElement | null,
+  place: { scale: number; left: number; top: number },
+  metrics: { width: number; height: number },
+  bleed: boolean,
+): Promise<Blob | null> {
+  if (!view) {
+    return Promise.resolve(null);
+  }
+  const canvases = view.querySelectorAll("canvas");
+  const map = canvases[0];
+  const boar = canvases[canvases.length - 1];
+  if (!map || map.width === 0) {
+    return Promise.resolve(null);
+  }
+  const srcW = Math.max(1, view.clientWidth);
+  const srcH = Math.max(1, view.clientHeight);
+  const fit = THUMB_LONG / Math.max(srcW, srcH);
+  const width = Math.max(1, Math.round(srcW * fit));
+  const height = Math.max(1, Math.round(srcH * fit));
+  const out = document.createElement("canvas");
+  out.width = width;
+  out.height = height;
+  const ctx = out.getContext("2d");
+  if (!ctx) {
+    return Promise.resolve(null);
+  }
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = "rgb(12, 48, 92)";
+  ctx.fillRect(0, 0, width, height);
+  const draw = (source: HTMLCanvasElement, dx: number, dy: number, dw: number, dh: number) => {
+    ctx.drawImage(source, dx * fit, dy * fit, dw * fit, dh * fit);
+  };
+  if (bleed) {
+    draw(map, place.left, place.top, metrics.width * place.scale, metrics.height * place.scale);
+    if (boar && boar !== map) {
+      draw(boar, place.left, place.top, metrics.width * place.scale, metrics.height * place.scale);
+    }
+  } else {
+    draw(map, 0, 0, srcW, srcH);
+    if (boar && boar !== map) {
+      draw(boar, 0, 0, srcW, srcH);
+    }
+  }
+  return new Promise((resolve) => {
+    out.toBlob((blob) => resolve(blob), "image/png");
+  });
+}
 
 const MAX_TILE = 64;
 const MIN_TILE = 16;
@@ -193,6 +251,8 @@ export function GameBoard({
   alwaysAnimate = false,
   mapLabelsDraggable = false,
   onMapLabelMove,
+  stillRef,
+  onStill,
 }: GameBoardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [tileWidth, setTileWidth] = useState(() =>
@@ -462,6 +522,10 @@ export function GameBoard({
     };
   }, [level.rows, level.cols, level.iso, sizing, maxContainCell, framed, bleed]);
 
+  if (stillRef) {
+    stillRef.current = () => captureBoard(containerRef.current, bleedPlace, metrics, bleed);
+  }
+
   const grid = (
     <div
       className="relative"
@@ -481,6 +545,7 @@ export function GameBoard({
         flashMark={reach?.id ?? 0}
         hoverKey={hoverKey}
         alwaysAnimate={alwaysAnimate}
+        onStill={onStill}
       />
       {pickups.map((pickup) => (
         <BridgeSplash

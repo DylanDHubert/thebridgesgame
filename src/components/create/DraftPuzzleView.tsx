@@ -1,15 +1,22 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
-import { EditorPalette, type EditorTool } from "@/components/create/EditorPalette";
+import { storeLevelThumb } from "@/app/actions/levelThumb";
+import {
+  EditorPalette,
+  brushOffset,
+  type BrushSize,
+  type EditorTool,
+} from "@/components/create/EditorPalette";
 import { BoardColumn } from "@/components/game/BoardColumn";
-import { GameBoard } from "@/components/game/GameBoard";
+import { GameBoard, type StillGrab } from "@/components/game/GameBoard";
 import type { DraftRoute } from "@/components/game/RouteCanvasOverlay";
 import { HairlineButton, HairlineHeader, HairlineRow } from "@/components/ui/hairline";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { perfectBridgeCost } from "@/lib/game/perfectScore";
+import { stillPngBase64 } from "@/lib/rendering/stillPng";
 import { savePlayerLevel } from "@/lib/supabase/scores";
 import { homeMapFromLevel } from "@/lib/game/homeMap";
 import { tutorialLabels } from "@/lib/game/tutorialMap";
@@ -76,12 +83,14 @@ export function DraftPuzzleView({
 }: DraftPuzzleViewProps) {
   const [level, setLevel] = useState<Level>(initialLevel);
   const [tool, setTool] = useState<EditorTool>(null);
+  const [brush, setBrush] = useState<BrushSize>(1);
   const [draftRoute, setDraftRoute] = useState<DraftRoute | null>(null);
   const [name, setName] = useState(() => initialLevel.name);
   const [status, setStatus] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const auth = useAuth();
   const router = useRouter();
+  const stillRef = useRef<StillGrab | null>(null);
 
   const emptyBridges = useMemo(() => new Set<string>(), []);
   const emptyPath = useMemo(() => new Set<string>(), []);
@@ -114,17 +123,29 @@ export function DraftPuzzleView({
     }
   };
 
-  const paintTerrain = (row: number, col: number, kind: TileKind) => {
+  const paintTerrain = (row: number, col: number, kind: TileKind, size: BrushSize) => {
+    const origin = brushOffset(size);
     setLevel((prev) => {
-      if (!isPlayableCell(prev, row, col)) {
-        return prev;
-      }
-      const index = row * prev.cols + col;
-      if (prev.terrain[index] === kind) {
-        return prev;
-      }
       const terrain = prev.terrain.slice();
-      terrain[index] = kind;
+      let changed = false;
+      for (let dr = 0; dr < size; dr += 1) {
+        for (let dc = 0; dc < size; dc += 1) {
+          const nextRow = row + origin + dr;
+          const nextCol = col + origin + dc;
+          if (!isPlayableCell(prev, nextRow, nextCol)) {
+            continue;
+          }
+          const index = nextRow * prev.cols + nextCol;
+          if (terrain[index] === kind) {
+            continue;
+          }
+          terrain[index] = kind;
+          changed = true;
+        }
+      }
+      if (!changed) {
+        return prev;
+      }
       const next: Level = { ...prev, terrain };
       // PRUNE BUILDINGS THAT NO LONGER SATISFY THEIR PLACEMENT RULES
       const objects = next.objects.filter((object) => {
@@ -242,7 +263,7 @@ export function DraftPuzzleView({
     }
     switch (tool.type) {
       case "terrain":
-        paintTerrain(row, col, tool.kind);
+        paintTerrain(row, col, tool.kind, brush);
         break;
       case "object":
         placeObject(row, col, tool.defId);
@@ -322,6 +343,10 @@ export function DraftPuzzleView({
       );
       setStatus(result.ok ? "Saved" : `Save failed: ${result.error ?? "unknown"}`);
       if (result.ok) {
+        const still = await stillRef.current?.();
+        if (still) {
+          await storeLevelThumb(toSave.id, await stillPngBase64(still));
+        }
         router.refresh();
         if (!homeMap && !tutorialMap) {
           onPlayerSaved?.(toSave.id);
@@ -348,6 +373,7 @@ export function DraftPuzzleView({
             draftRoute={draftRoute}
             sizing="contain"
             bleed
+            stillRef={stillRef}
             showMission={!homeMap}
             boarClick={!tutorialMap}
             mapLabels={homeLabels ?? lessonLabels}
@@ -364,7 +390,12 @@ export function DraftPuzzleView({
         bar={
         <div className="flex w-full flex-wrap items-center justify-between gap-3 border border-black px-3 py-2.5">
           <div className="flex min-w-0 flex-wrap items-center gap-3">
-            <EditorPalette tool={tool} onSelect={handleSelectTool} />
+            <EditorPalette
+              tool={tool}
+              onSelect={handleSelectTool}
+              brush={brush}
+              onBrush={setBrush}
+            />
             <p className="text-[10px] uppercase tracking-[0.14em]">
               {status ?? toolHint(tool, homeMap, tutorialMap)}
             </p>
