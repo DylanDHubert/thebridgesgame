@@ -285,6 +285,15 @@ export type DailyCard = {
   solver: number | null;
 };
 
+function dailyCardFrom(row: object): DailyCard | null {
+  const id = "id" in row && typeof row.id === "string" ? row.id : "";
+  const day = "day" in row && typeof row.day === "string" ? row.day : "";
+  const name = "name" in row && typeof row.name === "string" ? row.name : "";
+  const thumb = "thumb" in row && typeof row.thumb === "string" ? row.thumb : null;
+  const solver = "solver" in row && typeof row.solver === "number" ? row.solver : null;
+  return id && day ? { id, day, name, thumb, solver } : null;
+}
+
 /** STORED DAILIES, INCLUDING THE SOLVER COST AND STILL. */
 export async function listDailyCards(): Promise<DailyCard[]> {
   const remote = env();
@@ -307,13 +316,31 @@ export async function listDailyCards(): Promise<DailyCard[]> {
     if (!row || typeof row !== "object") {
       return [];
     }
-    const id = "id" in row && typeof row.id === "string" ? row.id : "";
-    const day = "day" in row && typeof row.day === "string" ? row.day : "";
-    const name = "name" in row && typeof row.name === "string" ? row.name : "";
-    const thumb = "thumb" in row && typeof row.thumb === "string" ? row.thumb : null;
-    const solver = "solver" in row && typeof row.solver === "number" ? row.solver : null;
-    return id && day ? [{ id, day, name, thumb, solver }] : [];
+    const card = dailyCardFrom(row);
+    return card ? [card] : [];
   });
+}
+
+/** ONE STORED DAY, OR NULL WHEN THAT DATE HAS NOT BEEN SAVED. */
+export async function loadDailyCard(day: string): Promise<DailyCard | null> {
+  const remote = env();
+  if (!remote) {
+    return null;
+  }
+  const response = await fetch(
+    `${remote.url}/rest/v1/levels?day=eq.${encodeURIComponent(day)}&kind=eq.daily&select=id,day,name,thumb,solver`,
+    { headers: headers(remote.key), cache: "no-store" },
+  );
+  if (!response.ok) {
+    console.log("[journeyman:daily] load failed", { day, status: response.status });
+    return null;
+  }
+  const rows: unknown = await response.json();
+  const row = Array.isArray(rows) ? rows[0] : null;
+  if (!row || typeof row !== "object") {
+    return null;
+  }
+  return dailyCardFrom(row);
 }
 
 /** EVERY SUBMITTED COST, GROUPED BY LEVEL, FOR THE ONE-PIXEL STRIP. */

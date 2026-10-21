@@ -143,13 +143,26 @@ export function HairlineHeader({
   return (
     <header className="flex shrink-0 items-center justify-between gap-4 border-b border-black px-4 py-3 sm:px-6">
       <h1
-        className="min-w-0 truncate text-[11px] tracking-[0.12em] text-[#fbbf24]"
+        className="flex min-w-0 items-center gap-2 text-[11px] tracking-[0.12em] text-[#fbbf24]"
         style={{
           textShadow:
             "1px 0 0 rgb(12 48 92), -1px 0 0 rgb(12 48 92), 0 1px 0 rgb(12 48 92), 0 -1px 0 rgb(12 48 92)",
         }}
       >
-        The Bridges Game
+        {/* MARSH BRIDGE ON WHITE. THE YELLOW GLOW MATCHES THE WORDMARK. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/marsh-bridge.png"
+          alt=""
+          width={22}
+          height={22}
+          className="h-[22px] w-[22px] shrink-0"
+          style={{
+            imageRendering: "pixelated",
+            filter: "drop-shadow(0 0 2px #fbbf24) drop-shadow(0 0 4px #fbbf24)",
+          }}
+        />
+        <span className="truncate">The Bridges Game</span>
       </h1>
       {userId ? (
         <button

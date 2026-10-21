@@ -157,6 +157,24 @@ function captureBoard(
       draw(boar, 0, 0, srcW, srcH);
     }
   }
+  // A BLANK OCEAN FILL IS ONE COLOR. AN ISLAND HAS MORE THAN THAT.
+  const probes = [
+    [0.5, 0.5],
+    [0.35, 0.42],
+    [0.65, 0.58],
+    [0.5, 0.28],
+    [0.5, 0.72],
+  ];
+  const seen = new Set<string>();
+  for (const [fx, fy] of probes) {
+    const x = Math.min(width - 1, Math.max(0, Math.floor(width * fx)));
+    const y = Math.min(height - 1, Math.max(0, Math.floor(height * fy)));
+    const pixel = ctx.getImageData(x, y, 1, 1).data;
+    seen.add(`${pixel[0]},${pixel[1]},${pixel[2]}`);
+  }
+  if (seen.size < 2) {
+    return Promise.resolve(null);
+  }
   return new Promise((resolve) => {
     out.toBlob((blob) => resolve(blob), "image/png");
   });
@@ -256,6 +274,8 @@ export function GameBoard({
   onStill,
 }: GameBoardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // TRUE AFTER THE FRAME HAS BEEN MEASURED. THE FIRST PAINT IS OFTEN UNSCALED.
+  const placed = useRef(false);
   const [tileWidth, setTileWidth] = useState(() =>
     sizing === "contain" ? CONTAIN_MIN_TILE : MAX_TILE,
   );
@@ -485,6 +505,7 @@ export function GameBoard({
           bleed,
         );
         setTileWidth(tile);
+        placed.current = width >= 8 && height >= 8;
         if (bleed) {
           // SCALE FROM THE ORIGINAL MAP. THE EXTRA RIM SITS OUTSIDE IT AND GETS CLIPPED.
           const base = isoMetrics(tile, level.rows, level.cols, level.iso);
@@ -502,6 +523,7 @@ export function GameBoard({
       }
       const width = element.clientWidth - BOARD_PADDING;
       const heightBudget = Math.min(window.innerHeight * 0.58, 640);
+      placed.current = element.clientWidth >= 8 && element.clientHeight >= 8;
       setTileWidth(
         resolveTileWidth(
           width,
@@ -524,7 +546,12 @@ export function GameBoard({
   }, [level.rows, level.cols, level.iso, sizing, maxContainCell, framed, bleed]);
 
   if (stillRef) {
-    stillRef.current = () => captureBoard(containerRef.current, bleedPlace, metrics, bleed);
+    stillRef.current = () => {
+      if (!placed.current) {
+        return Promise.resolve(null);
+      }
+      return captureBoard(containerRef.current, bleedPlace, metrics, bleed);
+    };
   }
 
   const grid = (

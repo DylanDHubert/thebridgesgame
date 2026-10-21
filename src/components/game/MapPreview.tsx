@@ -2,7 +2,7 @@
 
 import { useRef, type RefObject } from "react";
 
-import { storeLevelThumb } from "@/app/actions/levelThumb";
+import { logThumbMiss, storeLevelThumb } from "@/app/actions/levelThumb";
 import { GameBoard, type StillGrab } from "@/components/game/GameBoard";
 import { GameStage } from "@/components/game/GameStage";
 import type { Level } from "@/lib/game/level/types";
@@ -46,17 +46,27 @@ export function MapPreview({
     }
     const mine = ++ticket.current;
     void (async () => {
-      const blob = await stillRef.current?.();
-      if (!blob || mine !== ticket.current || published.current === level.id) {
-        return;
+      // THE FIRST PAINT OFTEN LANDS BEFORE THE CARD HAS A SIZE. WAIT FOR A REAL GRAB.
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        if (mine !== ticket.current || published.current === level.id) {
+          return;
+        }
+        const blob = await stillRef.current?.();
+        if (blob && blob.size >= 8000) {
+          const png = await stillPngBase64(blob);
+          const revision = await storeLevelThumb(level.id, png);
+          if (!revision || mine !== ticket.current) {
+            return;
+          }
+          published.current = level.id;
+          onPublished?.(revision);
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 160));
       }
-      const png = await stillPngBase64(blob);
-      const revision = await storeLevelThumb(level.id, png);
-      if (!revision || mine !== ticket.current) {
-        return;
+      if (mine === ticket.current && published.current !== level.id) {
+        await logThumbMiss(level.id);
       }
-      published.current = level.id;
-      onPublished?.(revision);
     })();
   };
 

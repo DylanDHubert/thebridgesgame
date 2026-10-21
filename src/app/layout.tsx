@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   description:
     "Bridge the Isles — daily archipelago puzzles and island crafting.",
   icons: {
-    icon: [{ url: "/favicon.ico", sizes: "32x32" }],
+    icon: [{ url: "/brand/marsh-bridge.png", type: "image/png", sizes: "64x64" }],
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
   },
   openGraph: {
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
         url: "/apple-touch-icon.png",
         width: 180,
         height: 180,
-        alt: "A boar on turquoise",
+        alt: "A marsh bridge",
       },
     ],
   },

@@ -66,17 +66,24 @@ export type DailyBuild = {
   day: string;
 };
 
-/** ONE BOARD PER UTC DATE. THE GRID MATCHES CREATE. PAR IS FROZEN HERE. */
-export function buildDailyLevel(date = new Date()): DailyBuild {
+/** THE BOARD FOR A UTC DAY. THE SAME SEED ALWAYS DRAWS THE SAME ISLAND. */
+export function dailyLevelFor(date: Date): Level {
   const preset = dailyPresetFor(date);
   const day = dailyDateKey(date);
-  const level = generateLevel({
+  return generateLevel({
     seed: `daily-${day}`,
     config: {
       grid: { ...CREATE_FIXED_GRID },
       noise: preset.noise,
     },
   });
+}
+
+/** ONE BOARD PER UTC DATE. THE GRID MATCHES CREATE. THE SOLVER COST IS FROZEN HERE. */
+export function buildDailyLevel(date = new Date()): DailyBuild {
+  const preset = dailyPresetFor(date);
+  const day = dailyDateKey(date);
+  const level = dailyLevelFor(date);
   const solver = perfectBridgeCost(level);
   console.log("[journeyman:daily] built", {
     day,
