@@ -29,7 +29,7 @@ export function ScoreHome({ score, best, optimal, onRetry }: ScoreHomeProps) {
           optimal ? " text-[#fbbf24]" : ""
         }`}
       >
-        {optimal ? "Optimal achieved" : "Not achieved"}
+        {optimal ? "Optimal achieved" : "Not optimal "}
       </p>
       <HairlineRow>
         <p className="text-[10px] uppercase tracking-[0.14em]">Back to the levels</p>
