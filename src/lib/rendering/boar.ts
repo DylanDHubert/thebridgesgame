@@ -2,6 +2,7 @@ import type { Level } from "@/lib/game/level/types";
 import { shortestPath } from "@/lib/game/simulateLevel";
 import type { CellCoord } from "@/lib/game/types";
 import { isoCellCenter, type IsoMetrics } from "@/lib/rendering/isoTiles";
+import { runNow } from "@/lib/rendering/runClock";
 
 /** LOOSE FRAMES ARE 46×32. SHEETS AND STRIPS ARE THE SAME ART WITH GAPS. */
 export const BOAR_FRAME_W = 46;
@@ -333,7 +334,7 @@ export function boarPose(plan: BoarPlan, now: number, reduced: boolean): BoarPos
     };
   }
 
-  const elapsed = Math.max(0, now - plan.beganAt);
+  const elapsed = Math.max(0, runNow(now) - plan.beganAt);
   const script = buildScript(plan);
   const mark =
     script.marks.find((entry) => elapsed >= entry.t0 && elapsed < entry.t1) ??

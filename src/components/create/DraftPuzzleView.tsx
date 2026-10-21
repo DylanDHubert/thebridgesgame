@@ -333,12 +333,12 @@ export function DraftPuzzleView({
           : name.trim() || level.id,
     };
     try {
-      const par = homeMap || tutorialMap ? null : perfectBridgeCost(toSave);
+      const solver = homeMap || tutorialMap ? null : perfectBridgeCost(toSave);
       const result = await savePlayerLevel(
         toSave,
         auth.userId,
         auth.accessToken,
-        par,
+        solver,
         homeMap ? "home" : tutorialMap ? "how" : "player",
       );
       setStatus(result.ok ? "Saved" : `Save failed: ${result.error ?? "unknown"}`);

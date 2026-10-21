@@ -3,7 +3,7 @@ import { PlaySession } from "@/components/play/PlaySession";
 import { HairlineHeader, HairlineLink } from "@/components/ui/hairline";
 import { buildDailyLevel } from "@/lib/game/daily";
 import { serializeLevel } from "@/lib/game/level/serialize";
-import { listLevelCards, loadRemoteLevel, saveDailyLevel } from "@/lib/supabase/scores";
+import { listLevelCards, loadStoredLevel, saveDailyLevel } from "@/lib/supabase/scores";
 
 function dailyDate(value: string): Date | null {
   if (value === "1") {
@@ -44,17 +44,17 @@ export default async function PlayPage({ searchParams }: PlayPageProps) {
       level: daily.level,
       day: daily.day,
       preset: daily.preset,
-      par: daily.par,
+      solver: daily.solver,
     });
     console.log("[journeyman:daily] serve", {
       day: daily.day,
       preset: daily.preset,
-      par: daily.par,
+      solver: daily.solver,
       bytes: serializeLevel(daily.level).terrain.length,
     });
     return (
       <main className="h-dvh overflow-hidden">
-        <PlaySession level={daily.level} par={daily.par} />
+        <PlaySession level={daily.level} solver={daily.solver} daily />
       </main>
     );
   }
@@ -62,8 +62,8 @@ export default async function PlayPage({ searchParams }: PlayPageProps) {
   const levelId = params.level?.trim();
 
   if (levelId) {
-    const level = await loadRemoteLevel(levelId);
-    if (!level) {
+    const stored = await loadStoredLevel(levelId);
+    if (!stored) {
       return (
         <main className="flex h-dvh flex-col overflow-hidden">
           <HairlineHeader title="Play" subtitle="Level missing" nav="play" />
@@ -79,7 +79,7 @@ export default async function PlayPage({ searchParams }: PlayPageProps) {
 
     return (
       <main className="h-dvh overflow-hidden">
-        <PlaySession level={level} />
+        <PlaySession level={stored.level} solver={stored.solver ?? undefined} />
       </main>
     );
   }

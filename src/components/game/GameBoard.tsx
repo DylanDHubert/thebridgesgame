@@ -30,6 +30,7 @@ import { isoCellCenter, isoMetrics, SPRITE_NATIVE } from "@/lib/rendering/isoTil
 import { FLOWER_VARIANTS, waterSurfaceTint } from "@/lib/rendering/tileCatalog";
 import { terrainKindAt, terrainViewFromLevel } from "@/lib/rendering/terrainView";
 import { buildMarshWarmth } from "@/lib/rendering/waterWaves";
+import { runNow } from "@/lib/rendering/runClock";
 import { playSfx } from "@/lib/sound/bed";
 
 type BridgePickup = {
@@ -424,7 +425,7 @@ export function GameBoard({
     const beganAt =
       boarWalkKey.current === boarKey && boarRef.current
         ? boarRef.current.beganAt
-        : performance.now();
+        : runNow();
     boarWalkKey.current = boarKey;
     boarRef.current = {
       start: level.start,

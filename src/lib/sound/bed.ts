@@ -12,6 +12,7 @@ const CLIPS = {
   placeMarsh: "/assets/sfx/place_bridge_marsh.mp3",
   removeWater: "/assets/sfx/remove_bridge_water.mp3",
   removeMarsh: "/assets/sfx/remove_bridge_marsh.mp3",
+  fastForward: "/assets/sfx/fast_forward.mp3",
 } as const;
 
 export type SfxName = keyof typeof CLIPS;
@@ -42,6 +43,7 @@ let musicLoad: Promise<AudioBuffer> | null = null;
 let musicElement: HTMLAudioElement | null = null;
 let walking: HTMLAudioElement | null = null;
 let hydrated = false;
+let audioRate = 1;
 
 function clamp(value: number): number {
   if (!Number.isFinite(value)) {
@@ -99,6 +101,7 @@ function ensureWalking() {
     mount(walking, "journeyman-walking", WALK_SRC, true);
   }
   walking.volume = sfxVolume;
+  walking.playbackRate = audioRate;
 }
 
 function musicContext(): AudioContext {
@@ -165,6 +168,7 @@ function startElementMusic(first: boolean) {
     mount(musicElement, "journeyman-music", MUSIC_SRC, true);
   }
   musicElement.volume = musicVolume;
+  musicElement.playbackRate = audioRate;
   if (!musicElement.paused) {
     return;
   }
@@ -202,6 +206,7 @@ function startMusic(first: boolean) {
       const source = audio.createBufferSource();
       source.buffer = buffer;
       source.loop = true;
+      source.playbackRate.value = audioRate;
       source.connect(musicGain);
       source.start();
       musicSource = source;
@@ -288,6 +293,21 @@ export function setSfxVolume(next: number) {
   armAudio();
   syncWalking();
   emit();
+}
+
+/** SPEED THE SONG AND THE WALK LOOP. ONE-SHOT CLIPS STAY AT NORMAL PITCH. */
+export function setAudioRate(next: number) {
+  audioRate = next;
+  if (walking) {
+    walking.playbackRate = next;
+  }
+  if (musicElement) {
+    musicElement.playbackRate = next;
+  }
+  if (musicSource) {
+    musicSource.playbackRate.value = next;
+  }
+  console.log("[journeyman:sfx] rate", next);
 }
 
 export function playSfx(name: SfxName) {

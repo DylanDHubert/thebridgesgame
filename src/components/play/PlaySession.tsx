@@ -8,7 +8,7 @@ import { GameBoard } from "@/components/game/GameBoard";
 import { ScoreHome } from "@/components/play/ScoreHome";
 import { HairlineButton, HairlineHeader, HairlineRow } from "@/components/ui/hairline";
 import { useLevelGame } from "@/hooks/useLevelGame";
-import { markOptimal, rememberBestScore } from "@/lib/game/bestScore";
+import { rememberBestScore } from "@/lib/game/bestScore";
 import {
   lockFirstScore,
   readLockedScore,
@@ -18,11 +18,14 @@ import {
 import type { Level } from "@/lib/game/level/types";
 import { perfectBridgeCost } from "@/lib/game/perfectScore";
 import { boarHomeMs } from "@/lib/rendering/boar";
+import { FAST_RUN_RATE, getRunRate, runNow, setRunRate, subscribeRunRate } from "@/lib/rendering/runClock";
+import { playSfx, setAudioRate } from "@/lib/sound/bed";
 
 type PlaySessionProps = {
   level: Level;
-  /** PAR FROZEN WHEN THE DAILY WAS BUILT. OMITTED ON SAVED LEVELS. */
-  par?: number | null;
+  /** SOLVER COST STORED ON THE LEVEL. OMITTED ONLY WHEN THE ROW HAS NONE. */
+  solver?: number | null;
+  daily?: boolean;
 };
 
 function statusLabel(
@@ -42,7 +45,7 @@ function statusLabel(
 }
 
 /** PLAY SESSION — BOARD + STATUS BAR */
-export function PlaySession({ level, par }: PlaySessionProps) {
+export function PlaySession({ level, solver, daily = false }: PlaySessionProps) {
   const {
     bridges,
     phase,
@@ -57,10 +60,10 @@ export function PlaySession({ level, par }: PlaySessionProps) {
   } = useLevelGame(level, { holdForSubmit: true });
   const [scoreOpen, setScoreOpen] = useState(false);
   const [priorBest, setPriorBest] = useState<number | null>(null);
-  const [optimal, setOptimal] = useState(false);
   const [firstScore, setFirstScore] = useState<number | null>(null);
   const [username, setUsername] = useState("");
   const [boarCue, setBoarCue] = useState(0);
+  const [fast, setFast] = useState(false);
   const auth = useAuth();
   const submitName = auth.username || username.trim();
 
@@ -72,6 +75,13 @@ export function PlaySession({ level, par }: PlaySessionProps) {
   const success = phase === "success";
   const confirmedCost = result?.bridgeCost ?? bridgeCost;
   const runningHome = success && !scoreOpen;
+  const solverCost = solver === undefined ? perfectBridgeCost(level) : solver;
+
+  useEffect(() => {
+    if (!runningHome) {
+      setFast(false);
+    }
+  }, [runningHome]);
 
   useEffect(() => {
     if (!success || !result?.connected || !level.start) {
@@ -79,7 +89,7 @@ export function PlaySession({ level, par }: PlaySessionProps) {
       return;
     }
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const wait = reduced
+    const duration = reduced
       ? 0
       : boarHomeMs({
           start: level.start,
@@ -89,25 +99,45 @@ export function PlaySession({ level, par }: PlaySessionProps) {
           level,
           bridges,
         });
-    const timer = window.setTimeout(() => {
-      const best = rememberBestScore(level.id, result.bridgeCost);
-      const target = par === undefined ? perfectBridgeCost(level) : par;
-      const achieved = target != null && result.bridgeCost <= target;
-      if (achieved) {
-        markOptimal(level.id);
+    const deadline = runNow() + duration;
+    let opened = false;
+    let timer = 0;
+    const open = () => {
+      if (opened) {
+        return;
       }
+      opened = true;
+      window.clearTimeout(timer);
+      setRunRate(1);
+      setAudioRate(1);
+      const best = rememberBestScore(level.id, result.bridgeCost);
       setPriorBest(best);
-      setOptimal(achieved);
       setScoreOpen(true);
       console.log("[journeyman:play] home", {
         levelId: level.id,
         score: result.bridgeCost,
         best,
-        achieved,
+        solver: solverCost,
       });
-    }, wait);
-    return () => window.clearTimeout(timer);
-  }, [success, result, level, bridges, par]);
+    };
+    const arm = () => {
+      if (opened) {
+        return;
+      }
+      window.clearTimeout(timer);
+      const left = deadline - runNow();
+      const real = left <= 0 ? 0 : left / getRunRate();
+      timer = window.setTimeout(open, real);
+    };
+    arm();
+    const unsubscribe = subscribeRunRate(arm);
+    return () => {
+      window.clearTimeout(timer);
+      unsubscribe();
+      setRunRate(1);
+      setAudioRate(1);
+    };
+  }, [success, result, level, bridges, solverCost]);
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
@@ -180,6 +210,23 @@ export function PlaySession({ level, par }: PlaySessionProps) {
                   Check
                 </HairlineButton>
               )}
+              {runningHome ? (
+                <HairlineButton
+                  pressed={fast}
+                  onClick={() => {
+                    const next = !fast;
+                    const rate = next ? FAST_RUN_RATE : 1;
+                    setFast(next);
+                    setRunRate(rate);
+                    setAudioRate(rate);
+                    if (next) {
+                      playSfx("fastForward");
+                    }
+                  }}
+                >
+                  Fast
+                </HairlineButton>
+              ) : null}
               <HairlineButton onClick={clearBridges} disabled={runningHome}>
                 Clear
               </HairlineButton>
@@ -191,8 +238,9 @@ export function PlaySession({ level, par }: PlaySessionProps) {
         <ScoreHome
           score={confirmedCost}
           best={priorBest}
+          solver={solverCost}
           firstScore={firstScore}
-          optimal={optimal}
+          daily={daily}
           levelId={level.id}
           onRetry={() => {
             clearBridges();

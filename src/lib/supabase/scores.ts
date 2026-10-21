@@ -29,7 +29,7 @@ export async function saveDailyLevel(input: {
   level: Level;
   day: string;
   preset: string;
-  par: number | null;
+  solver: number | null;
 }): Promise<void> {
   const remote = env();
   if (!remote) {
@@ -45,7 +45,7 @@ export async function saveDailyLevel(input: {
       kind: "daily",
       day: input.day,
       preset: input.preset,
-      par: input.par,
+      solver: input.solver,
       body: serializeLevel(input.level),
     }),
   });
@@ -90,6 +90,7 @@ export type LevelCard = {
   id: string;
   name: string;
   thumb: string | null;
+  solver: number | null;
 };
 
 /** PUBLIC STILL FOR A LEVEL CARD. REVISION BUSTS THE CACHE AFTER A RE-SAVE. */
@@ -155,7 +156,7 @@ export async function listLevelCards(): Promise<LevelCard[]> {
     return [];
   }
   const response = await fetch(
-    `${remote.url}/rest/v1/levels?kind=in.(player,catalog)&select=id,name,thumb&order=name.asc`,
+    `${remote.url}/rest/v1/levels?kind=in.(player,catalog)&select=id,name,thumb,solver&order=name.asc`,
     { headers: headers(remote.key), cache: "no-store" },
   );
   if (!response.ok) {
@@ -173,17 +174,24 @@ export async function listLevelCards(): Promise<LevelCard[]> {
     const id = "id" in row && typeof row.id === "string" ? row.id : "";
     const name = "name" in row && typeof row.name === "string" ? row.name : "";
     const thumb = "thumb" in row && typeof row.thumb === "string" ? row.thumb : null;
-    return id && name ? [{ id, name, thumb }] : [];
+    const solver = "solver" in row && typeof row.solver === "number" ? row.solver : null;
+    return id && name ? [{ id, name, thumb, solver }] : [];
   });
 }
 
-export async function loadRemoteLevel(id: string): Promise<Level | null> {
+export type StoredLevel = {
+  level: Level;
+  solver: number | null;
+};
+
+/** BOARD PLUS THE STORED SOLVER COST. NULL WHEN THE ROW HAS NONE. */
+export async function loadStoredLevel(id: string): Promise<StoredLevel | null> {
   const remote = env();
   if (!remote) {
     return null;
   }
   const response = await fetch(
-    `${remote.url}/rest/v1/levels?id=eq.${encodeURIComponent(id)}&select=body`,
+    `${remote.url}/rest/v1/levels?id=eq.${encodeURIComponent(id)}&select=body,solver`,
     { headers: headers(remote.key), cache: "no-store" },
   );
   if (!response.ok) {
@@ -191,11 +199,18 @@ export async function loadRemoteLevel(id: string): Promise<Level | null> {
     return null;
   }
   const rows: unknown = await response.json();
-  const body = Array.isArray(rows) ? (rows[0] as { body?: unknown } | undefined)?.body : null;
-  if (!isBody(body)) {
+  const row = Array.isArray(rows) ? (rows[0] as { body?: unknown; solver?: unknown } | undefined) : undefined;
+  if (!row || !isBody(row.body)) {
     return null;
   }
-  return deserializeLevel(body);
+  const solver = typeof row.solver === "number" ? row.solver : null;
+  console.log("[journeyman:levels] loaded", { id, solver });
+  return { level: deserializeLevel(row.body), solver };
+}
+
+export async function loadRemoteLevel(id: string): Promise<Level | null> {
+  const stored = await loadStoredLevel(id);
+  return stored?.level ?? null;
 }
 
 function isBody(value: unknown): value is LevelFile {
@@ -218,7 +233,7 @@ export async function savePlayerLevel(
   level: Level,
   authorId: string | null,
   token: string | null,
-  par: number | null,
+  solver: number | null,
   kind: "player" | "home" | "how" = "player",
 ): Promise<{ ok: boolean; error?: string }> {
   const remote = env();
@@ -237,7 +252,7 @@ export async function savePlayerLevel(
       name: level.name,
       kind,
       author_id: authorId,
-      par,
+      solver,
       body: serializeLevel(level),
     }),
   });
@@ -261,6 +276,80 @@ export type ScoreRow = {
   cost: number;
   username: string;
 };
+
+export type DailyCard = {
+  id: string;
+  day: string;
+  name: string;
+  thumb: string | null;
+  solver: number | null;
+};
+
+/** STORED DAILIES, INCLUDING THE SOLVER COST AND STILL. */
+export async function listDailyCards(): Promise<DailyCard[]> {
+  const remote = env();
+  if (!remote) {
+    return [];
+  }
+  const response = await fetch(
+    `${remote.url}/rest/v1/levels?kind=eq.daily&select=id,day,name,thumb,solver`,
+    { headers: headers(remote.key), cache: "no-store" },
+  );
+  if (!response.ok) {
+    console.log("[journeyman:daily] list failed", { status: response.status });
+    return [];
+  }
+  const rows: unknown = await response.json();
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+  return rows.flatMap((row) => {
+    if (!row || typeof row !== "object") {
+      return [];
+    }
+    const id = "id" in row && typeof row.id === "string" ? row.id : "";
+    const day = "day" in row && typeof row.day === "string" ? row.day : "";
+    const name = "name" in row && typeof row.name === "string" ? row.name : "";
+    const thumb = "thumb" in row && typeof row.thumb === "string" ? row.thumb : null;
+    const solver = "solver" in row && typeof row.solver === "number" ? row.solver : null;
+    return id && day ? [{ id, day, name, thumb, solver }] : [];
+  });
+}
+
+/** EVERY SUBMITTED COST, GROUPED BY LEVEL, FOR THE ONE-PIXEL STRIP. */
+export async function listSubmissionCosts(): Promise<Record<string, number[]>> {
+  const remote = env();
+  if (!remote) {
+    return {};
+  }
+  const response = await fetch(
+    `${remote.url}/rest/v1/submissions?select=level_id,cost`,
+    { headers: headers(remote.key), cache: "no-store" },
+  );
+  if (!response.ok) {
+    console.log("[journeyman:levels] costs failed", { status: response.status });
+    return {};
+  }
+  const rows: unknown = await response.json();
+  if (!Array.isArray(rows)) {
+    return {};
+  }
+  const costs: Record<string, number[]> = {};
+  for (const row of rows) {
+    if (!row || typeof row !== "object") {
+      continue;
+    }
+    const id = "level_id" in row && typeof row.level_id === "string" ? row.level_id : "";
+    const cost = "cost" in row && typeof row.cost === "number" ? row.cost : null;
+    if (!id || cost == null) {
+      continue;
+    }
+    const list = costs[id] ?? [];
+    list.push(cost);
+    costs[id] = list;
+  }
+  return costs;
+}
 
 /** FIRST SAVED COST PER LEVEL FOR ONE PLAYER. */
 export async function listPlayerScores(

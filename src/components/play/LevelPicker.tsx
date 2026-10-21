@@ -1,17 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 
 import { loadPlayerScores } from "@/app/actions/playerScores";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { MapPreview } from "@/components/game/MapPreview";
-import { GAME_STAGE_ASPECT } from "@/components/game/GameStage";
+import { IslandCard } from "@/components/play/IslandCard";
 import { HairlineLink } from "@/components/ui/hairline";
-import { readBestScores, readOptimalLevels } from "@/lib/game/bestScore";
+import { readBestScores } from "@/lib/game/bestScore";
 import { readLockedScores } from "@/lib/game/lockScore";
 import type { Level } from "@/lib/game/level/types";
-import { levelThumbSrc, loadRemoteLevel, type LevelCard } from "@/lib/supabase/scores";
+import { levelThumbSrc, listSubmissionCosts, loadRemoteLevel, type LevelCard } from "@/lib/supabase/scores";
 
 type LevelPickerProps = {
   cards: LevelCard[];
@@ -86,16 +85,22 @@ function LazyMap({ id, onPublished }: { id: string; onPublished: (revision: stri
 export function LevelPicker({ cards }: LevelPickerProps) {
   const auth = useAuth();
   const [bests, setBests] = useState<Record<string, number>>({});
-  const [optimal, setOptimal] = useState<Set<string>>(new Set());
+  const [costs, setCosts] = useState<Record<string, number[]>>({});
 
   useEffect(() => {
     const local = { ...readLockedScores(), ...readBestScores() };
     setBests(local);
-    setOptimal(readOptimalLevels());
-    if (!auth.userId) {
-      return;
-    }
     let cancel = false;
+    void listSubmissionCosts().then((next) => {
+      if (!cancel) {
+        setCosts(next);
+      }
+    });
+    if (!auth.userId) {
+      return () => {
+        cancel = true;
+      };
+    }
     void loadPlayerScores(auth.userId).then((remote) => {
       if (!cancel) {
         setBests({ ...local, ...remote });
@@ -118,28 +123,15 @@ export function LevelPicker({ cards }: LevelPickerProps) {
   return (
     <ul className="grid w-full grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
       {cards.map((card) => (
-        <li key={card.id} className="min-w-0">
-          <Link
+        <li key={card.id}>
+          <IslandCard
             href={`/play?level=${encodeURIComponent(card.id)}`}
-            className="block border border-black transition hover:bg-black hover:text-white"
-          >
-            <div
-              className="relative overflow-hidden border-b border-black bg-[rgb(12_48_92)]"
-              style={{ aspectRatio: GAME_STAGE_ASPECT }}
-            >
-              <CardShot id={card.id} thumb={card.thumb} />
-            </div>
-            <div className="px-2 py-2 text-center">
-              <h2 className="truncate text-[9px] uppercase tracking-[0.14em]">{card.name}</h2>
-              <p
-                className={`mt-1 text-[8px] uppercase tracking-[0.16em]${
-                  optimal.has(card.id) ? " text-[#fbbf24]" : ""
-                }`}
-              >
-                {bests[card.id] != null ? `Best ${bests[card.id]}` : "Best ?"}
-              </p>
-            </div>
-          </Link>
+            title={card.name}
+            image={<CardShot id={card.id} thumb={card.thumb} />}
+            solver={card.solver}
+            costs={costs[card.id] ?? []}
+            score={bests[card.id] ?? null}
+          />
         </li>
       ))}
     </ul>

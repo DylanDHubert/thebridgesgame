@@ -140,8 +140,8 @@ export function CreateSettingsForm() {
     const level = generateLevel({ seed: nextSeed, config: normalized });
     setSaving(true);
     setNote(null);
-    const par = perfectBridgeCost(level);
-    const result = await savePlayerLevel(level, auth.userId, auth.accessToken, par);
+    const solver = perfectBridgeCost(level);
+    const result = await savePlayerLevel(level, auth.userId, auth.accessToken, solver);
     if (result.ok && preview?.id === level.id) {
       const still = await stillRef.current?.();
       if (still) {

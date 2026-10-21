@@ -61,7 +61,7 @@ export function dailyDateKey(date: Date): string {
 
 export type DailyBuild = {
   level: Level;
-  par: number | null;
+  solver: number | null;
   preset: DailyPresetId;
   day: string;
 };
@@ -77,12 +77,12 @@ export function buildDailyLevel(date = new Date()): DailyBuild {
       noise: preset.noise,
     },
   });
-  const par = perfectBridgeCost(level);
+  const solver = perfectBridgeCost(level);
   console.log("[journeyman:daily] built", {
     day,
     preset: preset.id,
     levelId: level.id,
-    par,
+    solver,
   });
-  return { level, par, preset: preset.id, day };
+  return { level, solver, preset: preset.id, day };
 }
