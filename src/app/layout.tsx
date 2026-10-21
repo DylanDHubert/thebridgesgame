@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Press_Start_2P } from "next/font/google";
 
 import { BoarPassage } from "@/components/loading/BoarPassage";
@@ -12,12 +12,32 @@ const pixelFont = Press_Start_2P({
   variable: "--font-pixel",
 });
 
+const TURQUOISE = "#2ec4b6";
+
+export const viewport: Viewport = {
+  themeColor: TURQUOISE,
+};
+
 export const metadata: Metadata = {
   title: "The Bridges Game",
   description:
     "Bridge the Isles — daily archipelago puzzles and island crafting.",
   icons: {
-    icon: "/assets/sprites/tiles/wood_moss.png",
+    icon: [{ url: "/favicon.ico", sizes: "32x32" }],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  openGraph: {
+    title: "The Bridges Game",
+    description:
+      "Bridge the Isles — daily archipelago puzzles and island crafting.",
+    images: [
+      {
+        url: "/apple-touch-icon.png",
+        width: 180,
+        height: 180,
+        alt: "A boar on turquoise",
+      },
+    ],
   },
 };
 
