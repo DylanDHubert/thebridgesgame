@@ -236,7 +236,7 @@ export function GameBoard({
       beganAt: performance.now(),
       cells,
       maxDist,
-      stepMs: reduced ? 0 : 36,
+      stepMs: reduced ? 0 : 12,
     };
   }
   const hintRef = useRef<Set<string> | null>(null);
@@ -244,6 +244,7 @@ export function GameBoard({
   const [pickups, setPickups] = useState<BridgePickup[]>([]);
   const [costs, setCosts] = useState<CostPop[]>([]);
   const [thought, setThought] = useState<BoarThought | null>(null);
+  const [hoverKey, setHoverKey] = useState<string | null>(null);
   const [bubbleRoot, setBubbleRoot] = useState<HTMLDivElement | null>(null);
   const depthAt = useMemo(
     () => latticeWaterDepth(view, level.iso),
@@ -314,6 +315,7 @@ export function GameBoard({
       return;
     }
     if (
+      showMission &&
       !pokeChecks &&
       !hintKeys &&
       !window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -477,6 +479,7 @@ export function GameBoard({
         hintRef={hintRef}
         hintMark={hintKeys ? [...hintKeys].sort().join("|") : ""}
         flashMark={reach?.id ?? 0}
+        hoverKey={hoverKey}
         alwaysAnimate={alwaysAnimate}
       />
       {pickups.map((pickup) => (
@@ -528,6 +531,7 @@ export function GameBoard({
               editable={editable}
               open={hintKeys == null || hintKeys.has(cellKey(cell.row, cell.col))}
               onToggle={handleCellActivate}
+              onHover={setHoverKey}
             />
           ))
         : null}

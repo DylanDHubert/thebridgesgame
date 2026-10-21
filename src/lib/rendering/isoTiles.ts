@@ -3,7 +3,7 @@ import type { TileKind } from "@/lib/game/types";
 import {
   CLIFF_BLOCK,
   CLIFF_STONE_LIFT,
-  GRASS_VARIANTS,
+  GRASS_BASE,
   OCEAN_VARIANTS,
 } from "@/lib/rendering/tileCatalog";
 
@@ -16,7 +16,7 @@ export const SPRITE_ANCHOR_Y = 8;
 
 /** PALETTE STAND-IN — THE BOARD PICKS A VARIANT PER CELL */
 export const TILE_SPRITES: Record<TileKind, string> = {
-  grass: GRASS_VARIANTS[0]!,
+  grass: GRASS_BASE,
   cliff: CLIFF_BLOCK,
   ocean: OCEAN_VARIANTS[0]!,
   marsh: OCEAN_VARIANTS[0]!,

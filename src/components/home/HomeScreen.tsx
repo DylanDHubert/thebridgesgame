@@ -8,7 +8,6 @@ import { useBoarPassage } from "@/components/loading/BoarPassage";
 import type { MapLabel } from "@/components/game/MapLabelOverlay";
 import { VolumeControls } from "@/components/sound/VolumeControls";
 import { HairlineHeader } from "@/components/ui/hairline";
-import { boardReach, type BoardReach } from "@/hooks/useLevelGame";
 import { cellKey } from "@/lib/game/coords";
 import {
   homeMapFromLevel,
@@ -48,8 +47,6 @@ export function HomeScreen({ level }: HomeScreenProps) {
   const depart = useBoarPassage();
   const map = useMemo(() => homeMapFromLevel(level), [level]);
   const [bridges, setBridges] = useState<Set<string>>(emptyBridges);
-  const [reach, setReach] = useState<BoardReach | null>(null);
-  const reachId = useRef(0);
   const [runPath, setRunPath] = useState<CellCoord[]>([]);
   const emptyPath = useMemo(() => new Set<string>(), []);
   const navigatedRef = useRef(false);
@@ -83,15 +80,6 @@ export function HomeScreen({ level }: HomeScreenProps) {
       next.add(key);
     }
     setBridges(next);
-    reachId.current += 1;
-    setReach(
-      boardReach(
-        map.level,
-        next,
-        reachId.current,
-        map.homeOrigin ?? map.level.mission.x,
-      ),
-    );
   };
 
   useEffect(() => {
@@ -148,7 +136,6 @@ export function HomeScreen({ level }: HomeScreenProps) {
             bleed
             mapLabels={labels}
             onToggleBridge={toggleBridge}
-            reach={reach}
           />
         }
         bar={

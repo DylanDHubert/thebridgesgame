@@ -29,6 +29,10 @@ function readLocks(): Record<string, number> {
   }
 }
 
+export function readLockedScores(): Record<string, number> {
+  return readLocks();
+}
+
 export function readLockedScore(levelId: string): number | null {
   const value = readLocks()[levelId];
   return value == null ? null : value;

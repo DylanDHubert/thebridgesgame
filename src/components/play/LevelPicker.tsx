@@ -3,10 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
+import { loadPlayerScores } from "@/app/actions/playerScores";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { MapPreview } from "@/components/game/MapPreview";
 import { GAME_STAGE_ASPECT } from "@/components/game/GameStage";
 import { HairlineLink } from "@/components/ui/hairline";
 import { readBestScores, readOptimalLevels } from "@/lib/game/bestScore";
+import { readLockedScores } from "@/lib/game/lockScore";
 import type { Level } from "@/lib/game/level/types";
 import { loadRemoteLevel, type LevelCard } from "@/lib/supabase/scores";
 
@@ -55,13 +58,27 @@ function LazyMap({ id }: { id: string }) {
 
 /** LEVEL SELECT — HAIRLINE CARDS */
 export function LevelPicker({ cards }: LevelPickerProps) {
+  const auth = useAuth();
   const [bests, setBests] = useState<Record<string, number>>({});
   const [optimal, setOptimal] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    setBests(readBestScores());
+    const local = { ...readLockedScores(), ...readBestScores() };
+    setBests(local);
     setOptimal(readOptimalLevels());
-  }, [cards]);
+    if (!auth.userId) {
+      return;
+    }
+    let cancel = false;
+    void loadPlayerScores(auth.userId).then((remote) => {
+      if (!cancel) {
+        setBests({ ...local, ...remote });
+      }
+    });
+    return () => {
+      cancel = true;
+    };
+  }, [cards, auth.userId]);
 
   if (cards.length === 0) {
     return (

@@ -147,6 +147,9 @@ function filesFrom(indexes: readonly number[]): string[] {
 /** INLAND GRASS — JUNGLE PLANTS 30 THROUGH 36. 37 IS GRASS, NOT A PLANT. */
 export const GRASS_VARIANTS = filesFrom([30, 31, 32, 33, 34, 35, 36]);
 
+/** PLAIN GRASS BLOCK. SWATCHES AND THE CALENDAR USE THIS, NOT A PLANT. */
+export const GRASS_BASE = filesFrom([37])[0]!;
+
 /** START ISLAND — EVERY CRACKED MUD TILE. SAME RULES AS GRASS. */
 export const MUD_BLOCK_VARIANTS = filesFrom([17, 18, 21]);
 

@@ -14,6 +14,7 @@ type CellViewProps = {
   /** WHEN FALSE THE CELL REFUSES THE CLICK. THE LESSON USES THIS. */
   open?: boolean;
   onToggle?: (row: number, col: number) => void;
+  onHover?: (key: string | null) => void;
 };
 
 /** DIAMOND HIT TARGET OVER THE SPRITE — TERRAIN ART IS THE CANVAS UNDERNEATH */
@@ -26,6 +27,7 @@ export function CellView({
   editable = false,
   open = true,
   onToggle,
+  onHover,
 }: CellViewProps) {
   const bridgeable = context.level
     ? canPlaceBridgeAt(context.level, row, col)
@@ -48,9 +50,15 @@ export function CellView({
       aria-label={`Cell ${row + 1}, ${col + 1}`}
       disabled={!clickable}
       onClick={() => onToggle?.(row, col)}
+      onPointerEnter={() => {
+        if (clickable) {
+          onHover?.(`${row},${col}`);
+        }
+      }}
+      onPointerLeave={() => onHover?.(null)}
       className={[
-        "absolute border-0 p-0",
-        clickable ? "cursor-pointer hover:bg-white/25" : "cursor-default",
+        "absolute border-0 bg-transparent p-0",
+        clickable ? "cursor-pointer" : "cursor-default",
       ].join(" ")}
       style={style}
     />

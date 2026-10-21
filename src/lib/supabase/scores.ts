@@ -204,6 +204,45 @@ export type ScoreRow = {
   username: string;
 };
 
+/** FIRST SAVED COST PER LEVEL FOR ONE PLAYER. */
+export async function listPlayerScores(
+  playerId: string,
+): Promise<Record<string, number>> {
+  const remote = env();
+  if (!remote || !playerId) {
+    return {};
+  }
+  const response = await fetch(
+    `${remote.url}/rest/v1/submissions?player_id=eq.${encodeURIComponent(playerId)}&select=level_id,cost`,
+    { headers: headers(remote.key), cache: "no-store" },
+  );
+  if (!response.ok) {
+    console.log("[journeyman:levels] player scores failed", {
+      status: response.status,
+    });
+    return {};
+  }
+  const rows: unknown = await response.json();
+  if (!Array.isArray(rows)) {
+    return {};
+  }
+  const scores: Record<string, number> = {};
+  for (const row of rows) {
+    if (!row || typeof row !== "object") {
+      continue;
+    }
+    const levelId =
+      "level_id" in row && typeof row.level_id === "string" ? row.level_id : "";
+    const cost = "cost" in row && typeof row.cost === "number" ? row.cost : null;
+    if (!levelId || cost == null) {
+      continue;
+    }
+    const previous = scores[levelId];
+    scores[levelId] = previous == null ? cost : Math.min(previous, cost);
+  }
+  return scores;
+}
+
 export async function listScoreRows(levelId: string): Promise<ScoreRow[]> {
   const remote = env();
   if (!remote) {

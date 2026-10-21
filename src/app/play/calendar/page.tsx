@@ -13,7 +13,7 @@ function dayKey(year: number, month: number, day: number): string {
   return date.toISOString().slice(0, 10);
 }
 
-/** A TERRAIN DIAMOND FOR ONE UTC DAY. */
+/** THE FULL TILE SPRITE FOR ONE UTC DAY. */
 function DayTile({
   day,
   kind,
@@ -30,9 +30,10 @@ function DayTile({
       className="flex aspect-square items-center justify-center text-[10px]"
       style={{
         backgroundImage: `url(${TILE_SPRITES[kind]})`,
-        backgroundSize: "100% 100%",
+        backgroundSize: "contain",
+        backgroundRepeat: "no-repeat",
+        backgroundPosition: "center",
         imageRendering: "pixelated",
-        clipPath: "polygon(50% 0, 100% 50%, 50% 100%, 0 50%)",
         color: tone,
         textShadow: INK,
       }}

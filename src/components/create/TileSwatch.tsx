@@ -18,7 +18,9 @@ export function TileSwatch({
         width: size,
         height: size,
         backgroundImage: `url(${TILE_SPRITES[kind]})`,
-        backgroundSize: "100% 100%",
+        backgroundSize: "contain",
+        backgroundRepeat: "no-repeat",
+        backgroundPosition: "center",
         imageRendering: "pixelated",
       }}
     >
@@ -29,8 +31,12 @@ export function TileSwatch({
             backgroundColor: MARSH_WATER_TINT,
             maskImage: `url(${TILE_SPRITES[kind]})`,
             WebkitMaskImage: `url(${TILE_SPRITES[kind]})`,
-            maskSize: "100% 100%",
+            maskSize: "contain",
+            WebkitMaskSize: "contain",
             maskRepeat: "no-repeat",
+            WebkitMaskRepeat: "no-repeat",
+            maskPosition: "center",
+            WebkitMaskPosition: "center",
           }}
         />
       ) : null}

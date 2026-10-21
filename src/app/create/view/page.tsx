@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { DraftPuzzleView } from "@/components/create/DraftPuzzleView";
-import { HairlineHeader } from "@/components/ui/hairline";
+import { CreateEditor } from "@/components/create/DraftPuzzleView";
 import { DEV_EDITOR } from "@/lib/devMode";
 import {
   createConfigFromSearchParams,
@@ -36,14 +35,12 @@ export default async function CreateViewPage({ searchParams }: CreateViewPagePro
     }
     return (
       <main className="flex h-dvh flex-col overflow-hidden">
-        <HairlineHeader
-          title="Create"
+        <CreateEditor
+          level={level}
+          homeMap={isHome}
+          tutorialMap={isTutorial}
           subtitle={isHome ? "Home map" : "Tutorial"}
-          nav="create"
         />
-        <div className="min-h-0 flex-1">
-          <DraftPuzzleView level={level} homeMap={isHome} tutorialMap={isTutorial} />
-        </div>
       </main>
     );
   }
@@ -60,10 +57,7 @@ export default async function CreateViewPage({ searchParams }: CreateViewPagePro
 
   return (
     <main className="flex h-dvh flex-col overflow-hidden">
-      <HairlineHeader title="Create" subtitle={level.name} nav="create" />
-      <div className="min-h-0 flex-1">
-        <DraftPuzzleView level={level} />
-      </div>
+      <CreateEditor level={level} subtitle={level.name} />
     </main>
   );
 }

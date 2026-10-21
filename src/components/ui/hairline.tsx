@@ -99,14 +99,33 @@ const NAV_LINK = [
 /** THIN BAR — GAME NAME ON THE LEFT, MENU ON THE RIGHT */
 export function HairlineHeader({
   nav,
+  playHref,
+  menuOpen = false,
+  menuLocked = false,
 }: {
   title?: string;
   subtitle?: string;
   nav?: "home" | "play" | "calendar" | "tutorial" | "create";
+  /** SAVED LEVEL. SHOWN ABOVE THE REST OF THE MENU. */
+  playHref?: string | null;
+  /** OPEN THE MENU. A LOCKED MENU STAYS UP. */
+  menuOpen?: boolean;
+  menuLocked?: boolean;
 }) {
   const { userId } = useAuth();
-  const [open, setOpen] = useState(false);
-  const close = () => setOpen(false);
+  const [open, setOpen] = useState(menuOpen);
+  const close = () => {
+    if (menuLocked) {
+      return;
+    }
+    setOpen(false);
+  };
+
+  useEffect(() => {
+    if (menuOpen) {
+      setOpen(true);
+    }
+  }, [menuOpen]);
 
   useEffect(() => {
     if (!open) {
@@ -156,6 +175,13 @@ export function HairlineHeader({
                 className="flex w-full max-w-[22rem] flex-col gap-2 border border-black bg-white p-4"
                 onClick={(event) => event.stopPropagation()}
               >
+                {playHref ? (
+                  <div className="border-b border-black pb-2">
+                    <Link href={playHref} className={`${NAV_LINK} w-full`}>
+                      Play level
+                    </Link>
+                  </div>
+                ) : null}
                 {NAV.map((item) => (
                   <Link
                     key={item.id}
@@ -168,9 +194,11 @@ export function HairlineHeader({
                   </Link>
                 ))}
                 <AccountLink onDone={close} />
-                <button type="button" className={`${NAV_LINK} w-full`} onClick={close}>
-                  Close
-                </button>
+                {menuLocked ? null : (
+                  <button type="button" className={`${NAV_LINK} w-full`} onClick={close}>
+                    Close
+                  </button>
+                )}
               </div>
             </div>,
             document.body,

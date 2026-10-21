@@ -7,7 +7,7 @@ import { EditorPalette, type EditorTool } from "@/components/create/EditorPalett
 import { BoardColumn } from "@/components/game/BoardColumn";
 import { GameBoard } from "@/components/game/GameBoard";
 import type { DraftRoute } from "@/components/game/RouteCanvasOverlay";
-import { HairlineButton, HairlineRow } from "@/components/ui/hairline";
+import { HairlineButton, HairlineHeader, HairlineRow } from "@/components/ui/hairline";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { perfectBridgeCost } from "@/lib/game/perfectScore";
 import { savePlayerLevel } from "@/lib/supabase/scores";
@@ -33,6 +33,9 @@ type DraftPuzzleViewProps = {
   homeMap?: boolean;
   /** WHEN TRUE — EDITING THE LESSON (BOAR + FLOWERS 1 2 3) */
   tutorialMap?: boolean;
+  /** AFTER A PLAYER LEVEL IS STORED, PAINTING STOPS. */
+  locked?: boolean;
+  onPlayerSaved?: (levelId: string) => void;
 };
 
 function toolHint(tool: EditorTool, homeMap: boolean, tutorialMap: boolean): string {
@@ -68,6 +71,8 @@ export function DraftPuzzleView({
   level: initialLevel,
   homeMap = false,
   tutorialMap = false,
+  locked = false,
+  onPlayerSaved,
 }: DraftPuzzleViewProps) {
   const [level, setLevel] = useState<Level>(initialLevel);
   const [tool, setTool] = useState<EditorTool>(null);
@@ -90,6 +95,9 @@ export function DraftPuzzleView({
   );
   // SELECTING A ROUTE TOOL STARTS/KEEPS A DRAFT ROUTE; OTHER TOOLS CLEAR IT
   const handleSelectTool = (next: EditorTool) => {
+    if (locked) {
+      return;
+    }
     setTool(next);
     if (next?.type === "route") {
       setDraftRoute((current) =>
@@ -229,7 +237,7 @@ export function DraftPuzzleView({
   };
 
   const handleCellClick = (row: number, col: number) => {
-    if (!tool) {
+    if (locked || !tool) {
       return;
     }
     switch (tool.type) {
@@ -315,6 +323,9 @@ export function DraftPuzzleView({
       setStatus(result.ok ? "Saved" : `Save failed: ${result.error ?? "unknown"}`);
       if (result.ok) {
         router.refresh();
+        if (!homeMap && !tutorialMap) {
+          onPlayerSaved?.(toSave.id);
+        }
       }
     } catch (error) {
       setStatus(`Save failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -332,7 +343,7 @@ export function DraftPuzzleView({
             bridges={emptyBridges}
             pathKeys={emptyPath}
             interactive={false}
-            editable={tool !== null}
+            editable={tool !== null && !locked}
             onCellClick={handleCellClick}
             draftRoute={draftRoute}
             sizing="contain"
@@ -364,12 +375,13 @@ export function DraftPuzzleView({
                 type="text"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
+                disabled={locked}
                 placeholder="Level name"
                 aria-label="Level name"
                 className="w-40 border border-black bg-white px-2 py-1.5 text-[10px] uppercase tracking-[0.12em] text-black placeholder:text-black/40 focus:outline-none"
               />
             )}
-            <HairlineButton type="button" onClick={handleSave} disabled={isSaving}>
+            <HairlineButton type="button" onClick={handleSave} disabled={isSaving || locked}>
               {isSaving
                 ? "Saving…"
                 : homeMap
@@ -382,6 +394,44 @@ export function DraftPuzzleView({
         </div>
         }
       />
+    </div>
+  );
+}
+
+/** CREATE PAGE SHELL. A SAVED PLAYER LEVEL LOCKS THE BOARD AND OPENS THE MENU. */
+export function CreateEditor({
+  level,
+  homeMap = false,
+  tutorialMap = false,
+  subtitle,
+}: {
+  level: Level;
+  homeMap?: boolean;
+  tutorialMap?: boolean;
+  subtitle: string;
+}) {
+  const [playHref, setPlayHref] = useState<string | null>(null);
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <HairlineHeader
+        title="Create"
+        subtitle={subtitle}
+        nav="create"
+        playHref={playHref}
+        menuOpen={playHref != null}
+        menuLocked={playHref != null}
+      />
+      <div className="min-h-0 flex-1">
+        <DraftPuzzleView
+          level={level}
+          homeMap={homeMap}
+          tutorialMap={tutorialMap}
+          locked={playHref != null}
+          onPlayerSaved={(id) => {
+            setPlayHref(`/play?level=${encodeURIComponent(id)}`);
+          }}
+        />
+      </div>
     </div>
   );
 }
