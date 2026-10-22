@@ -16,6 +16,7 @@ import {
   BOAR_FRAME_W,
   type BoarPlan,
 } from "@/lib/rendering/boar";
+import { cliffSeams, drawCliffSeams } from "@/lib/rendering/cliffSeam";
 import { isoSpriteOrigin, SPRITE_NATIVE, type IsoMetrics } from "@/lib/rendering/isoTiles";
 import { playSfx, setWalker } from "@/lib/sound/bed";
 import {
@@ -436,7 +437,9 @@ export function SpriteTerrainCanvas({
   onStill,
 }: SpriteTerrainCanvasProps) {
   const mapRef = useRef<HTMLCanvasElement>(null);
+  const seamLayerRef = useRef<HTMLCanvasElement>(null);
   const flashLayerRef = useRef<HTMLCanvasElement>(null);
+  const seenSeams = useRef<Set<string> | null>(null);
   const markLayerRef = useRef<HTMLCanvasElement>(null);
   const boarLayerRef = useRef<HTMLCanvasElement>(null);
   const maskRef = useRef<BoardMask | null>(null);
@@ -898,6 +901,73 @@ export function SpriteTerrainCanvas({
   }, [bridges]);
 
   useEffect(() => {
+    const canvas = seamLayerRef.current;
+    if (!canvas) {
+      return;
+    }
+    const dpr = window.devicePixelRatio || 1;
+    const bitmapW = Math.max(1, Math.round(metrics.width * dpr));
+    const bitmapH = Math.max(1, Math.round(metrics.height * dpr));
+    fitBitmap(canvas, bitmapW, bitmapH);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      return;
+    }
+    const seams = cliffSeams(view, bridges);
+    const known = seenSeams.current ?? new Set<string>();
+    const fresh = seenSeams.current == null ? [] : seams.filter((seam) => !known.has(seam.id));
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let timer = 0;
+    let cancelled = false;
+    const remember = () => {
+      if (!cancelled) {
+        seenSeams.current = new Set(seams.map((seam) => seam.id));
+      }
+    };
+    const paint = (alpha: number) => {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, metrics.width, metrics.height);
+      if (alpha <= 0) {
+        return;
+      }
+      ctx.globalAlpha = alpha;
+      drawCliffSeams(ctx, fresh, metrics, new Set());
+      ctx.globalAlpha = 1;
+    };
+    if (fresh.length === 0) {
+      paint(0);
+      remember();
+      return () => {
+        cancelled = true;
+      };
+    }
+    // THREE BLINKS, THEN THE DASH FADES OUT.
+    const blinks = reduced ? 0 : 5;
+    const fadeSteps = 5;
+    let step = 0;
+    paint(1);
+    timer = window.setInterval(() => {
+      step += 1;
+      if (step < blinks) {
+        paint(step % 2 === 0 ? 1 : 0);
+        return;
+      }
+      const fade = step - blinks;
+      const alpha = 1 - fade / fadeSteps;
+      paint(alpha);
+      if (fade >= fadeSteps) {
+        window.clearInterval(timer);
+        paint(0);
+        remember();
+      }
+    }, 160);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [bridges, metrics, view]);
+
+  useEffect(() => {
     const paint = () => {
       const canvas = markLayerRef.current;
       const mask = maskRef.current;
@@ -989,6 +1059,7 @@ export function SpriteTerrainCanvas({
   return (
     <>
       <canvas ref={mapRef} aria-hidden className={LAYER_CLASS} style={layerStyle} />
+      <canvas ref={seamLayerRef} aria-hidden className={LAYER_CLASS} style={layerStyle} />
       <canvas ref={flashLayerRef} aria-hidden className={LAYER_CLASS} style={layerStyle} />
       <canvas ref={markLayerRef} aria-hidden className={LAYER_CLASS} style={layerStyle} />
       <canvas ref={boarLayerRef} aria-hidden className={LAYER_CLASS} style={layerStyle} />
