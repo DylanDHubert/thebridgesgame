@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { BoarRun } from "@/components/loading/LoadingScreen";
@@ -11,15 +12,22 @@ const VISIT_KEY = "journeyman:visit";
 /** ONCE EACH BROWSER SESSION. CONTINUE IS WHAT STARTS THE SONG. */
 export function VisitGate() {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
+    // THE SHARED CARD IS THE FIRST THING A FRIEND SHOULD SEE.
+    if (pathname.startsWith("/share/")) {
+      setAudioBlocked(false);
+      setOpen(false);
+      return;
+    }
     if (window.sessionStorage.getItem(VISIT_KEY) === "1") {
       setAudioBlocked(false);
       return;
     }
     setAudioBlocked(true);
     setOpen(true);
-  }, []);
+  }, [pathname]);
 
   const onContinue = () => {
     window.sessionStorage.setItem(VISIT_KEY, "1");

@@ -208,6 +208,47 @@ export async function loadStoredLevel(id: string): Promise<StoredLevel | null> {
   return { level: deserializeLevel(row.body), solver };
 }
 
+export type ShareLevel = {
+  id: string;
+  name: string;
+  solver: number | null;
+  thumb: string | null;
+  kind: string;
+  day: string | null;
+};
+
+/** NAME, SOLVER, AND STILL FOR A SHARED CARD. THE BOARD STAYS PUT. */
+export async function loadShareLevel(id: string): Promise<ShareLevel | null> {
+  const remote = env();
+  if (!remote) {
+    return null;
+  }
+  const response = await fetch(
+    `${remote.url}/rest/v1/levels?id=eq.${encodeURIComponent(id)}&select=id,name,solver,thumb,kind,day`,
+    { headers: headers(remote.key), cache: "no-store" },
+  );
+  if (!response.ok) {
+    console.log("[journeyman:share] level failed", { id, status: response.status });
+    return null;
+  }
+  const rows: unknown = await response.json();
+  const row = Array.isArray(rows) ? rows[0] : null;
+  if (!row || typeof row !== "object") {
+    return null;
+  }
+  const name = "name" in row && typeof row.name === "string" ? row.name : "";
+  const levelId = "id" in row && typeof row.id === "string" ? row.id : "";
+  if (!name || !levelId) {
+    return null;
+  }
+  const solver = "solver" in row && typeof row.solver === "number" ? row.solver : null;
+  const thumb = "thumb" in row && typeof row.thumb === "string" ? row.thumb : null;
+  const kind = "kind" in row && typeof row.kind === "string" ? row.kind : "catalog";
+  const day = "day" in row && typeof row.day === "string" ? row.day : null;
+  console.log("[journeyman:share] level", { id: levelId, solver, thumb: thumb != null });
+  return { id: levelId, name, solver, thumb, kind, day };
+}
+
 export async function loadRemoteLevel(id: string): Promise<Level | null> {
   const stored = await loadStoredLevel(id);
   return stored?.level ?? null;

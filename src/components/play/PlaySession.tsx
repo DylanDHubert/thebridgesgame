@@ -242,6 +242,7 @@ export function PlaySession({ level, solver, daily = false }: PlaySessionProps) 
           firstScore={firstScore}
           daily={daily}
           levelId={level.id}
+          playerName={submitName.trim() || "boar"}
           onRetry={() => {
             clearBridges();
             setScoreOpen(false);

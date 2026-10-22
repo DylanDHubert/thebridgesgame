@@ -13,7 +13,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const pathname = usePathname();
   const router = useRouter();
-  const open = OPEN.has(pathname);
+  // A SHARED CARD STAYS OPEN SO A FRIEND CAN READ IT WITHOUT AN ACCOUNT.
+  const open = OPEN.has(pathname) || pathname.startsWith("/share/");
 
   useEffect(() => {
     if (!auth.ready || auth.userId || open) {

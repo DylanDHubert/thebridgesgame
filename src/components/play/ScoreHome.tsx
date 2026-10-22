@@ -14,6 +14,7 @@ type ScoreHomeProps = {
   firstScore: number | null;
   daily: boolean;
   levelId: string;
+  playerName: string;
   onRetry: () => void;
 };
 
@@ -48,6 +49,7 @@ export function ScoreHome({
   firstScore,
   daily,
   levelId,
+  playerName,
   onRetry,
 }: ScoreHomeProps) {
   const [rows, setRows] = useState<ScoreRow[]>([]);
@@ -64,6 +66,8 @@ export function ScoreHome({
   const tallest = bars.reduce((max, bar) => Math.max(max, bar.count), 1);
   const board = rows.slice(0, 8);
   const title = solver == null ? null : scoreTitle(score, solver);
+  const sharedScore = firstScore ?? score;
+  const shareHref = `/share/${encodeURIComponent(levelId)}?name=${encodeURIComponent(playerName)}&score=${sharedScore}`;
   const bestText = solver == null ? (best != null ? String(best) : null) : String(easedPar(solver));
   return (
     <div
@@ -136,6 +140,7 @@ export function ScoreHome({
       <HairlineRow>
         <p className="text-[10px] uppercase tracking-[0.14em]">Back to the levels</p>
         <HairlineButton onClick={onRetry}>Retry</HairlineButton>
+        <HairlineLink href={shareHref}>Share</HairlineLink>
         <HairlineLink href="/play">Levels</HairlineLink>
       </HairlineRow>
     </div>
