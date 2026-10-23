@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { loadPlayerScores } from "@/app/actions/playerScores";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { MapPreview } from "@/components/game/MapPreview";
-import { IslandCard } from "@/components/play/IslandCard";
+import { ISLAND_ROW, IslandCard } from "@/components/play/IslandCard";
 import { HairlineLink } from "@/components/ui/hairline";
 import { readBestScores } from "@/lib/game/bestScore";
 import { readLockedScores } from "@/lib/game/lockScore";
@@ -121,9 +121,9 @@ export function LevelPicker({ cards }: LevelPickerProps) {
   }
 
   return (
-    <ul className="grid w-full grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+    <ul className={ISLAND_ROW}>
       {cards.map((card) => (
-        <li key={card.id}>
+        <li key={card.id} className="min-w-0">
           <IslandCard
             href={`/play?level=${encodeURIComponent(card.id)}`}
             title={card.name}

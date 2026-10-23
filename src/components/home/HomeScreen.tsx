@@ -6,7 +6,8 @@ import { BoardColumn } from "@/components/game/BoardColumn";
 import { GameBoard } from "@/components/game/GameBoard";
 import { useBoarPassage } from "@/components/loading/BoarPassage";
 import type { MapLabel } from "@/components/game/MapLabelOverlay";
-import { VolumeControls } from "@/components/sound/VolumeControls";
+import { GearButton } from "@/components/settings/GearButton";
+import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { HairlineHeader } from "@/components/ui/hairline";
 import { cellKey } from "@/lib/game/coords";
 import {
@@ -47,6 +48,7 @@ export function HomeScreen({ level }: HomeScreenProps) {
   const depart = useBoarPassage();
   const map = useMemo(() => homeMapFromLevel(level), [level]);
   const [bridges, setBridges] = useState<Set<string>>(emptyBridges);
+  const [settings, setSettings] = useState(false);
   const [runPath, setRunPath] = useState<CellCoord[]>([]);
   const emptyPath = useMemo(() => new Set<string>(), []);
   const navigatedRef = useRef(false);
@@ -139,9 +141,12 @@ export function HomeScreen({ level }: HomeScreenProps) {
           />
         }
         bar={
-          <div className="flex w-full items-center justify-end border border-black px-3 py-2.5">
-            <VolumeControls />
-          </div>
+          <>
+            <div className="flex w-full items-center justify-end border border-black px-3 py-2.5">
+              <GearButton onClick={() => setSettings(true)} />
+            </div>
+            {settings ? <SettingsDialog onClose={() => setSettings(false)} /> : null}
+          </>
         }
       />
     </main>

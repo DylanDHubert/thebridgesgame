@@ -13,7 +13,6 @@ import {
 import { useLevelGame } from "@/hooks/useLevelGame";
 import type { Level } from "@/lib/game/level/types";
 import { tutorialCue } from "@/lib/game/tutorialMap";
-
 type HowLessonProps = {
   level: Level;
 };

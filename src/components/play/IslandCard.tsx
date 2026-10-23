@@ -4,18 +4,21 @@ import type { ReactNode } from "react";
 import { GAME_STAGE_ASPECT } from "@/components/game/GameStage";
 import { SCORE_BANDS, scoreBand, scoreTitle } from "@/lib/game/par";
 
-const HEAT = [
-  "#115e59",
-  "#0f766e",
-  "#14b8a6",
-  "#2ec4b6",
-  "#5eead4",
-  "#99f6e4",
-  "#d6d3d1",
-  "#a8a29e",
-];
+/** SEVEN TO A ROW. THE CALENDAR AND THE LEVEL LIST SHARE THIS SHELF. */
+export const ISLAND_ROW = "grid w-full grid-cols-7 gap-2";
 
-/** A GAME PIXEL OF THE FIELD. EACH BAND TAKES A SHARE OF THE WIDTH. */
+/** EMPTY TO FULL. THE SHARE OF SCORES PICKS THE STEP. */
+const HEAT = ["#e7e5e4", "#99f6e4", "#5eead4", "#2ec4b6", "#14b8a6", "#0f766e", "#115e59"];
+
+function heatColor(share: number): string {
+  if (share <= 0) {
+    return HEAT[0]!;
+  }
+  const index = Math.min(HEAT.length - 1, Math.ceil(share * (HEAT.length - 1)));
+  return HEAT[index]!;
+}
+
+/** EIGHT EQUAL BANDS. SHADE IS THE SHARE OF SCORES IN THAT BAND. */
 export function ScoreHeat({
   costs,
   solver,
@@ -27,39 +30,28 @@ export function ScoreHeat({
 }) {
   const field = score != null && !costs.includes(score) ? [...costs, score] : costs;
   if (solver == null || field.length === 0) {
-    return <div className="mt-1 h-[5px] w-full bg-black/20" />;
+    return <div className="mt-1 h-[5px] w-full bg-[#e7e5e4]" />;
   }
   const counts = SCORE_BANDS.map(
     (band) => field.filter((cost) => scoreBand(cost, solver) === band).length,
   );
   const total = counts.reduce((sum, count) => sum + count, 0);
   const yours = score == null ? -1 : SCORE_BANDS.indexOf(scoreBand(score, solver));
-  let cursor = 0;
-  let mark = -1;
-  counts.forEach((count, index) => {
-    const share = (count / total) * 100;
-    if (index === yours && count > 0) {
-      mark = cursor + share / 2;
-    }
-    cursor += share;
-  });
   return (
     <div className="relative mt-1 h-[5px] w-full" title={counts.join(" ")}>
-      <div className="flex h-full w-full">
-        {counts.map((count, index) =>
-          count > 0 ? (
-            <span
-              key={SCORE_BANDS[index]}
-              className="h-full"
-              style={{ width: `${(count / total) * 100}%`, background: HEAT[index] }}
-            />
-          ) : null,
-        )}
+      <div className="flex h-full w-full gap-px">
+        {counts.map((count, index) => (
+          <span
+            key={SCORE_BANDS[index]}
+            className="h-full min-w-0 flex-1"
+            style={{ background: heatColor(total === 0 ? 0 : count / total) }}
+          />
+        ))}
       </div>
-      {mark >= 0 ? (
+      {yours >= 0 ? (
         <span
           className="pointer-events-none absolute top-1/2 z-[1] h-[11px] w-[11px] -translate-x-1/2 -translate-y-1/2 border border-black bg-[#fbbf24]"
-          style={{ left: `${mark}%` }}
+          style={{ left: `${((yours + 0.5) / SCORE_BANDS.length) * 100}%` }}
         />
       ) : null}
     </div>
@@ -73,7 +65,6 @@ type IslandCardProps = {
   solver: number | null;
   costs: number[];
   score: number | null;
-  dense?: boolean;
   showScore?: boolean;
   titleClassName?: string;
 };
@@ -86,7 +77,6 @@ export function IslandCard({
   solver,
   costs,
   score,
-  dense = false,
   showScore = true,
   titleClassName = "",
 }: IslandCardProps) {
@@ -99,25 +89,20 @@ export function IslandCard({
   const body = (
     <>
       <div
+        data-shot
         className="relative overflow-hidden border-b border-black bg-[rgb(12_48_92)]"
         style={{ aspectRatio: GAME_STAGE_ASPECT }}
       >
         {image}
       </div>
-      <div className={dense ? "px-1 py-1 text-center" : "px-2 py-2 text-center"}>
+      <div className="px-2 py-2 text-center">
         <h2
-          className={`truncate uppercase tracking-[0.14em] group-hover:text-white ${
-            dense ? "text-[8px]" : "text-[9px]"
-          } ${titleClassName}`}
+          className={`truncate text-[9px] uppercase tracking-[0.14em] group-hover:text-white ${titleClassName}`}
         >
           {title}
         </h2>
         <ScoreHeat costs={costs} solver={solver} score={score} />
-        <p
-          className={`uppercase tracking-[0.12em] ${
-            dense ? "mt-1 h-3 text-[7px]" : "mt-1 h-3 text-[8px]"
-          }`}
-        >
+        <p className="mt-1 h-3 text-[8px] uppercase tracking-[0.12em]">
           {showScore ? label : ""}
         </p>
       </div>

@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { ensureDailyDay } from "@/app/actions/dailyLevel";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { MapPreview } from "@/components/game/MapPreview";
-import { IslandCard } from "@/components/play/IslandCard";
+import { ISLAND_ROW, IslandCard } from "@/components/play/IslandCard";
 import { dailyPresetFor, type DailyPresetId } from "@/lib/game/daily";
 import type { Level } from "@/lib/game/level/types";
 import {
@@ -144,7 +144,54 @@ function DailyShot({
   );
 }
 
-/** THIS MONTH IN UTC. EACH DAY IS A SMALL LEVEL CARD. */
+/** WIDEST MONTH THAT STILL FITS THE FRAME. THE SHOTS KEEP THE PLAY SHAPE. */
+function useMonthWidth(weeks: number) {
+  const frameRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState<number | null>(null);
+
+  useLayoutEffect(() => {
+    const frame = frameRef.current;
+    const grid = gridRef.current;
+    if (!frame || !grid) {
+      return;
+    }
+    const fit = () => {
+      const availW = frame.clientWidth;
+      const availH = frame.clientHeight;
+      if (availW <= 0 || availH <= 0) {
+        return;
+      }
+      grid.style.width = `${availW}px`;
+      const fullH = grid.scrollHeight;
+      const shot = grid.querySelector("[data-shot]");
+      const shotH = shot instanceof HTMLElement ? shot.offsetHeight : 0;
+      const variable = shotH * weeks;
+      const chrome = Math.max(0, fullH - variable);
+      let next = availW;
+      if (fullH > availH && variable > 0) {
+        const budget = Math.max(1, availH - chrome);
+        next = Math.max(160, Math.floor(availW * (budget / variable)));
+        grid.style.width = `${next}px`;
+        if (grid.scrollHeight > availH) {
+          const over = grid.scrollHeight - availH;
+          const perPx = variable / availW;
+          next = Math.max(160, Math.floor(next - over / Math.max(perPx, 0.01) - 1));
+          grid.style.width = `${next}px`;
+        }
+      }
+      setWidth((prev) => (prev === next ? prev : next));
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, [weeks]);
+
+  return { frameRef, gridRef, width };
+}
+
+/** THIS MONTH IN UTC. EACH DAY IS A LEVEL CARD, SEVEN TO A ROW. */
 export function CalendarMonth() {
   const auth = useAuth();
   const [dailies, setDailies] = useState<Record<string, DailyCard>>({});
@@ -165,6 +212,8 @@ export function CalendarMonth() {
     ...Array.from({ length: firstWeekday }, () => null),
     ...Array.from({ length: count }, (_, index) => index + 1),
   ];
+  const weeks = Math.ceil(cells.length / 7);
+  const { frameRef, gridRef, width } = useMonthWidth(weeks);
 
   useEffect(() => {
     let cancel = false;
@@ -217,9 +266,14 @@ export function CalendarMonth() {
   }, []);
 
   return (
-    <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-3 overflow-y-auto px-3 py-4">
-      <h2 className="text-center text-[11px] uppercase tracking-[0.16em]">{label}</h2>
-      <div className="grid grid-cols-7 gap-1 text-center text-[8px] uppercase tracking-[0.12em]">
+    <div className="flex min-h-0 w-full flex-1 flex-col gap-3 overflow-hidden px-3 py-4">
+      <h2 className="shrink-0 text-center text-[11px] uppercase tracking-[0.16em]">{label}</h2>
+      <div ref={frameRef} className="flex min-h-0 flex-1 items-center justify-center">
+        <div
+          ref={gridRef}
+          className={`${ISLAND_ROW} text-center text-[8px] uppercase tracking-[0.12em]`}
+          style={{ width: width == null ? "100%" : `${width}px` }}
+        >
         {WEEK.map((name) => (
           <div key={name}>{name}</div>
         ))}
@@ -234,7 +288,6 @@ export function CalendarMonth() {
           return (
             <IslandCard
               key={key}
-              dense
               href={future ? undefined : `/play?daily=${key}`}
               title={
                 <>
@@ -259,6 +312,7 @@ export function CalendarMonth() {
             />
           );
         })}
+        </div>
       </div>
     </div>
   );

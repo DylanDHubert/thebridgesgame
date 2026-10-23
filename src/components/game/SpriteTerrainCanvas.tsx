@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, type RefObject } from "react";
+import { useEffect, useId, useRef, useSyncExternalStore, type RefObject } from "react";
 
 import { cellKey } from "@/lib/game/coords";
 import { isoLatticeCells, type IsoSpan } from "@/lib/game/isoBoard";
@@ -18,6 +18,7 @@ import {
 } from "@/lib/rendering/boar";
 import { cliffSeams, drawCliffSeams } from "@/lib/rendering/cliffSeam";
 import { isoSpriteOrigin, SPRITE_NATIVE, type IsoMetrics } from "@/lib/rendering/isoTiles";
+import { getPlaySettings, subscribePlaySettings } from "@/lib/settings";
 import { playSfx, setWalker } from "@/lib/sound/bed";
 import {
   BRIDGE_MARSH,
@@ -80,33 +81,42 @@ export type ReachCell = {
   red: boolean;
 };
 
-/** GOLD AND RED SPREAD OUT FROM THE BOAR, THEN FADE TOGETHER. */
+/** GOLD OR GREEN, AND RED, SPREAD OUT FROM THE BOAR, THEN FADE. */
 export type ReachFlash = {
   beganAt: number;
   cells: ReachCell[];
   maxDist: number;
   stepMs: number;
+  /** 1 IS FAST. SLOW IS THIS MANY TIMES LONGER. */
+  fadeScale: number;
+  /** GREEN WHEN THE BOARD CAN BE SUBMITTED. */
+  ready: boolean;
 };
 
 const FLASH_ALPHA = 0.55;
 const HOVER_ALPHA = 0.4;
 const HINT_ALPHA = 0.5;
-const FLASH_TAIL_MS = 700;
+const FLASH_HOLD_MS = 280;
+const FLASH_FADE_MS = 420;
+const FLASH_TAIL_MS = FLASH_HOLD_MS + FLASH_FADE_MS;
+const CHECK_GOLD = "#fbbf24";
+const CHECK_GREEN = "#4ade80";
+const CHECK_RED = "#ef4444";
 const WATER_TICK_MS = 80;
 const OPAQUE = 16;
 
 const LAYER_CLASS = "pointer-events-none absolute left-0 top-0";
 
 function flashLifetime(flash: ReachFlash): number {
-  return flash.maxDist * flash.stepMs + FLASH_TAIL_MS;
+  return flash.maxDist * flash.stepMs + FLASH_TAIL_MS * flash.fadeScale;
 }
 
 function flashFade(flash: ReachFlash, age: number): number {
-  const fadeStart = flash.maxDist * flash.stepMs + 280;
+  const fadeStart = flash.maxDist * flash.stepMs + FLASH_HOLD_MS * flash.fadeScale;
   if (age < fadeStart) {
     return 1;
   }
-  return Math.max(0, 1 - (age - fadeStart) / 420);
+  return Math.max(0, 1 - (age - fadeStart) / (FLASH_FADE_MS * flash.fadeScale));
 }
 
 type CssBox = {
@@ -438,6 +448,11 @@ export function SpriteTerrainCanvas({
 }: SpriteTerrainCanvasProps) {
   const mapRef = useRef<HTMLCanvasElement>(null);
   const seamLayerRef = useRef<HTMLCanvasElement>(null);
+  const cliffOutline = useSyncExternalStore(
+    subscribePlaySettings,
+    () => getPlaySettings().cliffOutline,
+    () => true,
+  );
   const flashLayerRef = useRef<HTMLCanvasElement>(null);
   const seenSeams = useRef<Set<string> | null>(null);
   const markLayerRef = useRef<HTMLCanvasElement>(null);
@@ -914,6 +929,12 @@ export function SpriteTerrainCanvas({
       return;
     }
     const seams = cliffSeams(view, bridges);
+    if (!cliffOutline) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      seenSeams.current = new Set(seams.map((seam) => seam.id));
+      return;
+    }
     const known = seenSeams.current ?? new Set<string>();
     const fresh = seenSeams.current == null ? [] : seams.filter((seam) => !known.has(seam.id));
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -965,7 +986,7 @@ export function SpriteTerrainCanvas({
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [bridges, metrics, view]);
+  }, [bridges, cliffOutline, metrics, view]);
 
   useEffect(() => {
     const paint = () => {
@@ -1042,7 +1063,13 @@ export function SpriteTerrainCanvas({
             continue;
           }
           seen.add(cell.key);
-          tintCell(flashCtx, mask, cell.key, cell.red ? "#ef4444" : "#fbbf24", FLASH_ALPHA);
+          tintCell(
+            flashCtx,
+            mask,
+            cell.key,
+            cell.red ? CHECK_RED : flash.ready ? CHECK_GREEN : CHECK_GOLD,
+            FLASH_ALPHA,
+          );
         }
       };
       tick(performance.now());

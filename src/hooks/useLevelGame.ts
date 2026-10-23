@@ -16,7 +16,7 @@ type UseLevelGameResult = {
   result: SimulationResult | null;
   pathKeys: Set<string>;
   bridgeCost: number;
-  /** GOLD IS REACHABLE. RED IS LAND HE CANNOT REACH. A NEW ID RESTARTS THE FLOOD. */
+  /** GOLD IS REACHABLE. GREEN WHEN READY IS TRUE. RED IS LAND HE CANNOT REACH. */
   reach: BoardReach | null;
   toggleBridge: (row: number, col: number) => void;
   clearBridges: () => void;
@@ -33,6 +33,8 @@ export type BoardReach = {
   gold: string[];
   red: string[];
   origin: CellCoord;
+  /** THE FLOWERS ARE JOINED. SUBMIT CAN OPEN. */
+  ready: boolean;
 };
 
 /** LAND AND BRIDGES HE CANNOT REACH. OPEN WATER STAYS UNLIT. */
@@ -71,6 +73,7 @@ export function boardReach(
     gold: [...next.reachable],
     red: unreachablePlayKeys(level, bridges, next.reachable),
     origin,
+    ready: next.connected,
   };
 }
 

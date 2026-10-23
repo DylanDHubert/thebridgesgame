@@ -81,7 +81,7 @@ export function cliffSeams(view: TerrainView, bridges: Set<string>): CliffSeam[]
   return seams;
 }
 
-/** ONE SPRITE PIXEL WIDE. SCALED WITH THE TILE SO IT STAYS ON THE GRID. */
+/** TWO SPRITE PIXELS WIDE. SCALED WITH THE TILE SO IT STAYS ON THE GRID. */
 export function drawCliffSeams(
   ctx: CanvasRenderingContext2D,
   seams: readonly CliffSeam[],
@@ -115,7 +115,7 @@ export function drawCliffSeams(
         continue;
       }
       pen.fillStyle = i % 4 === 0 ? BLACK : YELLOW;
-      pen.fillRect(left, y, width, 1);
+      pen.fillRect(left, y, width, 2);
     }
     const origin = isoSpriteOrigin(seam.row, seam.col, metrics);
     ctx.drawImage(stamp, origin.x, origin.y, metrics.tileWidth, metrics.tileWidth);

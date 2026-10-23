@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { BoarRun } from "@/components/loading/LoadingScreen";
@@ -13,6 +13,7 @@ const VISIT_KEY = "journeyman:visit";
 export function VisitGate() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
     // THE SHARED CARD IS THE FIRST THING A FRIEND SHOULD SEE.
@@ -29,12 +30,22 @@ export function VisitGate() {
     setOpen(true);
   }, [pathname]);
 
-  const onContinue = () => {
+  const begin = () => {
     window.sessionStorage.setItem(VISIT_KEY, "1");
     setAudioBlocked(false);
     setOpen(false);
     armAudio();
+  };
+
+  const onContinue = () => {
+    begin();
     console.log("[journeyman:sfx] visit continued");
+  };
+
+  const onToday = () => {
+    begin();
+    console.log("[journeyman:sfx] visit today");
+    router.push("/play?daily=1");
   };
 
   if (!open) {
@@ -49,9 +60,14 @@ export function VisitGate() {
       aria-label="Continue"
     >
       <BoarRun />
-      <HairlineButton autoFocus className="w-[184px]" onClick={onContinue}>
-        Continue
-      </HairlineButton>
+      <div className="flex flex-col items-center gap-2">
+        <HairlineButton autoFocus className="w-[184px]" onClick={onContinue}>
+          Continue
+        </HairlineButton>
+        <HairlineButton className="w-[184px]" onClick={onToday}>
+          Today's level
+        </HairlineButton>
+      </div>
     </div>
   );
 }

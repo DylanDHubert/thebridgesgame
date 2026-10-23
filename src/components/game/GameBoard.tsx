@@ -12,6 +12,7 @@ import type { DraftRoute } from "@/components/game/RouteCanvasOverlay";
 import { SpriteTerrainCanvas, type ReachFlash } from "@/components/game/SpriteTerrainCanvas";
 import { WoodFrame } from "@/components/ui/woodPlaque";
 import { cellKey } from "@/lib/game/coords";
+import { getPlaySettings } from "@/lib/settings";
 import { bleedRimSpan, isoLatticeCells, type IsoSpan } from "@/lib/game/isoBoard";
 import type { Level } from "@/lib/game/level/types";
 import { bridgeCostAt } from "@/lib/game/rules";
@@ -85,12 +86,13 @@ type GameBoardProps = {
   onBoarClick?: () => void;
   /** STAYS IN HIS BUBBLE. A CLICK FLASHES REACH, IT DOES NOT REPLACE THE LINE. */
   boarLine?: string;
-  /** CHECK FLOOD. GOLD IS IN REACH. RED IS NOT. A NEW ID RESTARTS IT. */
+  /** CHECK FLOOD. GOLD IS IN REACH. GREEN MEANS HE CAN BE SENT. RED IS NOT. */
   reach?: {
     id: number;
     gold: readonly string[];
     red: readonly string[];
     origin: CellCoord;
+    ready: boolean;
   } | null;
   /** A CLICK ON THE BOAR RUNS THE CHECK. HE STILL GRUNTS AND TALKS. */
   pokeChecks?: boolean;
@@ -295,7 +297,10 @@ export function GameBoard({
   const thoughtTimer = useRef(0);
   const flashRef = useRef<ReachFlash | null>(null);
   const seenReach = useRef(0);
-  if (reach && reach.id !== seenReach.current) {
+  if (!reach) {
+    seenReach.current = 0;
+    flashRef.current = null;
+  } else if (reach.id !== seenReach.current) {
     seenReach.current = reach.id;
     const reduced =
       typeof window !== "undefined" &&
@@ -318,6 +323,8 @@ export function GameBoard({
       cells,
       maxDist,
       stepMs: reduced ? 0 : 12,
+      fadeScale: getPlaySettings().checkFade === "slow" ? 4 : 1,
+      ready: reach.ready,
     };
   }
   const hintRef = useRef<Set<string> | null>(null);
@@ -407,6 +414,8 @@ export function GameBoard({
         cells: [...keys].map((key) => ({ key, dist: 0, red: false })),
         maxDist: 0,
         stepMs: 0,
+        fadeScale: 1,
+        ready: false,
       };
     }
     grunt();

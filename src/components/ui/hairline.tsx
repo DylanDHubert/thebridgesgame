@@ -6,9 +6,17 @@ import { createPortal } from "react-dom";
 
 import { AccountLink } from "@/components/auth/AccountLink";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { GearButton } from "@/components/settings/GearButton";
+import { SettingsDialog } from "@/components/settings/SettingsDialog";
 
-const CONTROL =
-  "inline-flex items-center justify-center border border-black bg-white px-3 py-1.5 text-[10px] uppercase tracking-[0.16em] text-black transition hover:bg-black hover:text-white disabled:pointer-events-none disabled:opacity-40";
+const CONTROL = [
+  "inline-flex items-center justify-center border border-black bg-white px-3 py-1.5",
+  "text-[10px] uppercase tracking-[0.16em] text-black transition",
+  "hover:bg-black hover:text-white",
+  "aria-pressed:bg-black aria-pressed:text-white",
+  "aria-pressed:hover:bg-[#fbbf24] aria-pressed:hover:text-black",
+  "disabled:pointer-events-none disabled:opacity-40",
+].join(" ");
 
 type HairlineButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   pressed?: boolean;
@@ -26,9 +34,7 @@ export function HairlineButton({
     <button
       type={type}
       aria-pressed={pressed}
-      className={[CONTROL, pressed ? "bg-black text-white" : "", className]
-        .filter(Boolean)
-        .join(" ")}
+      className={[CONTROL, className].filter(Boolean).join(" ")}
       {...rest}
     >
       {children}
@@ -81,7 +87,7 @@ export function HairlineRow({
 
 const NAV = [
   { id: "home", href: "/", label: "Home" },
-  { id: "play", href: "/play", label: "Play" },
+  { id: "play", href: "/play", label: "Levels" },
   { id: "calendar", href: "/play/calendar", label: "Calendar" },
   { id: "tutorial", href: "/tutorial", label: "Tutorial" },
   { id: "create", href: "/create", label: "Create" },
@@ -114,6 +120,7 @@ export function HairlineHeader({
 }) {
   const { userId } = useAuth();
   const [open, setOpen] = useState(menuOpen);
+  const [settings, setSettings] = useState(false);
   const close = () => {
     if (menuLocked) {
       return;
@@ -195,7 +202,38 @@ export function HairlineHeader({
                     </Link>
                   </div>
                 ) : null}
-                {NAV.map((item) => (
+                <div className="flex items-stretch gap-2">
+                  <Link
+                    href="/"
+                    aria-current={nav === "home" ? "page" : undefined}
+                    className={`${NAV_LINK} min-w-0 flex-1`}
+                    onClick={close}
+                  >
+                    Home
+                  </Link>
+                  <GearButton
+                    onClick={() => {
+                      if (!menuLocked) {
+                        setOpen(false);
+                      }
+                      setSettings(true);
+                    }}
+                  />
+                </div>
+                <div className="flex items-stretch gap-2">
+                  {NAV.filter((item) => item.id === "play" || item.id === "calendar").map((item) => (
+                    <Link
+                      key={item.id}
+                      href={item.href}
+                      aria-current={nav === item.id ? "page" : undefined}
+                      className={`${NAV_LINK} min-w-0 flex-1`}
+                      onClick={close}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+                {NAV.filter((item) => item.id !== "home" && item.id !== "play" && item.id !== "calendar").map((item) => (
                   <Link
                     key={item.id}
                     href={item.href}
@@ -217,6 +255,7 @@ export function HairlineHeader({
             document.body,
           )
         : null}
+      {settings ? <SettingsDialog onClose={() => setSettings(false)} /> : null}
     </header>
   );
 }

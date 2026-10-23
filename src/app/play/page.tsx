@@ -89,7 +89,7 @@ export default async function PlayPage({ searchParams }: PlayPageProps) {
   return (
     <main className="flex h-dvh flex-col overflow-hidden">
       <HairlineHeader title="Play" subtitle="Choose a level" nav="play" />
-      <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col px-4 py-3 sm:px-6">
+      <div className="flex min-h-0 w-full flex-1 flex-col px-3 py-4">
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-3">
           <LevelPicker cards={cards} />
         </div>
