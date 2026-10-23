@@ -6,6 +6,7 @@ import {
   type IsoSpan,
 } from "../isoBoard";
 import type { CellCoord, TileKind } from "../types";
+import { grassUnderFlowers } from "./gridToLevel";
 import {
   LEVEL_FILE_VERSION,
   type Level,
@@ -266,7 +267,7 @@ export function deserializeLevel(file: LevelFile): Level {
     seed: file.seed,
     rows,
     cols,
-    terrain,
+    terrain: grassUnderFlowers(terrain, cols, rows, mission),
     objects: [],
     routes: [],
     mission,
@@ -278,5 +279,14 @@ export function deserializeLevel(file: LevelFile): Level {
     return { ...decoded, iso: file.iso };
   }
 
-  return embedContentLevel(decoded);
+  const embedded = embedContentLevel(decoded);
+  return {
+    ...embedded,
+    terrain: grassUnderFlowers(
+      embedded.terrain,
+      embedded.cols,
+      embedded.rows,
+      embedded.mission,
+    ),
+  };
 }

@@ -54,7 +54,7 @@ export default async function PlayPage({ searchParams }: PlayPageProps) {
     });
     return (
       <main className="h-dvh overflow-hidden">
-        <PlaySession level={daily.level} solver={daily.solver} daily />
+        <PlaySession level={daily.level} solver={daily.solver} />
       </main>
     );
   }

@@ -42,6 +42,7 @@ let musicPending = false;
 let musicLoad: Promise<AudioBuffer> | null = null;
 let musicElement: HTMLAudioElement | null = null;
 let walking: HTMLAudioElement | null = null;
+let fastClip: HTMLAudioElement | null = null;
 let hydrated = false;
 let audioRate = 1;
 
@@ -290,6 +291,13 @@ export function setSfxVolume(next: number) {
   if (walking) {
     walking.volume = sfxVolume;
   }
+  if (fastClip) {
+    fastClip.volume = sfxVolume;
+    if (sfxVolume <= 0) {
+      fastClip.pause();
+      fastClip = null;
+    }
+  }
   armAudio();
   syncWalking();
   emit();
@@ -308,6 +316,27 @@ export function setAudioRate(next: number) {
     musicSource.playbackRate.value = next;
   }
   console.log("[journeyman:sfx] rate", next);
+}
+
+/** THE TAPE WHIR PLAYS ONLY WHILE FAST MODE IS ON. */
+export function setFastForward(on: boolean) {
+  hydrate();
+  if (!on || sfxVolume <= 0) {
+    fastClip?.pause();
+    fastClip = null;
+    console.log("[journeyman:sfx] fast forward", false);
+    return;
+  }
+  if (fastClip) {
+    return;
+  }
+  armAudio();
+  const clip = new Audio(CLIPS.fastForward);
+  clip.loop = true;
+  clip.volume = sfxVolume;
+  fastClip = clip;
+  void clip.play().catch(() => undefined);
+  console.log("[journeyman:sfx] fast forward", true);
 }
 
 export function playSfx(name: SfxName) {

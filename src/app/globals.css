@@ -307,6 +307,23 @@ body {
   }
 }
 
+/** SUBMIT IS READY. WHITE, THEN GREEN. BEATS THE BUTTON FILL. */
+@keyframes submit-ready {
+  from {
+    background-color: white;
+    color: black;
+  }
+  to {
+    background-color: #4ade80;
+    color: black;
+  }
+}
+
+.submit-ready {
+  animation: submit-ready 0.8s steps(2, jump-none) infinite;
+  transition: none !important;
+}
+
 @keyframes bridge-cost-fade {
   0%,
   70% {

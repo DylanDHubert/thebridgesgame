@@ -17,16 +17,17 @@ import {
 } from "@/lib/game/lockScore";
 import type { Level } from "@/lib/game/level/types";
 import { perfectBridgeCost } from "@/lib/game/perfectScore";
-import { boarHomeMs } from "@/lib/rendering/boar";
+import { boarHomeMs, HOME_STAND_MS } from "@/lib/rendering/boar";
 import { FAST_RUN_RATE, getRunRate, runNow, setRunRate, subscribeRunRate } from "@/lib/rendering/runClock";
-import { playSfx, setAudioRate } from "@/lib/sound/bed";
+import { setAudioRate, setFastForward } from "@/lib/sound/bed";
 
 type PlaySessionProps = {
   level: Level;
   /** SOLVER COST STORED ON THE LEVEL. OMITTED ONLY WHEN THE ROW HAS NONE. */
   solver?: number | null;
-  daily?: boolean;
 };
+
+const HOME_LINES = ["yum", "oink!", "oink oink.", "mmm.", "sniff.", "tasty.", "ah."] as const;
 
 function statusLabel(
   phase: "editing" | "valid" | "success" | "disconnected",
@@ -45,7 +46,7 @@ function statusLabel(
 }
 
 /** PLAY SESSION — BOARD + STATUS BAR */
-export function PlaySession({ level, solver, daily = false }: PlaySessionProps) {
+export function PlaySession({ level, solver }: PlaySessionProps) {
   const {
     bridges,
     phase,
@@ -59,10 +60,10 @@ export function PlaySession({ level, solver, daily = false }: PlaySessionProps) 
     submitSolution,
   } = useLevelGame(level, { holdForSubmit: true });
   const [scoreOpen, setScoreOpen] = useState(false);
-  const [priorBest, setPriorBest] = useState<number | null>(null);
   const [firstScore, setFirstScore] = useState<number | null>(null);
   const [username, setUsername] = useState("");
   const [boarCue, setBoarCue] = useState(0);
+  const [homeLine, setHomeLine] = useState<string | null>(null);
   const [fast, setFast] = useState(false);
   const auth = useAuth();
   const submitName = auth.username || username.trim();
@@ -90,7 +91,7 @@ export function PlaySession({ level, solver, daily = false }: PlaySessionProps) 
     }
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const duration = reduced
-      ? 0
+      ? HOME_STAND_MS
       : boarHomeMs({
           start: level.start,
           path: result.path,
@@ -99,19 +100,25 @@ export function PlaySession({ level, solver, daily = false }: PlaySessionProps) 
           level,
           bridges,
         });
-    const deadline = runNow() + duration;
+    const started = runNow();
+    const speakAt = started + Math.max(0, duration - HOME_STAND_MS);
+    const deadline = started + duration;
     let opened = false;
+    let spoke = false;
     let timer = 0;
+    let speakTimer = 0;
     const open = () => {
       if (opened) {
         return;
       }
       opened = true;
       window.clearTimeout(timer);
+      window.clearTimeout(speakTimer);
+      setHomeLine(null);
       setRunRate(1);
       setAudioRate(1);
+      setFastForward(false);
       const best = rememberBestScore(level.id, result.bridgeCost);
-      setPriorBest(best);
       setScoreOpen(true);
       console.log("[journeyman:play] home", {
         levelId: level.id,
@@ -120,22 +127,39 @@ export function PlaySession({ level, solver, daily = false }: PlaySessionProps) 
         solver: solverCost,
       });
     };
+    const speak = () => {
+      if (spoke) {
+        return;
+      }
+      spoke = true;
+      const line = HOME_LINES[Math.floor(Math.random() * HOME_LINES.length)]!;
+      setHomeLine(line);
+      console.log("[journeyman:play] home line", { levelId: level.id, line });
+    };
     const arm = () => {
       if (opened) {
         return;
       }
       window.clearTimeout(timer);
-      const left = deadline - runNow();
-      const real = left <= 0 ? 0 : left / getRunRate();
-      timer = window.setTimeout(open, real);
+      window.clearTimeout(speakTimer);
+      const rate = getRunRate();
+      const untilSpeak = speakAt - runNow();
+      const untilScore = deadline - runNow();
+      if (!spoke) {
+        speakTimer = window.setTimeout(speak, untilSpeak <= 0 ? 0 : untilSpeak / rate);
+      }
+      timer = window.setTimeout(open, untilScore <= 0 ? 0 : untilScore / rate);
     };
     arm();
     const unsubscribe = subscribeRunRate(arm);
     return () => {
       window.clearTimeout(timer);
+      window.clearTimeout(speakTimer);
       unsubscribe();
+      setHomeLine(null);
       setRunRate(1);
       setAudioRate(1);
+      setFastForward(false);
     };
   }, [success, result, level, bridges, solverCost]);
 
@@ -156,6 +180,7 @@ export function PlaySession({ level, solver, daily = false }: PlaySessionProps) 
             onBoarClick={checkSolution}
             pokeChecks
             boarCue={boarCue}
+            boarLine={homeLine ?? undefined}
             reach={reach}
           />
         }
@@ -179,6 +204,7 @@ export function PlaySession({ level, solver, daily = false }: PlaySessionProps) 
               ) : null}
               {phase === "valid" ? (
                 <HairlineButton
+                  className={submitName ? "submit-ready" : ""}
                   onClick={() => {
                     if (!submitName || !result) {
                       return;
@@ -199,13 +225,12 @@ export function PlaySession({ level, solver, daily = false }: PlaySessionProps) 
                 >
                   Submit
                 </HairlineButton>
-              ) : (
+              ) : phase === "success" ? null : (
                 <HairlineButton
                   onClick={() => {
                     setBoarCue((cue) => cue + 1);
                     checkSolution();
                   }}
-                  disabled={runningHome}
                 >
                   Check
                 </HairlineButton>
@@ -213,18 +238,17 @@ export function PlaySession({ level, solver, daily = false }: PlaySessionProps) 
               {runningHome ? (
                 <HairlineButton
                   pressed={fast}
+                  aria-label={fast ? "Normal speed" : "Fast forward"}
                   onClick={() => {
                     const next = !fast;
                     const rate = next ? FAST_RUN_RATE : 1;
                     setFast(next);
                     setRunRate(rate);
                     setAudioRate(rate);
-                    if (next) {
-                      playSfx("fastForward");
-                    }
+                    setFastForward(next);
                   }}
                 >
-                  Fast
+                  {fast ? "<<" : ">>"}
                 </HairlineButton>
               ) : null}
               <HairlineButton onClick={clearBridges} disabled={runningHome}>
@@ -237,10 +261,8 @@ export function PlaySession({ level, solver, daily = false }: PlaySessionProps) 
       {scoreOpen ? (
         <ScoreHome
           score={confirmedCost}
-          best={priorBest}
           solver={solverCost}
           firstScore={firstScore}
-          daily={daily}
           levelId={level.id}
           playerName={submitName.trim() || "boar"}
           onRetry={() => {

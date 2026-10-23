@@ -26,6 +26,8 @@ const EAT_GAZE_MS = 700;
 const EAT_GONE_MS = 420;
 /** THE TURN BEFORE HE WALKS BACK */
 const TURN_MS = 280;
+/** HE STANDS AT HOME BEFORE THE SCORE CARD. */
+export const HOME_STAND_MS = 2800;
 const IDLE_MS = 140;
 const RUN_MS = 80;
 
@@ -230,7 +232,10 @@ function buildScript(plan: BoarPlan): BoarScript {
     }
   };
   const finishAt = (at: CellCoord, facing: BoarFacing) => {
-    marks.push({ kind: "idle", at, facing: southFacing(facing), t0: time, t1: Infinity });
+    const facingHome = southFacing(facing);
+    marks.push({ kind: "idle", at, facing: facingHome, t0: time, t1: time + HOME_STAND_MS });
+    time += HOME_STAND_MS;
+    marks.push({ kind: "idle", at, facing: facingHome, t0: time, t1: Infinity });
   };
   const retrace = (awayFromFlower: BoarFacing) => {
     if (stood.length < 2) {

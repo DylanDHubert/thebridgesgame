@@ -108,7 +108,7 @@ export default async function SharePage({ params, searchParams }: SharePageProps
   return (
     <main className="flex h-dvh flex-col overflow-hidden">
       <HairlineHeader />
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 items-start justify-center overflow-auto px-4 py-4">
         <SharePoster
           levelName={level.name}
           playerName={name}

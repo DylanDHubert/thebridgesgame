@@ -1,3 +1,4 @@
+import { inBounds, indexFor } from "../coords";
 import type { IsoSpan } from "../isoBoard";
 import type { GenTileKind } from "../terrainFeatures";
 import type { CellCoord, Mission, TileKind } from "../types";
@@ -42,6 +43,34 @@ export function tileGridToLevelParts(
   return { terrain, objects: [] };
 }
 
+/** A FLOWER BED IS GRASS. STONE UNDER A FLOWER IS TURNED INTO GRASS. */
+export function grassUnderFlowers(
+  terrain: TileKind[],
+  cols: number,
+  rows: number,
+  mission: Mission,
+): TileKind[] {
+  let next = terrain;
+  for (const cell of [mission.x, mission.y, mission.z]) {
+    if (!inBounds(cell.row, cell.col, rows, cols)) {
+      continue;
+    }
+    const index = indexFor(cell.row, cell.col, cols);
+    if (next[index] !== "cliff") {
+      continue;
+    }
+    if (next === terrain) {
+      next = terrain.slice();
+    }
+    next[index] = "grass";
+    console.log("[journeyman:play] flower bed was stone", {
+      row: cell.row,
+      col: cell.col,
+    });
+  }
+  return next;
+}
+
 export function buildLevel(
   seed: string,
   rows: number,
@@ -60,7 +89,7 @@ export function buildLevel(
     seed,
     rows,
     cols,
-    terrain,
+    terrain: grassUnderFlowers(terrain, cols, rows, mission),
     objects,
     routes: [],
     mission,
