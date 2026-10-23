@@ -44,6 +44,8 @@ export type Level = {
   daily?: CellCoord;
   /** U/V BOUNDS OF THE ISO RECTANGLE IN STORED ROW/COL. OUTER TWO LAYERS ARE PADDING. */
   iso: IsoSpan;
+  /** TUTORIAL CELLS THAT MUST BE BRIDGED. THE LESSON DOES NOT GUESS THEM. */
+  clicks?: CellCoord[];
 };
 
 export const LEVEL_FILE_VERSION = 3;
@@ -83,4 +85,6 @@ export type LevelFile = {
   };
   /** PRESENT ON V3. V2 FILES ARE CONTENT RECTS AND GET EMBEDDED ON LOAD. */
   iso?: IsoSpan;
+  /** TUTORIAL CLICKS. OMITTED ON PLAY BOARDS. */
+  clicks?: Array<[number, number]>;
 };

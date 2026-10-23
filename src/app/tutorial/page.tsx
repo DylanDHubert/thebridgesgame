@@ -1,29 +1,19 @@
 import { HowLesson } from "@/components/how/HowLesson";
-import { HairlineHeader, HairlineLink } from "@/components/ui/hairline";
-import { DEV_EDITOR } from "@/lib/devMode";
+import { TUTORIAL_STEPS } from "@/lib/game/tutorialSteps";
 import { loadRemoteLevel } from "@/lib/supabase/scores";
-import { HOW_LEVEL_ID } from "@/lib/game/tutorialMap";
 
-/** THE BOAR TEACHES ON WHATEVER MAP IS SAVED AS THE TUTORIAL. */
+/** A SAVED EDIT REPLACES THAT STEP. OTHERWISE THE BUILT-IN BOARD. */
 export default async function TutorialPage() {
-  const level = await loadRemoteLevel(HOW_LEVEL_ID);
-  if (!level) {
-    return (
-      <main className="flex h-dvh flex-col overflow-hidden">
-        <HairlineHeader nav="tutorial" />
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-          <p className="text-[11px] uppercase tracking-[0.14em]">
-            Tutorial map missing.
-          </p>
-          {DEV_EDITOR ? (
-            <HairlineLink href="/create/view?level=how">Edit tutorial</HairlineLink>
-          ) : (
-            <HairlineLink href="/">Home</HairlineLink>
-          )}
-        </div>
-      </main>
-    );
-  }
+  const saved = await Promise.all(TUTORIAL_STEPS.map((step) => loadRemoteLevel(step.id)));
+  const levels = TUTORIAL_STEPS.map((step, index) => saved[index] ?? step.level);
+  console.log(
+    "[journeyman:tutorial] boards",
+    TUTORIAL_STEPS.map((step, index) => ({
+      step: step.number,
+      source: saved[index] ? "saved" : "built-in",
+      clicks: levels[index]?.clicks?.length ?? 0,
+    })),
+  );
 
-  return <HowLesson level={level} />;
+  return <HowLesson levels={levels} />;
 }

@@ -12,6 +12,7 @@ export type EditorTool =
   | { type: "object"; defId: string }
   | { type: "route"; defId: string }
   | { type: "erase" }
+  | { type: "clicks" }
   | null;
 
 const SWATCH_SIZE = 22;
@@ -30,6 +31,8 @@ type EditorPaletteProps = {
   onSelect: (tool: EditorTool) => void;
   brush: BrushSize;
   onBrush: (size: BrushSize) => void;
+  /** TUTORIAL EDITOR. MARK THE CELLS THE LESSON REQUIRES. */
+  marks?: boolean;
 };
 
 /** WHERE THE FILLED BOXES START INSIDE THE 5×5 MARK. */
@@ -114,7 +117,7 @@ function BrushMark({ size, selected }: { size: BrushSize; selected: boolean }) {
   );
 }
 
-export function EditorPalette({ tool, onSelect, brush, onBrush }: EditorPaletteProps) {
+export function EditorPalette({ tool, onSelect, brush, onBrush, marks = false }: EditorPaletteProps) {
   const pick = (next: NonNullable<EditorTool>) => {
     onSelect(sameTool(tool, next) ? null : next);
   };
@@ -136,6 +139,19 @@ export function EditorPalette({ tool, onSelect, brush, onBrush }: EditorPaletteP
           </SwatchButton>
         );
       })}
+      {marks ? (
+        <SwatchButton
+          selected={tool?.type === "clicks"}
+          label="Clicks"
+          title="Lesson clicks"
+          onClick={() => pick({ type: "clicks" })}
+        >
+          <span
+            className="block border border-black bg-[#fbbf24]"
+            style={{ width: SWATCH_SIZE, height: SWATCH_SIZE }}
+          />
+        </SwatchButton>
+      ) : null}
       <span className="mx-0.5 h-6 w-px bg-black" aria-hidden />
       {BRUSH_SIZES.map((size) => {
         const selected = brush === size;

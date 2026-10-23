@@ -100,6 +100,8 @@ type GameBoardProps = {
   boarCue?: number;
   /** WHEN SET, ONLY THESE CELLS TAKE A BRIDGE CLICK. THEY STAY YELLOW. */
   hintKeys?: ReadonlySet<string>;
+  /** FALSE KEEPS THE YELLOW AND STILL LETS EVERY CELL BE CLICKED. THE EDITOR USES THIS. */
+  hintLocks?: boolean;
   /** THE LOADING LAP RUNS EVEN WHEN THE VIEWER ASKED FOR LESS MOTION. */
   alwaysAnimate?: boolean;
   mapLabelsDraggable?: boolean;
@@ -269,6 +271,7 @@ export function GameBoard({
   pokeChecks = false,
   boarCue = 0,
   hintKeys,
+  hintLocks = true,
   alwaysAnimate = false,
   mapLabelsDraggable = false,
   onMapLabelMove,
@@ -631,7 +634,9 @@ export function GameBoard({
               metrics={metrics}
               interactive={interactive}
               editable={editable}
-              open={hintKeys == null || hintKeys.has(cellKey(cell.row, cell.col))}
+              open={
+                !hintLocks || hintKeys == null || hintKeys.has(cellKey(cell.row, cell.col))
+              }
               onToggle={handleCellActivate}
               onHover={setHoverKey}
             />

@@ -15,6 +15,7 @@ import { GameBoard, type StillGrab } from "@/components/game/GameBoard";
 import type { DraftRoute } from "@/components/game/RouteCanvasOverlay";
 import { HairlineButton, HairlineHeader, HairlineRow } from "@/components/ui/hairline";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { cellKey } from "@/lib/game/coords";
 import { perfectBridgeCost } from "@/lib/game/perfectScore";
 import { stillPngBase64 } from "@/lib/rendering/stillPng";
 import { savePlayerLevel } from "@/lib/supabase/scores";
@@ -26,6 +27,7 @@ import {
   routeDefinition,
 } from "@/lib/game/objects/registry";
 import {
+  canPlaceBridgeAt,
   canPlaceObjectAt,
   canRouteEnter,
   isLandKind,
@@ -64,6 +66,8 @@ function toolHint(tool: EditorTool, homeMap: boolean, tutorialMap: boolean): str
       return "Click adjacent water tiles to draw the route.";
     case "erase":
       return "Click a building to remove it.";
+    case "clicks":
+      return "Click water to mark a required bridge. Click it again to clear the mark.";
   }
 }
 
@@ -257,6 +261,22 @@ export function DraftPuzzleView({
     }));
   };
 
+  const toggleClick = (row: number, col: number) => {
+    if (!isPlayableCell(level, row, col) || !canPlaceBridgeAt(level, row, col)) {
+      setStatus("Lesson clicks go on water.");
+      return;
+    }
+    setStatus(null);
+    setLevel((prev) => {
+      const clicks = prev.clicks ?? [];
+      const marked = clicks.some((cell) => cell.row === row && cell.col === col);
+      const next = marked
+        ? clicks.filter((cell) => cell.row !== row || cell.col !== col)
+        : [...clicks, { row, col }];
+      return { ...prev, clicks: next.length > 0 ? next : undefined };
+    });
+  };
+
   const handleCellClick = (row: number, col: number) => {
     if (locked || !tool) {
       return;
@@ -270,6 +290,9 @@ export function DraftPuzzleView({
         break;
       case "erase":
         eraseObject(row, col);
+        break;
+      case "clicks":
+        toggleClick(row, col);
         break;
       case "route":
         addRoutePoint(row, col);
@@ -325,12 +348,8 @@ export function DraftPuzzleView({
     const toSave: Level = {
       ...level,
       // HOME AND THE TUTORIAL KEEP THEIR IDS
-      id: homeMap ? "home" : tutorialMap ? "how" : level.id,
-      name: homeMap
-        ? "The Bridges Game"
-        : tutorialMap
-          ? "A small lunch"
-          : name.trim() || level.id,
+      id: homeMap ? "home" : level.id,
+      name: homeMap ? "The Bridges Game" : tutorialMap ? level.name : name.trim() || level.id,
     };
     try {
       const solver = homeMap || tutorialMap ? null : perfectBridgeCost(toSave);
@@ -359,6 +378,13 @@ export function DraftPuzzleView({
     }
   };
 
+  const clickKeys = useMemo(() => {
+    if (!tutorialMap || !level.clicks || level.clicks.length === 0) {
+      return undefined;
+    }
+    return new Set(level.clicks.map((cell) => cellKey(cell.row, cell.col)));
+  }, [level.clicks, tutorialMap]);
+
   return (
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
       <BoardColumn
@@ -376,6 +402,8 @@ export function DraftPuzzleView({
             stillRef={stillRef}
             showMission={!homeMap}
             boarClick={!tutorialMap}
+            hintKeys={clickKeys}
+            hintLocks={false}
             mapLabels={homeLabels ?? lessonLabels}
             mapLabelsDraggable={(homeMap || tutorialMap) && tool === null}
             onMapLabelMove={
@@ -395,6 +423,7 @@ export function DraftPuzzleView({
               onSelect={handleSelectTool}
               brush={brush}
               onBrush={setBrush}
+              marks={tutorialMap}
             />
             <p className="text-[10px] uppercase tracking-[0.14em]">
               {status ?? toolHint(tool, homeMap, tutorialMap)}

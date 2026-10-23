@@ -10,7 +10,6 @@ export default function CreatePage() {
         {DEV_EDITOR ? (
           <HairlineRow className="shrink-0 justify-center">
             <HairlineLink href="/create/view?level=home">Edit home map</HairlineLink>
-            <HairlineLink href="/create/view?level=how">Edit tutorial</HairlineLink>
           </HairlineRow>
         ) : null}
         <div className="min-h-0 flex-1 overflow-hidden">

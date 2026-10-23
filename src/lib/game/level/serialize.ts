@@ -62,6 +62,9 @@ export function serializeLevel(level: Level, author?: string): LevelFile {
     },
     ...(level.start ? { start: coordPair(level.start) } : {}),
     ...(level.daily ? { daily: coordPair(level.daily) } : {}),
+    ...(level.clicks && level.clicks.length > 0
+      ? { clicks: level.clicks.map((cell) => coordPair(cell)) }
+      : {}),
     objects: level.objects.map((object) => ({
       defId: object.defId,
       row: object.at.row,
@@ -224,6 +227,13 @@ function embedContentLevel(level: Omit<Level, "iso">): Level {
       z: placeMission(level.mission.z),
     },
     ...(start ? { start } : {}),
+    ...(level.clicks
+      ? {
+          clicks: level.clicks
+            .map((cell) => shiftCell(cell, board.minRow, board.minCol))
+            .filter((cell) => isoCellRole(cell.row, cell.col, board.span) === "play"),
+        }
+      : {}),
     iso: board.span,
   };
 }
@@ -260,6 +270,9 @@ export function deserializeLevel(file: LevelFile): Level {
   const daily = file.daily
     ? { row: file.daily[0], col: file.daily[1] }
     : undefined;
+  const clicks = file.clicks
+    ?.filter((pair) => pair.length === 2 && pair.every((value) => Number.isFinite(value)))
+    .map(([row, col]) => ({ row, col }));
 
   const decoded = {
     id: file.id,
@@ -273,6 +286,7 @@ export function deserializeLevel(file: LevelFile): Level {
     mission,
     ...(start ? { start } : {}),
     ...(daily ? { daily } : {}),
+    ...(clicks && clicks.length > 0 ? { clicks } : {}),
   };
 
   if (isIsoSpan(file.iso)) {
