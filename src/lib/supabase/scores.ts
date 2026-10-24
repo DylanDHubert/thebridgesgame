@@ -55,6 +55,35 @@ export async function saveDailyLevel(input: {
   });
 }
 
+/** REPLACE A STORED DAILY AFTER A SHORE REPAIR. THE STILL IS CLEARED SO IT CAN BE REPAINTED. */
+export async function replaceDailyBoard(input: {
+  level: Level;
+  solver: number | null;
+}): Promise<void> {
+  const remote = env();
+  if (!remote) {
+    console.log("[journeyman:daily] shore repair skipped");
+    return;
+  }
+  const response = await fetch(
+    `${remote.url}/rest/v1/levels?id=eq.${encodeURIComponent(input.level.id)}`,
+    {
+      method: "PATCH",
+      headers: headers(remote.key, "return=minimal"),
+      body: JSON.stringify({
+        solver: input.solver,
+        thumb: null,
+        body: serializeLevel(input.level),
+      }),
+    },
+  );
+  console.log("[journeyman:daily] shore repaired", {
+    levelId: input.level.id,
+    solver: input.solver,
+    status: response.status,
+  });
+}
+
 /** THE FIRST SUBMISSION FOR THIS PLAYER AND LEVEL. LATER ROWS ARE REFUSED. */
 export async function saveFirstSubmission(input: {
   levelId: string;

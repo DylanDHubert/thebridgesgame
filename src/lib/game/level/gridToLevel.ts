@@ -2,6 +2,7 @@ import { inBounds, indexFor } from "../coords";
 import type { IsoSpan } from "../isoBoard";
 import type { GenTileKind } from "../terrainFeatures";
 import type { CellCoord, Mission, TileKind } from "../types";
+import { openRequiredLandings } from "./landings";
 import type { Level, LevelObject } from "./types";
 
 type TileGrid = GenTileKind[][];
@@ -83,7 +84,7 @@ export function buildLevel(
   start?: CellCoord,
 ): Level {
   const id = levelIdFromSeed(seed);
-  return {
+  const level: Level = {
     id,
     name: name ?? displayNameFromSeed(seed),
     seed,
@@ -96,6 +97,8 @@ export function buildLevel(
     ...(start ? { start } : {}),
     iso,
   };
+  openRequiredLandings(level);
+  return level;
 }
 
 export function missionFromEndpoints(

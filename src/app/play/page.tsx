@@ -2,8 +2,9 @@ import { LevelPicker } from "@/components/play/LevelPicker";
 import { PlaySession } from "@/components/play/PlaySession";
 import { HairlineHeader, HairlineLink } from "@/components/ui/hairline";
 import { buildDailyLevel } from "@/lib/game/daily";
+import { openRequiredLandings } from "@/lib/game/level/landings";
 import { serializeLevel } from "@/lib/game/level/serialize";
-import { listLevelCards, loadStoredLevel, saveDailyLevel } from "@/lib/supabase/scores";
+import { listLevelCards, loadStoredLevel, replaceDailyBoard, saveDailyLevel } from "@/lib/supabase/scores";
 
 function dailyDate(value: string): Date | null {
   if (value === "1") {
@@ -40,12 +41,17 @@ export default async function PlayPage({ searchParams }: PlayPageProps) {
       );
     }
     const daily = buildDailyLevel(date);
-    await saveDailyLevel({
-      level: daily.level,
-      day: daily.day,
-      preset: daily.preset,
-      solver: daily.solver,
-    });
+    const stored = await loadStoredLevel(daily.level.id);
+    if (!stored) {
+      await saveDailyLevel({
+        level: daily.level,
+        day: daily.day,
+        preset: daily.preset,
+        solver: daily.solver,
+      });
+    } else if (openRequiredLandings(stored.level).length > 0) {
+      await replaceDailyBoard({ level: stored.level, solver: daily.solver });
+    }
     console.log("[journeyman:daily] serve", {
       day: daily.day,
       preset: daily.preset,

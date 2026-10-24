@@ -1,7 +1,9 @@
 "use server";
 
 import { buildDailyLevel } from "@/lib/game/daily";
-import { loadDailyCard, saveDailyLevel, type DailyCard } from "@/lib/supabase/scores";
+import { openRequiredLandings } from "@/lib/game/level/landings";
+import { perfectBridgeCost } from "@/lib/game/perfectScore";
+import { loadDailyCard, loadStoredLevel, replaceDailyBoard, saveDailyLevel, type DailyCard } from "@/lib/supabase/scores";
 
 /** SAVE A PAST OR CURRENT UTC DAY ONCE, THEN HAND BACK THE ROW. */
 export async function ensureDailyDay(day: string): Promise<DailyCard | null> {
@@ -16,6 +18,19 @@ export async function ensureDailyDay(day: string): Promise<DailyCard | null> {
   }
   const existing = await loadDailyCard(day);
   if (existing) {
+    const stored = await loadStoredLevel(existing.id);
+    const opened = stored ? openRequiredLandings(stored.level) : [];
+    if (stored && opened.length > 0) {
+      const solver = perfectBridgeCost(stored.level);
+      await replaceDailyBoard({ level: stored.level, solver });
+      console.log("[journeyman:daily] ensure repaired", {
+        day,
+        levelId: existing.id,
+        solver,
+        opened: opened.map((cell) => [cell.row, cell.col]),
+      });
+      return { ...existing, solver, thumb: null };
+    }
     console.log("[journeyman:daily] ensure hit", {
       day,
       levelId: existing.id,
