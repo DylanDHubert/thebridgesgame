@@ -1,7 +1,9 @@
 import { LevelPicker } from "@/components/play/LevelPicker";
 import { PlaySession } from "@/components/play/PlaySession";
 import { HairlineHeader, HairlineLink } from "@/components/ui/hairline";
+import { creatureHiding } from "@/lib/game/creatureHiding";
 import { buildDailyLevel } from "@/lib/game/daily";
+import type { Level } from "@/lib/game/level/types";
 import { openRequiredLandings } from "@/lib/game/level/landings";
 import { serializeLevel } from "@/lib/game/level/serialize";
 import { listLevelCards, loadStoredLevel, replaceDailyBoard, saveDailyLevel } from "@/lib/supabase/scores";
@@ -18,6 +20,21 @@ function dailyDate(value: string): Date | null {
     return null;
   }
   return date;
+}
+
+function logCreature(level: Level) {
+  const hiding = creatureHiding(level);
+  if (!hiding) {
+    console.log("[journeyman:creature] none", { levelId: level.id });
+    return;
+  }
+  console.log("[journeyman:creature] hiding", {
+    levelId: level.id,
+    id: hiding.creature.id,
+    name: hiding.creature.name,
+    row: hiding.row,
+    col: hiding.col,
+  });
 }
 
 type PlayPageProps = {
@@ -52,6 +69,7 @@ export default async function PlayPage({ searchParams }: PlayPageProps) {
     } else if (openRequiredLandings(stored.level).length > 0) {
       await replaceDailyBoard({ level: stored.level, solver: daily.solver });
     }
+    logCreature(daily.level);
     console.log("[journeyman:daily] serve", {
       day: daily.day,
       preset: daily.preset,
@@ -83,6 +101,7 @@ export default async function PlayPage({ searchParams }: PlayPageProps) {
       );
     }
 
+    logCreature(stored.level);
     return (
       <main className="h-dvh overflow-hidden">
         <PlaySession level={stored.level} solver={stored.solver ?? undefined} />

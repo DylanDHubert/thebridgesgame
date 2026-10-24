@@ -2,6 +2,11 @@
 
 import { useEffect, useId, useRef, useSyncExternalStore, type RefObject } from "react";
 
+import {
+  CREATURE_BEHIND_LIFT,
+  type CreatureHiding,
+} from "@/lib/game/creatureHiding";
+import { creatureSprite } from "@/lib/game/creatures";
 import { cellKey } from "@/lib/game/coords";
 import { isoLatticeCells, type IsoSpan } from "@/lib/game/isoBoard";
 import { latticeWaterDepth } from "@/lib/game/terrain";
@@ -56,6 +61,8 @@ type SpriteTerrainCanvasProps = {
   bridges: Set<string>;
   objectives: ObjectiveMarker[];
   whirlpools: Set<string>;
+  /** ANIMAL DRAWN UNDER THE PLANT ON ONE GRASS CELL. */
+  hiding?: CreatureHiding | null;
   /** READ EACH PAINT. NULL ON THE HOME MAP. */
   boarRef?: RefObject<BoarPlan | null>;
   /** YELLOW WASH ON REACHABLE TILES. THE BOAR IS PUNCHED OUT SO HE STAYS ON TOP. */
@@ -382,6 +389,7 @@ function layersForCell(
   depthAt: (row: number, col: number) => number,
   warmthAt: (row: number, col: number) => number,
   mudKeys: Set<string>,
+  hiding: CreatureHiding | null,
 ): PaintedLayer[] {
   const key = cellKey(row, col);
   const whirlpool = whirlpools.has(key);
@@ -407,6 +415,12 @@ function layersForCell(
   } else if (objectiveSrc.has(key)) {
     layers.push({ src: FLOWER_BED, lift: 0 });
   } else {
+    if (hiding && hiding.row === row && hiding.col === col) {
+      layers.push({
+        src: creatureSprite(hiding.creature),
+        lift: CREATURE_BEHIND_LIFT,
+      });
+    }
     const kind = terrainKindAt(view, row, col);
     if (kind) {
       const painted = terrainLayers(kind, view, row, col, whirlpool, mudKeys.has(key));
@@ -437,6 +451,7 @@ export function SpriteTerrainCanvas({
   bridges,
   objectives,
   whirlpools,
+  hiding = null,
   boarRef,
   flashRef,
   hintRef,
@@ -532,6 +547,7 @@ export function SpriteTerrainCanvas({
           depthAt,
           warmthAt,
           mudKeys,
+          hiding,
         );
         if (layers.length === 0) {
           continue;
@@ -755,6 +771,7 @@ export function SpriteTerrainCanvas({
             depthAt,
             warmthAt,
             mudKeys,
+            hiding,
           );
           cell.box = spriteBox(cell.row, cell.col, cell.layers, eatenNow);
           dirty = unionBox(dirty, cell.box);
@@ -909,7 +926,7 @@ export function SpriteTerrainCanvas({
       patchBridgesRef.current = () => {};
       setWalker(walkId, false);
     };
-  }, [view, depthIso, metrics, objectives, whirlpools, boarRef, alwaysAnimate, walkId]);
+  }, [view, depthIso, metrics, objectives, whirlpools, hiding, boarRef, alwaysAnimate, walkId]);
 
   useEffect(() => {
     patchBridgesRef.current(bridges);

@@ -11,6 +11,7 @@ import { MapLabelOverlay, type MapLabel } from "@/components/game/MapLabelOverla
 import type { DraftRoute } from "@/components/game/RouteCanvasOverlay";
 import { SpriteTerrainCanvas, type ReachFlash } from "@/components/game/SpriteTerrainCanvas";
 import { WoodFrame } from "@/components/ui/woodPlaque";
+import { creatureHiding } from "@/lib/game/creatureHiding";
 import { cellKey } from "@/lib/game/coords";
 import { getPlaySettings } from "@/lib/settings";
 import { bleedRimSpan, isoLatticeCells, type IsoSpan } from "@/lib/game/isoBoard";
@@ -293,6 +294,7 @@ export function GameBoard({
     }
     return base;
   }, [level, showMission]);
+  const hiding = useMemo(() => creatureHiding(level), [level]);
   const splashId = useRef(0);
   const costId = useRef(0);
   const thoughtId = useRef(0);
@@ -578,6 +580,7 @@ export function GameBoard({
         bridges={bridges}
         objectives={objectiveMarkers}
         whirlpools={emptyWhirlpools}
+        hiding={hiding}
         boarRef={boarOn ? boarRef : undefined}
         flashRef={flashRef}
         hintRef={hintRef}

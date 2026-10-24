@@ -1,0 +1,258 @@
+[
+  {
+    "id": 1,
+    "slug": "alligator",
+    "name": "Snap",
+    "frame": 0,
+    "sound": "chomp",
+    "description": "A log that blinks."
+  },
+  {
+    "id": 2,
+    "slug": "alpaca",
+    "name": "Fleece",
+    "frame": 0,
+    "sound": "hmm",
+    "description": "Too tall for the ferns, and knows it."
+  },
+  {
+    "id": 3,
+    "slug": "bear",
+    "name": "Bramble",
+    "frame": 0,
+    "sound": "gruff",
+    "description": "Honey on his breath."
+  },
+  {
+    "id": 4,
+    "slug": "capybara",
+    "name": "Pond",
+    "frame": 0,
+    "sound": "hmmph",
+    "description": "A bench that breathes."
+  },
+  {
+    "id": 5,
+    "slug": "cat",
+    "name": "Moth",
+    "frame": 0,
+    "sound": "mrrp",
+    "description": "Watching the boar like a job."
+  },
+  {
+    "id": 6,
+    "slug": "chicken",
+    "name": "Pip",
+    "frame": 0,
+    "sound": "bawk",
+    "description": "Feet in the mud, head in the sky."
+  },
+  {
+    "id": 7,
+    "slug": "cow-0",
+    "name": "Clover",
+    "frame": 0,
+    "sound": "moo",
+    "description": "The spotted one. A slow blink."
+  },
+  {
+    "id": 8,
+    "slug": "cow-1",
+    "name": "Butter",
+    "frame": 0,
+    "sound": "moo",
+    "description": "The plain one. Also a slow blink."
+  },
+  {
+    "id": 9,
+    "slug": "deer",
+    "name": "Fern",
+    "frame": 0,
+    "sound": "snort",
+    "description": "Gone if you look straight at her."
+  },
+  {
+    "id": 10,
+    "slug": "dog-0",
+    "name": "Burr",
+    "frame": 0,
+    "sound": "woof",
+    "description": "Follows the bridges. Does not help."
+  },
+  {
+    "id": 11,
+    "slug": "donkey",
+    "name": "Thistle",
+    "frame": 0,
+    "sound": "hee-haw",
+    "description": "Will not cross until he decides."
+  },
+  {
+    "id": 12,
+    "slug": "duck",
+    "name": "Puddle",
+    "frame": 0,
+    "sound": "quack",
+    "description": "Claims every marsh."
+  },
+  {
+    "id": 13,
+    "slug": "elephant",
+    "name": "Boulder",
+    "frame": 0,
+    "sound": "pah",
+    "description": "The plants lean out of the way."
+  },
+  {
+    "id": 14,
+    "slug": "fox",
+    "name": "Rust",
+    "frame": 0,
+    "sound": "yip",
+    "description": "A tail where a flower was."
+  },
+  {
+    "id": 15,
+    "slug": "goat",
+    "name": "Cliff",
+    "frame": 0,
+    "sound": "meh",
+    "description": "Standing where the grass ends."
+  },
+  {
+    "id": 16,
+    "slug": "hamster",
+    "name": "Seed",
+    "frame": 0,
+    "sound": "squeak",
+    "description": "Cheeks full of something."
+  },
+  {
+    "id": 17,
+    "slug": "hedgehog",
+    "name": "Pin",
+    "frame": 0,
+    "sound": "huff",
+    "description": "A bush that rustles back."
+  },
+  {
+    "id": 18,
+    "slug": "horse",
+    "name": "Reed",
+    "frame": 0,
+    "sound": "neigh",
+    "description": "One ear on the wind."
+  },
+  {
+    "id": 19,
+    "slug": "kangaroo",
+    "name": "Hop",
+    "frame": 0,
+    "sound": "thump",
+    "description": "Two bounds, then a stare."
+  },
+  {
+    "id": 20,
+    "slug": "lion",
+    "name": "Sun",
+    "frame": 0,
+    "sound": "mrow",
+    "description": "Asleep until the bridge creaks."
+  },
+  {
+    "id": 21,
+    "slug": "monkey",
+    "name": "Vine",
+    "frame": 0,
+    "sound": "ook",
+    "description": "Already on the next island."
+  },
+  {
+    "id": 22,
+    "slug": "panda",
+    "name": "Bamboo",
+    "frame": 0,
+    "sound": "huff",
+    "description": "Sitting. That is the whole plan."
+  },
+  {
+    "id": 23,
+    "slug": "penguin",
+    "name": "Pebble",
+    "frame": 0,
+    "sound": "ork",
+    "description": "Far from any ice, and fine."
+  },
+  {
+    "id": 24,
+    "slug": "pig",
+    "name": "Truffle",
+    "frame": 0,
+    "sound": "oink",
+    "description": "A cousin. Do not mention it."
+  },
+  {
+    "id": 25,
+    "slug": "poalrbear",
+    "name": "Snow",
+    "frame": 0,
+    "sound": "growl",
+    "description": "White fur in the green shade."
+  },
+  {
+    "id": 26,
+    "slug": "rabbit",
+    "name": "Nibble",
+    "frame": 0,
+    "sound": "thump",
+    "description": "Still, then not."
+  },
+  {
+    "id": 27,
+    "slug": "rat",
+    "name": "Whisk",
+    "frame": 0,
+    "sound": "squeak",
+    "description": "Along the plank, under the plank."
+  },
+  {
+    "id": 28,
+    "slug": "rino",
+    "name": "Knob",
+    "frame": 0,
+    "sound": "hmph",
+    "description": "The horn finds the ferns first."
+  },
+  {
+    "id": 29,
+    "slug": "seal",
+    "name": "Splash",
+    "frame": 0,
+    "sound": "arf",
+    "description": "On the grass like it is a rock."
+  },
+  {
+    "id": 30,
+    "slug": "sheep",
+    "name": "Cloud",
+    "frame": 0,
+    "sound": "baa",
+    "description": "A shrub that wandered off."
+  },
+  {
+    "id": 31,
+    "slug": "squirrel",
+    "name": "Cache",
+    "frame": 0,
+    "sound": "chit",
+    "description": "Buried it. Forgot where."
+  },
+  {
+    "id": 32,
+    "slug": "tiger",
+    "name": "Stripe",
+    "frame": 0,
+    "sound": "chuff",
+    "description": "The grass has extra shadows."
+  }
+]

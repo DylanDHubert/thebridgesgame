@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 
+import { CreatureCard } from "@/components/creatures/CreatureBook";
 import { RoundCard } from "@/components/play/RoundCard";
 import { HairlineButton, HairlineLink, HairlineRow } from "@/components/ui/hairline";
+import type { CreatureClaim } from "@/lib/game/creatureFinds";
 import { levelThumbSrc, listScoreRows, loadShareLevel } from "@/lib/supabase/scores";
 
 type ScoreHomeProps = {
@@ -12,6 +14,7 @@ type ScoreHomeProps = {
   solver: number | null;
   levelId: string;
   playerName: string;
+  found: CreatureClaim | null;
   onRetry: () => void;
 };
 
@@ -22,6 +25,7 @@ export function ScoreHome({
   solver,
   levelId,
   playerName,
+  found,
   onRetry,
 }: ScoreHomeProps) {
   const [costs, setCosts] = useState<number[]>([score]);
@@ -51,12 +55,20 @@ export function ScoreHome({
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-white/80 p-4"
+      className="fixed inset-0 z-[80] flex items-center justify-center overflow-y-auto bg-white/80 p-4"
       role="dialog"
       aria-modal="true"
       aria-label="Score"
     >
-      <div className="w-full max-w-md">
+      <div className="flex w-full max-w-md flex-col gap-3">
+        {found ? (
+          <div className="flex flex-col gap-2">
+            <p className="text-center text-[10px] uppercase tracking-[0.16em]">
+              {found.source === "wild" ? "Found" : "A gift"}
+            </p>
+            <CreatureCard creature={found.creature} blank={false} />
+          </div>
+        ) : null}
         <RoundCard
           levelName={levelName}
           playerName={playerName}
@@ -69,6 +81,7 @@ export function ScoreHome({
               <HairlineButton onClick={onRetry}>Retry</HairlineButton>
               <HairlineLink href={shareHref}>Share</HairlineLink>
               <HairlineLink href="/play">Levels</HairlineLink>
+              <HairlineLink href="/creatures">Creatures</HairlineLink>
             </HairlineRow>
           }
         />

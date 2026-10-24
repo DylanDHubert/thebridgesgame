@@ -9,6 +9,7 @@ import { ScoreHome } from "@/components/play/ScoreHome";
 import { HairlineButton, HairlineHeader, HairlineRow } from "@/components/ui/hairline";
 import { useLevelGame } from "@/hooks/useLevelGame";
 import { rememberBestScore } from "@/lib/game/bestScore";
+import { claimCreature, type CreatureClaim } from "@/lib/game/creatureFinds";
 import {
   lockFirstScore,
   readLockedScore,
@@ -65,6 +66,7 @@ export function PlaySession({ level, solver }: PlaySessionProps) {
   const [boarCue, setBoarCue] = useState(0);
   const [homeLine, setHomeLine] = useState<string | null>(null);
   const [fast, setFast] = useState(false);
+  const [found, setFound] = useState<CreatureClaim | null>(null);
   const auth = useAuth();
   const submitName = auth.username || username.trim();
 
@@ -211,6 +213,7 @@ export function PlaySession({ level, solver }: PlaySessionProps) {
                     }
                     saveUsername(submitName);
                     void auth.saveUsername(submitName);
+                    setFound(claimCreature(level, bridges));
                     const locked = lockFirstScore(
                       level.id,
                       result.bridgeCost,
@@ -265,6 +268,7 @@ export function PlaySession({ level, solver }: PlaySessionProps) {
           firstScore={firstScore}
           levelId={level.id}
           playerName={submitName.trim() || "boar"}
+          found={found}
           onRetry={() => {
             clearBridges();
             setScoreOpen(false);

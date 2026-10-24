@@ -91,6 +91,7 @@ const NAV = [
   { id: "calendar", href: "/play/calendar", label: "Calendar" },
   { id: "tutorial", href: "/tutorial", label: "Tutorial" },
   { id: "create", href: "/create", label: "Create" },
+  { id: "creatures", href: "/creatures", label: "Creatures" },
 ] as const;
 
 /** ISLAND LABEL YELLOW. SELECTED IS BLACK; HOVER IS THIS YELLOW. */
@@ -111,7 +112,7 @@ export function HairlineHeader({
 }: {
   title?: string;
   subtitle?: string;
-  nav?: "home" | "play" | "calendar" | "tutorial" | "create";
+  nav?: "home" | "play" | "calendar" | "tutorial" | "create" | "creatures";
   /** SAVED LEVEL. SHOWN ABOVE THE REST OF THE MENU. */
   playHref?: string | null;
   /** OPEN THE MENU. A LOCKED MENU STAYS UP. */
