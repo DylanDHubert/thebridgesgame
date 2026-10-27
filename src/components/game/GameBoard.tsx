@@ -532,16 +532,21 @@ export function GameBoard({
         setTileWidth(tile);
         placed.current = width >= 8 && height >= 8;
         if (bleed) {
-          // SCALE FROM THE ORIGINAL MAP. THE EXTRA RIM SITS OUTSIDE IT AND GETS CLIPPED.
+          // BOTTOM RIM STAYS. ONE TILE ON EACH SIDE IS CROPPED, AND THAT EXTRA HEIGHT COMES OFF THE TOP.
           const base = isoMetrics(tile, level.rows, level.cols, level.iso);
           const grown = isoMetrics(tile, level.rows, level.cols, bleedRimSpan(level.iso));
-          const scale = Math.max(width / base.width, height / base.height);
+          const cover = Math.max(width / base.width, height / base.height);
+          const sideInset = tile * 2;
+          const scale = Math.max(cover, width / Math.max(1, base.width - sideInset));
           const dx = grown.originX - base.originX;
           const dy = grown.originY - base.originY;
+          const bottomBaseY = base.height / 2 + height / (2 * cover);
+          // HALF AN ISO ROW. THE OTHER HALF STAYS ON THE BOTTOM RIM.
+          const topRow = (tile / 4) * scale;
           setBleedPlace({
             scale,
             left: (width - base.width * scale) / 2 - dx * scale,
-            top: (height - base.height * scale) / 2 - dy * scale,
+            top: height - (bottomBaseY + dy) * scale + topRow,
           });
         }
         return;
