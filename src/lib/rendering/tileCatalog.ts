@@ -189,6 +189,9 @@ function neighborIsLand(view: TerrainView, row: number, col: number): boolean {
   return kind ? isLandKind(kind) : false;
 }
 
+/** OPEN WATER, NO SHORE. OUT OF BOUNDS AND WHIRLPOOLS USE THIS. */
+export const OPEN_WATER = filesFrom([114])[0]!;
+
 /** SHORE FROM ORTHOGONAL LAND. WHIRLPOOL WINS. ANY OTHER MASK USES THE ALL TILE. */
 export function oceanSprite(
   view: TerrainView,
@@ -197,7 +200,7 @@ export function oceanSprite(
   whirlpool: boolean,
 ): string {
   if (whirlpool) {
-    return filesFrom([114])[0]!;
+    return OPEN_WATER;
   }
   let shore = 0;
   if (neighborIsLand(view, row - 1, col)) {
@@ -233,6 +236,9 @@ const ABYSS_MARSH_YELLOW: Rgb = { r: 32, g: 36, b: 6 };
 /** HOW FAR PAST THE PLAYABLE CEILING THE WASH IS STILL EASING DARKER */
 const PAST_CEILING = 0.35;
 
+/** PLAYABLE WATER STOPS A QUARTER SHORT OF THE DEEP END. */
+const DEPTH_REACH = 0.55;
+
 function mixRgb(a: Rgb, b: Rgb, t: number): Rgb {
   return {
     r: Math.round(a.r + (b.r - a.r) * t),
@@ -261,7 +267,7 @@ export function waterSurfaceTint(
   warmth = 0,
 ): string {
   const t = Math.max(0, depth);
-  const head = Math.min(1, t);
+  const head = Math.min(1, t) * DEPTH_REACH;
   const tail = pastCeiling(t);
   if (kind === "marsh") {
     const green = mixRgb(mixRgb(SHALLOW_MARSH, DEEP_MARSH, head), ABYSS_MARSH, tail);

@@ -19,7 +19,7 @@ import { cellKey } from "@/lib/game/coords";
 import { perfectBridgeCost } from "@/lib/game/perfectScore";
 import { stillPngBase64 } from "@/lib/rendering/stillPng";
 import { savePlayerLevel } from "@/lib/supabase/scores";
-import { homeMapFromLevel } from "@/lib/game/homeMap";
+import { homeEditorLabels } from "@/lib/game/homeMap";
 import { tutorialLabels } from "@/lib/game/tutorialMap";
 import type { Level } from "@/lib/game/level/types";
 import {
@@ -49,7 +49,7 @@ type DraftPuzzleViewProps = {
 
 function toolHint(tool: EditorTool, homeMap: boolean, tutorialMap: boolean): string {
   if (homeMap && !tool) {
-    return "Drag HOME / PLAY / CREATE / DAILY onto land. Select a tool to paint.";
+    return "Drag each name onto its island. Clicks mark the bridges.";
   }
   if (tutorialMap && !tool) {
     return "Drag the boar and the flowers onto land. Select a tool to paint.";
@@ -99,7 +99,7 @@ export function DraftPuzzleView({
   const emptyBridges = useMemo(() => new Set<string>(), []);
   const emptyPath = useMemo(() => new Set<string>(), []);
   const homeLabels = useMemo(
-    () => (homeMap ? homeMapFromLevel(level).labels : undefined),
+    () => (homeMap ? homeEditorLabels(level) : undefined),
     [homeMap, level],
   );
   const lessonLabels = useMemo(
@@ -215,12 +215,20 @@ export function DraftPuzzleView({
   const handleHomeLabelMove = (id: string, row: number, col: number) => {
     const kind = terrainKindAt(level, row, col);
     if (!kind || !isLandKind(kind)) {
-      setStatus("Drop HOME / PLAY / CREATE / DAILY on land.");
+      setStatus("Drop a name on land.");
       return;
     }
     if (id === "daily") {
       setStatus(null);
       setLevel((prev) => ({ ...prev, daily: { row, col } }));
+      return;
+    }
+    if (id === "calendar" || id === "creatures" || id === "how") {
+      setStatus(null);
+      setLevel((prev) => ({
+        ...prev,
+        spots: { ...prev.spots, [id]: { row, col } },
+      }));
       return;
     }
     const missionKey =
@@ -263,7 +271,7 @@ export function DraftPuzzleView({
 
   const toggleClick = (row: number, col: number) => {
     if (!isPlayableCell(level, row, col) || !canPlaceBridgeAt(level, row, col)) {
-      setStatus("Lesson clicks go on water.");
+      setStatus(homeMap ? "Home clicks go on water." : "Lesson clicks go on water.");
       return;
     }
     setStatus(null);
@@ -379,11 +387,11 @@ export function DraftPuzzleView({
   };
 
   const clickKeys = useMemo(() => {
-    if (!tutorialMap || !level.clicks || level.clicks.length === 0) {
+    if ((!tutorialMap && !homeMap) || !level.clicks || level.clicks.length === 0) {
       return undefined;
     }
     return new Set(level.clicks.map((cell) => cellKey(cell.row, cell.col)));
-  }, [level.clicks, tutorialMap]);
+  }, [level.clicks, tutorialMap, homeMap]);
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
@@ -401,6 +409,7 @@ export function DraftPuzzleView({
             bleed
             stillRef={stillRef}
             showMission={!homeMap}
+            creatures={false}
             boarClick={!tutorialMap}
             hintKeys={clickKeys}
             hintLocks={false}
@@ -423,7 +432,7 @@ export function DraftPuzzleView({
               onSelect={handleSelectTool}
               brush={brush}
               onBrush={setBrush}
-              marks={tutorialMap}
+              marks={tutorialMap || homeMap}
             />
             <p className="text-[10px] uppercase tracking-[0.14em]">
               {status ?? toolHint(tool, homeMap, tutorialMap)}

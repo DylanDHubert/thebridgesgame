@@ -36,6 +36,18 @@ body {
   overflow: hidden;
 }
 
+.silkscreen-regular {
+  font-family: var(--font-silkscreen), sans-serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.silkscreen-bold {
+  font-family: var(--font-silkscreen), sans-serif;
+  font-weight: 700;
+  font-style: normal;
+}
+
 /** STATIC STAGE — DEEP WATER + SOFT DEPTH, NO ANIMATED CELLS */
 .app-backdrop {
   background-color: var(--deep-ocean);
@@ -265,7 +277,9 @@ body {
 /** SCORE MARK OVER A NEW BRIDGE. YELLOW, ONE PIXEL OF BLACK. */
 .bridge-cost-pop {
   z-index: 6;
-  font-size: 11px;
+  font-family: var(--font-silkscreen), sans-serif;
+  font-weight: 400;
+  font-size: 16px;
   line-height: 1;
   color: #fbbf24;
   text-shadow:

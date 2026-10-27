@@ -22,6 +22,8 @@ type MapLabelOverlayProps = {
   /** WHEN TRUE — DRAG LABELS TO NEW LAND CELLS */
   draggable?: boolean;
   onMoveLabel?: (id: string, row: number, col: number) => void;
+  /** CLICK A LABEL. THE HOME MAP USES THIS TO ASK FOR A BRIDGE. */
+  onSelect?: (id: string) => void;
 };
 
 function pointerToIso(
@@ -44,6 +46,7 @@ export function MapLabelOverlay({
   metrics,
   draggable = false,
   onMoveLabel,
+  onSelect,
 }: MapLabelOverlayProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -80,7 +83,11 @@ export function MapLabelOverlay({
       ref={svgRef}
       className={[
         "absolute left-0 top-0",
-        draggable ? "pointer-events-auto z-[1000]" : "pointer-events-none",
+        draggable
+          ? "pointer-events-auto z-[1000]"
+          : onSelect
+            ? "pointer-events-none z-[400]"
+            : "pointer-events-none",
       ].join(" ")}
       width={metrics.width}
       height={metrics.height}
@@ -111,10 +118,23 @@ export function MapLabelOverlay({
         const x = isDrag ? dragPoint.x : anchored.x;
         const y = isDrag ? dragPoint.y : anchored.y;
 
+        const selectable = !draggable && !!onSelect;
+        const hitWidth = marker.label.length * fontSize;
+        const hitHeight = fontSize * 1.6;
         return (
           <g
             key={marker.id}
-            style={{ cursor: draggable ? "grab" : undefined }}
+            style={{
+              cursor: draggable ? "grab" : selectable ? "pointer" : undefined,
+              pointerEvents: selectable ? "auto" : undefined,
+            }}
+            onClick={(event) => {
+              if (draggable || !onSelect) {
+                return;
+              }
+              event.stopPropagation();
+              onSelect(marker.id);
+            }}
             onPointerDown={(event) => {
               if (!draggable) {
                 return;
@@ -127,7 +147,16 @@ export function MapLabelOverlay({
               setDragPoint({ x: anchored.x, y: anchored.y });
             }}
           >
-            {/* HIT TARGET */}
+            {/* HIT TARGET. THE WORD IS WIDER THAN THE TILE, SO THE RECT COVERS THE LETTERS. */}
+            {selectable ? (
+              <rect
+                x={x - hitWidth / 2}
+                y={y - hitHeight / 2}
+                width={hitWidth}
+                height={hitHeight}
+                fill="transparent"
+              />
+            ) : null}
             <circle
               cx={x}
               cy={y}
@@ -147,7 +176,7 @@ export function MapLabelOverlay({
               strokeWidth={2}
               paintOrder="stroke"
               fontSize={fontSize}
-              fontFamily="var(--font-pixel), monospace"
+              fontFamily="var(--font-silkscreen), sans-serif"
               fontWeight={700}
               style={{ pointerEvents: "none" }}
             >

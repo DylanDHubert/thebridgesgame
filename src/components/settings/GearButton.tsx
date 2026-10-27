@@ -10,12 +10,10 @@ const BOX = [
 export function GearButton({ onClick }: { onClick: () => void }) {
   return (
     <button type="button" className={BOX} aria-label="Settings" onClick={onClick}>
-      <svg viewBox="0 0 14 14" className="h-4 w-4" aria-hidden>
+      <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
         <path
           fill="currentColor"
-          fillRule="evenodd"
-          shapeRendering="crispEdges"
-          d="M5 0h4v2h-4zM5 12h4v2h-4zM0 5h2v4H0zM12 5h2v4h-2zM2 2h2v2H2zM10 2h2v2h-2zM2 10h2v2H2zM10 10h2v2h-2zM4 4h6v6H4zM6 6h2v2H6z"
+          d="M4 20h3v-2h4v4h2v-4h4v2h-2v4H9v-4H7v2H2v-5h2v3Zm18 2h-5v-2h3v-3h2v5ZM6 11H2v2h4v4H4v-2H0V9h4V7h2v4Zm14-2h4v6h-4v2h-2v-4h4v-2h-4V7h2v2Zm-6 7h-4v-2h4v2Zm-4-2H8v-4h2v4Zm6 0h-2v-4h2v4Zm-2-4h-4V8h4v2ZM7 4H4v3H2V2h5v2Zm8 0h2V2h5v5h-2V4h-3v2h-4V2h-2v4H7V4h2V0h6v4Z"
         />
       </svg>
     </button>

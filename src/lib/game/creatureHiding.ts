@@ -1,18 +1,17 @@
 import { DIRECTIONS } from "@/lib/game/constants";
 import { cellKey } from "@/lib/game/coords";
 import { CREATURES, type Creature } from "@/lib/game/creatures";
+import { HOME_LEVEL_ID } from "@/lib/game/homeMap";
 import { isPlayableCell, terrainKindAt } from "@/lib/game/rules";
 import { hashStringToSeed } from "@/lib/game/seed";
 import type { Level } from "@/lib/game/level/types";
 import { grassKeysOnStartIsland } from "@/lib/rendering/terrainView";
 
-/**
- * EVERY LEVEL HIDES ONE, SO THE PEEK CAN BE JUDGED ON THE BOARD.
- * THE LIVE RATE IS ONE BOARD IN EIGHT. TURN PREVIEW OFF TO USE IT.
- */
-export const CREATURE_PREVIEW = true;
-
+/** ONE HIDING IN THIS MANY BOARDS. THE SAME SEED ALWAYS AGREES. */
 const BOARDS_PER_HIDING = 8;
+
+/** SHOWING EVERY PLAY BOARD. FLIP OFF TO RESTORE ONE IN EIGHT. */
+const SHOW_EVERY_LEVEL = true;
 
 /** NATIVE PIXELS. THE PLANT IS DRAWN AFTER, SO THE BODY STAYS IN THE LEAVES. */
 export const CREATURE_BEHIND_LIFT = 6;
@@ -60,13 +59,13 @@ function plantCells(level: Level): { row: number; col: number }[] {
   return cells;
 }
 
-/** STABLE FOR A LEVEL SEED. NULL WHEN THIS BOARD HAS NO PLANT TO STAND BEHIND. */
+/** HOME AND LESSONS NEVER HIDE ONE. PLAY BOARDS DO, EVERY ONE WHILE SHOWING OFF. */
 export function creatureHiding(level: Level): CreatureHiding | null {
-  if (CREATURES.length === 0) {
+  if (CREATURES.length === 0 || level.id === HOME_LEVEL_ID || level.id.startsWith("tutorial-")) {
     return null;
   }
   const roll = hashStringToSeed(`${level.seed}:creature-board`);
-  if (!CREATURE_PREVIEW && roll % BOARDS_PER_HIDING !== 0) {
+  if (!SHOW_EVERY_LEVEL && roll % BOARDS_PER_HIDING !== 0) {
     return null;
   }
   const cells = plantCells(level);

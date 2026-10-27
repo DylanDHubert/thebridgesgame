@@ -7,8 +7,8 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { browserSupabase } from "@/lib/supabase/browser";
 
 const ITEM = [
-  "inline-flex w-full items-center justify-center border border-black bg-white px-3 py-2",
-  "whitespace-nowrap text-[10px] uppercase tracking-[0.16em] text-black transition",
+  "silkscreen-regular inline-flex w-full items-center justify-center border border-black bg-white px-3 py-2",
+  "whitespace-nowrap text-[16px] leading-none text-black transition",
 ].join(" ");
 
 /** ACCOUNT ROWS INSIDE THE NAV MODAL. */

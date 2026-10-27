@@ -9,6 +9,7 @@ import type { CellCoord, TileKind } from "../types";
 import { grassUnderFlowers } from "./gridToLevel";
 import {
   LEVEL_FILE_VERSION,
+  type HomeSpotId,
   type Level,
   type LevelFile,
   type LevelObject,
@@ -46,6 +47,39 @@ function coordPair(cell: { row: number; col: number }): [number, number] {
   return [cell.row, cell.col];
 }
 
+const SPOT_IDS: readonly HomeSpotId[] = ["calendar", "creatures", "how"];
+
+function spotPairs(
+  spots: NonNullable<Level["spots"]>,
+): NonNullable<LevelFile["spots"]> {
+  const file: NonNullable<LevelFile["spots"]> = {};
+  for (const id of SPOT_IDS) {
+    const cell = spots[id];
+    if (cell) {
+      file[id] = coordPair(cell);
+    }
+  }
+  return file;
+}
+
+function parseSpots(spots: LevelFile["spots"]): Level["spots"] | undefined {
+  if (!spots) {
+    return undefined;
+  }
+  const parsed: NonNullable<Level["spots"]> = {};
+  for (const id of SPOT_IDS) {
+    const pair = spots[id];
+    if (
+      pair &&
+      pair.length === 2 &&
+      pair.every((value) => Number.isFinite(value))
+    ) {
+      parsed[id] = { row: pair[0], col: pair[1] };
+    }
+  }
+  return Object.keys(parsed).length > 0 ? parsed : undefined;
+}
+
 export function serializeLevel(level: Level, author?: string): LevelFile {
   return {
     version: LEVEL_FILE_VERSION,
@@ -62,6 +96,7 @@ export function serializeLevel(level: Level, author?: string): LevelFile {
     },
     ...(level.start ? { start: coordPair(level.start) } : {}),
     ...(level.daily ? { daily: coordPair(level.daily) } : {}),
+    ...(level.spots ? { spots: spotPairs(level.spots) } : {}),
     ...(level.clicks && level.clicks.length > 0
       ? { clicks: level.clicks.map((cell) => coordPair(cell)) }
       : {}),
@@ -213,6 +248,13 @@ function embedContentLevel(level: Omit<Level, "iso">): Level {
   }
 
   const start = level.start ? placeMission(level.start) : undefined;
+  const spots: NonNullable<Level["spots"]> = {};
+  for (const id of SPOT_IDS) {
+    const cell = level.spots?.[id];
+    if (cell) {
+      spots[id] = placeMission(cell);
+    }
+  }
 
   return {
     ...level,
@@ -227,6 +269,7 @@ function embedContentLevel(level: Omit<Level, "iso">): Level {
       z: placeMission(level.mission.z),
     },
     ...(start ? { start } : {}),
+    ...(Object.keys(spots).length > 0 ? { spots } : {}),
     ...(level.clicks
       ? {
           clicks: level.clicks
@@ -270,6 +313,7 @@ export function deserializeLevel(file: LevelFile): Level {
   const daily = file.daily
     ? { row: file.daily[0], col: file.daily[1] }
     : undefined;
+  const spots = parseSpots(file.spots);
   const clicks = file.clicks
     ?.filter((pair) => pair.length === 2 && pair.every((value) => Number.isFinite(value)))
     .map(([row, col]) => ({ row, col }));
@@ -286,6 +330,7 @@ export function deserializeLevel(file: LevelFile): Level {
     mission,
     ...(start ? { start } : {}),
     ...(daily ? { daily } : {}),
+    ...(spots ? { spots } : {}),
     ...(clicks && clicks.length > 0 ? { clicks } : {}),
   };
 

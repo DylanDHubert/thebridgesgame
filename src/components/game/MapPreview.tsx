@@ -23,6 +23,8 @@ type MapPreviewProps = {
   onPublished?: (revision: string) => void;
   /** PARENT READS THE CURRENT STILL. SAVE USES THIS. */
   stillRef?: RefObject<StillGrab | null>;
+  /** OFF ON THE CREATE PREVIEW. A SAVED LEVEL MAY STILL HIDE ONE. */
+  creatures?: boolean;
 };
 
 /** ISO BOARD IN THE PLAY FRAME. SAME CROP AS THE GAME. */
@@ -34,6 +36,7 @@ export function MapPreview({
   publish = false,
   onPublished,
   stillRef: stillRefProp,
+  creatures = true,
 }: MapPreviewProps) {
   const ownStill = useRef<StillGrab | null>(null);
   const stillRef = stillRefProp ?? ownStill;
@@ -84,6 +87,7 @@ export function MapPreview({
         cells={cells}
         boarClick={boarClick}
         stillRef={stillRef}
+        creatures={creatures}
         onStill={publish ? handleStill : undefined}
       />
     </GameStage>

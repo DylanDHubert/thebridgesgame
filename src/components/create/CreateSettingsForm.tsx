@@ -259,7 +259,7 @@ export function CreateSettingsForm() {
       </div>
       <div className="h-full min-h-0 min-w-0 flex-1" role="region" aria-label="Map preview">
         {preview ? (
-          <MapPreview level={preview} stillRef={stillRef} />
+          <MapPreview level={preview} stillRef={stillRef} creatures={false} />
         ) : (
           <div className="h-full w-full border border-black bg-[rgb(12_48_92)]" />
         )}

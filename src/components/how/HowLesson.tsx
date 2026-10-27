@@ -221,6 +221,7 @@ function Lesson({
           pathKeys={pathKeys}
           runPath={success ? (result?.path ?? []) : []}
           interactive={!success}
+          creatures={false}
           sizing="contain"
           bleed
           onToggleBridge={success ? undefined : toggleBridge}

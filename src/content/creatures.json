@@ -4,7 +4,7 @@
     "slug": "alligator",
     "name": "Snap",
     "frame": 0,
-    "sound": "chomp",
+    "sound": "Chomp!",
     "description": "A log that blinks."
   },
   {
@@ -12,7 +12,7 @@
     "slug": "alpaca",
     "name": "Fleece",
     "frame": 0,
-    "sound": "hmm",
+    "sound": "Mmmm... Baa?",
     "description": "Too tall for the ferns, and knows it."
   },
   {
@@ -20,7 +20,7 @@
     "slug": "bear",
     "name": "Bramble",
     "frame": 0,
-    "sound": "gruff",
+    "sound": "Grrr!",
     "description": "Honey on his breath."
   },
   {
@@ -69,30 +69,30 @@
     "name": "Fern",
     "frame": 0,
     "sound": "snort",
-    "description": "Gone if you look straight at her."
+    "description": "Thankfully, there are no headlights in this game."
   },
   {
     "id": 10,
     "slug": "dog-0",
     "name": "Burr",
     "frame": 0,
-    "sound": "woof",
-    "description": "Follows the bridges. Does not help."
+    "sound": "Woof! Woof!",
+    "description": "Not the brightest dog."
   },
   {
     "id": 11,
     "slug": "donkey",
     "name": "Thistle",
     "frame": 0,
-    "sound": "hee-haw",
-    "description": "Will not cross until he decides."
+    "sound": "Hee-Haw",
+    "description": "'I like that boulder. That is a nice boulder.'"
   },
   {
     "id": 12,
     "slug": "duck",
     "name": "Puddle",
     "frame": 0,
-    "sound": "quack",
+    "sound": "Quack! Quack! Quaaaack!",
     "description": "Claims every marsh."
   },
   {
@@ -106,25 +106,25 @@
   {
     "id": 14,
     "slug": "fox",
-    "name": "Rust",
+    "name": "Jamie",
     "frame": 0,
-    "sound": "yip",
-    "description": "A tail where a flower was."
+    "sound": "OooooOoo Ooh",
+    "description": "What does the fox say?"
   },
   {
     "id": 15,
     "slug": "goat",
-    "name": "Cliff",
+    "name": "Gruff",
     "frame": 0,
-    "sound": "meh",
-    "description": "Standing where the grass ends."
+    "sound": "Baaaah?",
+    "description": "Do NOT cross that bridge. I know what's underneath it."
   },
   {
     "id": 16,
     "slug": "hamster",
-    "name": "Seed",
+    "name": "Hammy",
     "frame": 0,
-    "sound": "squeak",
+    "sound": "Squeak...",
     "description": "Cheeks full of something."
   },
   {
@@ -132,127 +132,127 @@
     "slug": "hedgehog",
     "name": "Pin",
     "frame": 0,
-    "sound": "huff",
+    "sound": "Hruff",
     "description": "A bush that rustles back."
   },
   {
     "id": 18,
     "slug": "horse",
-    "name": "Reed",
+    "name": "Neighthan",
     "frame": 0,
-    "sound": "neigh",
-    "description": "One ear on the wind."
+    "sound": "Neigh!!!",
+    "description": "Escaped from the pasture, visit: www.enclose.horse online."
   },
   {
     "id": 19,
     "slug": "kangaroo",
-    "name": "Hop",
+    "name": "Kanga",
     "frame": 0,
-    "sound": "thump",
-    "description": "Two bounds, then a stare."
+    "sound": "Hrr-ROO!",
+    "description": "When upset Kanga goes by 'Anga-roo'. His son (Jr.) is sometimes known as Kanga-Two."
   },
   {
     "id": 20,
     "slug": "lion",
-    "name": "Sun",
+    "name": "Leo",
     "frame": 0,
-    "sound": "mrow",
-    "description": "Asleep until the bridge creaks."
+    "sound": "Grrrrr!",
+    "description": "When Leo took over the pride, he pulled an Anakin."
   },
   {
     "id": 21,
     "slug": "monkey",
-    "name": "Vine",
+    "name": "Bingus",
     "frame": 0,
-    "sound": "ook",
-    "description": "Already on the next island."
+    "sound": "Hoo! Hoo!",
+    "description": "Bingus is a billionare, and a key player in the Monkey Business."
   },
   {
     "id": 22,
     "slug": "panda",
-    "name": "Bamboo",
+    "name": "Po-pe",
     "frame": 0,
-    "sound": "huff",
-    "description": "Sitting. That is the whole plan."
+    "sound": "IDK?",
+    "description": "'Be-ith skadooshed, my child.'"
   },
   {
     "id": 23,
     "slug": "penguin",
-    "name": "Pebble",
+    "name": "Cody",
     "frame": 0,
-    "sound": "ork",
-    "description": "Far from any ice, and fine."
+    "sound": "Ork! Ork!",
+    "description": "Hang Ten!"
   },
   {
     "id": 24,
     "slug": "pig",
     "name": "Truffle",
     "frame": 0,
-    "sound": "oink",
-    "description": "A cousin. Do not mention it."
+    "sound": "Oink! Reeeeee!",
+    "description": "Possible lost child of our protagonist."
   },
   {
     "id": 25,
     "slug": "poalrbear",
     "name": "Snow",
     "frame": 0,
-    "sound": "growl",
-    "description": "White fur in the green shade."
+    "sound": "Raaaaa!",
+    "description": "The official Coca-Cola® polar bear."
   },
   {
     "id": 26,
     "slug": "rabbit",
-    "name": "Nibble",
+    "name": "Carrotus Apetitus Giganticus",
     "frame": 0,
-    "sound": "thump",
-    "description": "Still, then not."
+    "sound": "Thump!",
+    "description": "Wallace did things to me."
   },
   {
     "id": 27,
     "slug": "rat",
-    "name": "Whisk",
+    "name": "Remy",
     "frame": 0,
-    "sound": "squeak",
-    "description": "Along the plank, under the plank."
+    "sound": "Oui-oui! Squeak-squeak!",
+    "description": "First of all, I'm a rat..."
   },
   {
     "id": 28,
     "slug": "rino",
-    "name": "Knob",
+    "name": "M.T.  Rino",
     "frame": 0,
-    "sound": "hmph",
-    "description": "The horn finds the ferns first."
+    "sound": "Hmph!",
+    "description": "We fight for honor."
   },
   {
     "id": 29,
     "slug": "seal",
-    "name": "Splash",
+    "name": "Chonkers",
     "frame": 0,
-    "sound": "arf",
-    "description": "On the grass like it is a rock."
+    "sound": "Arf Arf",
+    "description": "On vacation."
   },
   {
     "id": 30,
     "slug": "sheep",
-    "name": "Cloud",
+    "name": "Sean",
     "frame": 0,
-    "sound": "baa",
-    "description": "A shrub that wandered off."
+    "sound": "Awwooooo... Um. Baaah!",
+    "description": "Shhhh!."
   },
   {
     "id": 31,
     "slug": "squirrel",
-    "name": "Cache",
+    "name": "Squeaks",
     "frame": 0,
-    "sound": "chit",
-    "description": "Buried it. Forgot where."
+    "sound": "Chi Chi",
+    "description": "I hate butterflies."
   },
   {
     "id": 32,
     "slug": "tiger",
-    "name": "Stripe",
+    "name": "Shere",
     "frame": 0,
-    "sound": "chuff",
-    "description": "The grass has extra shadows."
+    "sound": "Grrrrr! Raaawr.",
+    "description": "At the moment I am searching for a man cub."
   }
 ]

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Press_Start_2P } from "next/font/google";
+import { Press_Start_2P, Silkscreen } from "next/font/google";
 
 import { AuthGate } from "@/components/auth/AuthGate";
 import { AuthProvider } from "@/components/auth/AuthProvider";
@@ -12,6 +12,12 @@ const pixelFont = Press_Start_2P({
   weight: "400",
   subsets: ["latin"],
   variable: "--font-pixel",
+});
+
+const silkscreen = Silkscreen({
+  weight: ["400", "700"],
+  subsets: ["latin"],
+  variable: "--font-silkscreen",
 });
 
 const TURQUOISE = "#2ec4b6";
@@ -49,7 +55,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${pixelFont.variable} h-full`}>
+    <html lang="en" className={`${pixelFont.variable} ${silkscreen.variable} h-full`}>
       <body className={`${pixelFont.className} relative flex h-dvh flex-col overflow-hidden bg-white text-black`}>
         <AuthProvider>
           <SoundBed />

@@ -34,8 +34,8 @@ export function CreatureCard({ creature, blank }: { creature: Creature; blank: b
   const text = cardText(creature, blank);
   const number = String(creature.id).padStart(2, "0");
   return (
-    <article className="flex flex-col gap-2 border border-black bg-white p-3">
-      <p className="text-[10px] tracking-[0.16em] text-black/55">{number}</p>
+    <article className="flex h-full w-full flex-col gap-2 border border-black bg-white p-3">
+      <p className="text-[10px] leading-none tracking-[0.16em] text-black/55">{number}</p>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={creatureSprite(creature)}
@@ -48,9 +48,11 @@ export function CreatureCard({ creature, blank }: { creature: Creature; blank: b
           filter: blank ? "brightness(0)" : undefined,
         }}
       />
-      <h2 className="text-[11px] uppercase tracking-[0.14em]">{text.name}</h2>
-      <p className="text-[10px] tracking-[0.12em] text-black/55">{text.sound}</p>
-      <p className="text-[10px] leading-relaxed tracking-[0.04em]">{text.description}</p>
+      <div className="flex flex-1 flex-col gap-1 leading-tight">
+        <h2 className="text-[11px] uppercase tracking-[0.14em]">{text.name}</h2>
+        <p className="text-[10px] tracking-[0.12em] text-black/55">{text.sound}</p>
+        <p className="text-[10px] tracking-[0.04em]">{text.description}</p>
+      </div>
     </article>
   );
 }
@@ -73,7 +75,7 @@ export function CreatureBook() {
           </h1>
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {CREATURES.map((creature) => (
-              <li key={creature.id}>
+              <li key={creature.id} className="flex">
                 <CreatureCard creature={creature} blank={!unlocked.has(creature.id)} />
               </li>
             ))}

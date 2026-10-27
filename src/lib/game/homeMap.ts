@@ -1,16 +1,25 @@
 import { DIRECTIONS } from "@/lib/game/constants";
-import { cellKey, coordKey, inBounds } from "@/lib/game/coords";
-import type { Level } from "@/lib/game/level/types";
+import { cellKey, coordKey, inBounds, parseCellKey } from "@/lib/game/coords";
+import type { HomeSpotId, Level } from "@/lib/game/level/types";
 import { isLandKind, terrainKindAt } from "@/lib/game/rules";
 import { floodReachable } from "@/lib/game/simulateLevel";
 import type { CellCoord } from "@/lib/game/types";
 
 export const HOME_LEVEL_ID = "home";
 
-export type HomeDestination = "play" | "create" | "how" | "daily";
+export const HOME_LINKS = [
+  { id: "play", label: "PLAY", href: "/play" },
+  { id: "daily", label: "DAILY", href: "/play?daily=1" },
+  { id: "calendar", label: "CALENDAR", href: "/play/calendar" },
+  { id: "create", label: "CREATE", href: "/create" },
+  { id: "how", label: "TUTORIAL", href: "/tutorial" },
+  { id: "creatures", label: "CREATURES", href: "/creatures" },
+] as const;
+
+export type HomeDestination = (typeof HOME_LINKS)[number]["id"];
 
 export type HomeIslandLabel = {
-  id: "home" | "play" | "create" | "daily";
+  id: "home" | HomeDestination;
   label: string;
   at: CellCoord;
   color: string;
@@ -19,12 +28,9 @@ export type HomeIslandLabel = {
 export type HomeMapMeta = {
   level: Level;
   homeOrigin: CellCoord;
-  playCells: Set<string>;
-  createCells: Set<string>;
-  dailyCells: Set<string>;
-  /** LAND ABOVE THE HOME ISLAND. NOT STORED ON THE FILE. */
-  howCells: Set<string>;
-  howAt: CellCoord | null;
+  islands: Record<HomeDestination, Set<string>>;
+  /** WHERE THE BOAR RUNS. NULL UNTIL THAT NAME HAS AN ISLAND. */
+  anchors: Record<HomeDestination, CellCoord | null>;
   labels: HomeIslandLabel[];
 };
 
@@ -150,116 +156,186 @@ function islandAboveHome(
   return best;
 }
 
-/**
- * HOME MAP FROM A LEVEL FILE.
- * Mission convention: X = HOME origin, Y = PLAY island, Z = CREATE island.
- * DAILY IS level.daily. HOW IS THE ISLAND ABOVE HOME.
- */
-export function homeMapFromLevel(level: Level): HomeMapMeta {
-  const homeOrigin = level.mission.x;
-  const playCells = floodLandComponent(level, level.mission.y);
-  const createCells = floodLandComponent(level, level.mission.z);
-  const dailyCells = level.daily
-    ? floodLandComponent(level, level.daily)
-    : new Set<string>();
-
-  if (playCells.size === 0) {
-    console.error("[journeyman:home] PLAY mission Y is not on land", level.mission.y);
-  }
-  if (createCells.size === 0) {
-    console.error("[journeyman:home] CREATE mission Z is not on land", level.mission.z);
-  }
-
-  const homeCells = floodLandComponent(level, homeOrigin);
-  const reserved = new Set<string>([...playCells, ...createCells, ...dailyCells]);
-  const howIsland = islandAboveHome(level, homeCells, reserved);
-  const howCells = howIsland ?? new Set<string>();
-  const howAt = howIsland ? labelCell(howIsland) : null;
-
-  const yellow = "#fbbf24";
-  const labels: HomeIslandLabel[] = [
-    {
-      id: "home",
-      label: "HOME",
-      at: homeOrigin,
-      color: yellow,
-    },
-    {
-      id: "play",
-      label: "PLAY",
-      at: level.mission.y,
-      color: yellow,
-    },
-    {
-      id: "create",
-      label: "CREATE",
-      at: level.mission.z,
-      color: yellow,
-    },
-  ];
-  if (level.daily && dailyCells.size > 0) {
-    labels.push({
-      id: "daily",
-      label: "DAILY",
-      at: level.daily,
-      color: yellow,
-    });
-  }
-
+function emptyIslands(): Record<HomeDestination, Set<string>> {
   return {
-    level,
-    homeOrigin,
-    playCells,
-    createCells,
-    dailyCells,
-    howCells,
-    howAt,
-    labels,
+    play: new Set(),
+    daily: new Set(),
+    calendar: new Set(),
+    create: new Set(),
+    how: new Set(),
+    creatures: new Set(),
   };
 }
 
-/** LIVE: HOME CONNECTED TO PLAY, DAILY, CREATE, OR THE ISLAND ABOVE */
-export function resolveHomeDestination(
-  level: Level,
-  bridges: Set<string>,
-  homeOrigin: CellCoord,
-  playCells: Set<string>,
-  createCells: Set<string>,
-  dailyCells: Set<string>,
-  howCells: Set<string>,
+function spotAt(level: Level, id: HomeSpotId): CellCoord | null {
+  return level.spots?.[id] ?? null;
+}
+
+/**
+ * HOME MAP FROM A LEVEL FILE.
+ * X IS HOME, Y IS PLAY, Z IS CREATE, daily IS DAILY.
+ * CALENDAR AND CREATURES ARE SPOTS. TUTORIAL IS A SPOT, OR THE ISLAND ABOVE HOME.
+ */
+export function homeMapFromLevel(level: Level): HomeMapMeta {
+  const homeOrigin = level.mission.x;
+  const anchors: Record<HomeDestination, CellCoord | null> = {
+    play: level.mission.y,
+    daily: level.daily ?? null,
+    calendar: spotAt(level, "calendar"),
+    create: level.mission.z,
+    how: spotAt(level, "how"),
+    creatures: spotAt(level, "creatures"),
+  };
+  const islands = emptyIslands();
+  for (const link of HOME_LINKS) {
+    const at = anchors[link.id];
+    if (at) {
+      islands[link.id] = floodLandComponent(level, at);
+    }
+  }
+
+  if (islands.play.size === 0) {
+    console.error("[journeyman:home] PLAY mission Y is not on land", level.mission.y);
+  }
+  if (islands.create.size === 0) {
+    console.error("[journeyman:home] CREATE mission Z is not on land", level.mission.z);
+  }
+
+  if (!anchors.how) {
+    const homeCells = floodLandComponent(level, homeOrigin);
+    const reserved = new Set<string>();
+    for (const link of HOME_LINKS) {
+      if (link.id === "how") {
+        continue;
+      }
+      for (const key of islands[link.id]) {
+        reserved.add(key);
+      }
+    }
+    const howIsland = islandAboveHome(level, homeCells, reserved);
+    if (howIsland) {
+      islands.how = howIsland;
+      anchors.how = labelCell(howIsland);
+    }
+  }
+
+  const yellow = "#fbbf24";
+  const labels: HomeIslandLabel[] = [
+    { id: "home", label: "HOME", at: homeOrigin, color: yellow },
+  ];
+  for (const link of HOME_LINKS) {
+    const at = anchors[link.id];
+    if (!at || islands[link.id].size === 0) {
+      continue;
+    }
+    labels.push({ id: link.id, label: link.label, at, color: yellow });
+  }
+
+  return { level, homeOrigin, islands, anchors, labels };
+}
+
+/** NAMES THAT ARE NOT ON AN ISLAND YET, SEATED ON HOME SO THEY CAN BE DRAGGED. */
+export function homeEditorLabels(level: Level): HomeIslandLabel[] {
+  const map = homeMapFromLevel(level);
+  const placed = new Set(map.labels.map((label) => label.id));
+  const homeCells = [...floodLandComponent(level, map.homeOrigin)].sort();
+  let seat = 0;
+  const labels = [...map.labels];
+  for (const link of HOME_LINKS) {
+    if (placed.has(link.id)) {
+      continue;
+    }
+    const key = homeCells[seat] ?? homeCells[0];
+    seat += 1;
+    if (!key) {
+      continue;
+    }
+    labels.push({
+      id: link.id,
+      label: link.label,
+      at: parseCellKey(key),
+      color: "#fbbf24",
+    });
+  }
+  return labels;
+}
+
+/** LAND ON A MENU ISLAND. THE HOME ISLAND ITSELF IS NOT A DESTINATION. */
+export function homeDestinationAt(
+  map: HomeMapMeta,
+  row: number,
+  col: number,
 ): HomeDestination | null {
-  const reachable = floodReachable(level, bridges, homeOrigin);
+  const key = cellKey(row, col);
+  for (const link of HOME_LINKS) {
+    if (map.islands[link.id].has(key)) {
+      return link.id;
+    }
+  }
+  return null;
+}
 
-  let playHit = false;
-  let createHit = false;
-  let dailyHit = false;
-  let howHit = false;
-  for (const key of reachable) {
-    if (playCells.has(key)) {
-      playHit = true;
-    }
-    if (createCells.has(key)) {
-      createHit = true;
-    }
-    if (dailyCells.has(key)) {
-      dailyHit = true;
-    }
-    if (howCells.has(key)) {
-      howHit = true;
-    }
-  }
+function distanceToSegment(
+  point: CellCoord,
+  from: CellCoord,
+  to: CellCoord,
+): { distance: number; along: number } {
+  const rowSpan = to.row - from.row;
+  const colSpan = to.col - from.col;
+  const length = rowSpan * rowSpan + colSpan * colSpan;
+  const along =
+    length === 0
+      ? 0
+      : ((point.row - from.row) * rowSpan + (point.col - from.col) * colSpan) / length;
+  const clamped = Math.max(0, Math.min(1, along));
+  const row = from.row + rowSpan * clamped;
+  const col = from.col + colSpan * clamped;
+  return {
+    distance: Math.hypot(point.row - row, point.col - col),
+    along,
+  };
+}
 
-  if (playHit) {
-    return "play";
+/** WHICH MENU PATH THIS CLICK SITS ON. NEAREST ISLAND IN FRONT OF THE BOAR. */
+function pathOwner(map: HomeMapMeta, cell: CellCoord): HomeDestination | null {
+  let best: { id: HomeDestination; distance: number; line: number } | null = null;
+  for (const link of HOME_LINKS) {
+    const anchor = map.anchors[link.id];
+    if (!anchor || map.islands[link.id].size === 0) {
+      continue;
+    }
+    const { distance: line, along } = distanceToSegment(cell, map.homeOrigin, anchor);
+    if (along <= 0) {
+      continue;
+    }
+    const distance = Math.hypot(cell.row - anchor.row, cell.col - anchor.col);
+    const closer = !best || distance < best.distance - 1e-6;
+    const tie = best && Math.abs(distance - best.distance) <= 1e-6 && line < best.line;
+    if (closer || tie) {
+      best = { id: link.id, distance, line };
+    }
   }
-  if (dailyHit) {
-    return "daily";
-  }
-  if (createHit) {
-    return "create";
-  }
-  if (howHit) {
-    return "how";
+  return best?.id ?? null;
+}
+
+/** CLICKS ON THE WAY FROM HOME TO THIS ISLAND. */
+export function homePathClicks(map: HomeMapMeta, destination: HomeDestination): CellCoord[] {
+  const clicks = map.level.clicks ?? [];
+  return clicks.filter((cell) => pathOwner(map, cell) === destination);
+}
+
+/** THE FIRST MENU ISLAND THE BOAR CAN WALK TO, IN HOME_LINKS ORDER. */
+export function resolveHomeDestination(
+  map: HomeMapMeta,
+  bridges: Set<string>,
+): HomeDestination | null {
+  const reachable = floodReachable(map.level, bridges, map.homeOrigin);
+  for (const link of HOME_LINKS) {
+    for (const key of reachable) {
+      if (map.islands[link.id].has(key)) {
+        return link.id;
+      }
+    }
   }
   return null;
 }

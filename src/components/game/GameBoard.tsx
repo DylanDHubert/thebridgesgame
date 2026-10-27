@@ -101,12 +101,17 @@ type GameBoardProps = {
   boarCue?: number;
   /** WHEN SET, ONLY THESE CELLS TAKE A BRIDGE CLICK. THEY STAY YELLOW. */
   hintKeys?: ReadonlySet<string>;
+  /** LAND CELLS THAT STILL TAKE A CLICK. HOME MENU ISLANDS. */
+  pressKeys?: ReadonlySet<string>;
   /** FALSE KEEPS THE YELLOW AND STILL LETS EVERY CELL BE CLICKED. THE EDITOR USES THIS. */
   hintLocks?: boolean;
   /** THE LOADING LAP RUNS EVEN WHEN THE VIEWER ASKED FOR LESS MOTION. */
   alwaysAnimate?: boolean;
+  /** OFF WHILE A LEVEL IS BEING MADE. PLAY USES THE ONE-IN-EIGHT HIDING. */
+  creatures?: boolean;
   mapLabelsDraggable?: boolean;
   onMapLabelMove?: (id: string, row: number, col: number) => void;
+  onMapLabelSelect?: (id: string) => void;
   /** FILLED WITH A GRAB OF THE BOARD AS IT IS DRAWN, CROP AND ALL. */
   stillRef?: RefObject<StillGrab | null>;
   /** THE MAP CANVAS HAS ITS FIRST FRAME. */
@@ -272,10 +277,13 @@ export function GameBoard({
   pokeChecks = false,
   boarCue = 0,
   hintKeys,
+  pressKeys,
   hintLocks = true,
   alwaysAnimate = false,
+  creatures = true,
   mapLabelsDraggable = false,
   onMapLabelMove,
+  onMapLabelSelect,
   stillRef,
   onStill,
 }: GameBoardProps) {
@@ -294,7 +302,10 @@ export function GameBoard({
     }
     return base;
   }, [level, showMission]);
-  const hiding = useMemo(() => creatureHiding(level), [level]);
+  const hiding = useMemo(
+    () => (creatures ? creatureHiding(level) : null),
+    [creatures, level],
+  );
   const splashId = useRef(0);
   const costId = useRef(0);
   const thoughtId = useRef(0);
@@ -640,6 +651,7 @@ export function GameBoard({
               open={
                 !hintLocks || hintKeys == null || hintKeys.has(cellKey(cell.row, cell.col))
               }
+              pressable={pressKeys?.has(cellKey(cell.row, cell.col)) ?? false}
               onToggle={handleCellActivate}
               onHover={setHoverKey}
             />
@@ -651,6 +663,7 @@ export function GameBoard({
           metrics={metrics}
           draggable={mapLabelsDraggable}
           onMoveLabel={onMapLabelMove}
+          onSelect={onMapLabelSelect}
         />
       ) : null}
       {(showMission || showBoar) && level.start && boarClick ? (

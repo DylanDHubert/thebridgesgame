@@ -143,7 +143,7 @@ export function EditorPalette({ tool, onSelect, brush, onBrush, marks = false }:
         <SwatchButton
           selected={tool?.type === "clicks"}
           label="Clicks"
-          title="Lesson clicks"
+          title="Clicks"
           onClick={() => pick({ type: "clicks" })}
         >
           <span

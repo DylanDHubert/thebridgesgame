@@ -10,6 +10,9 @@ export const TERRAIN_KINDS: readonly TerrainKind[] = [
   "cliff",
 ];
 
+/** HOME MAP NAMES THAT ARE NOT MISSION X/Y/Z OR DAILY. */
+export type HomeSpotId = "calendar" | "creatures" | "how";
+
 export type ObjectDefId = string;
 export type RouteDefId = string;
 
@@ -42,9 +45,11 @@ export type Level = {
   start?: CellCoord;
   /** DAILY ISLAND ON THE HOME MAP. */
   daily?: CellCoord;
+  /** EXTRA HOME MENU ANCHORS. TUTORIAL STAYS GUESSED UNTIL ONE IS SAVED. */
+  spots?: Partial<Record<HomeSpotId, CellCoord>>;
   /** U/V BOUNDS OF THE ISO RECTANGLE IN STORED ROW/COL. OUTER TWO LAYERS ARE PADDING. */
   iso: IsoSpan;
-  /** TUTORIAL CELLS THAT MUST BE BRIDGED. THE LESSON DOES NOT GUESS THEM. */
+  /** WATER CELLS THE PLAYER SHOULD BRIDGE. TUTORIAL AND HOME. NOT GUESSED. */
   clicks?: CellCoord[];
 };
 
@@ -66,6 +71,8 @@ export type LevelFile = {
   start?: [number, number];
   /** DAILY ISLAND ORIGIN. HOME MAP ONLY. */
   daily?: [number, number];
+  /** CALENDAR, CREATURES, AND A PLACED TUTORIAL. HOME MAP ONLY. */
+  spots?: Partial<Record<HomeSpotId, [number, number]>>;
   objects: Array<{
     defId: string;
     row: number;

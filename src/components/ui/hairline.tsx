@@ -96,8 +96,8 @@ const NAV = [
 
 /** ISLAND LABEL YELLOW. SELECTED IS BLACK; HOVER IS THIS YELLOW. */
 const NAV_LINK = [
-  "inline-flex items-center justify-center border border-black bg-white px-3 py-1.5",
-  "text-[10px] uppercase tracking-[0.16em] text-black transition",
+  "silkscreen-regular inline-flex items-center justify-center border border-black bg-white px-3 py-1.5",
+  "text-[16px] leading-none text-black transition",
   "hover:bg-[#fbbf24] hover:text-black",
   "aria-[current=page]:bg-black aria-[current=page]:text-white",
   "aria-[current=page]:hover:bg-[#fbbf24] aria-[current=page]:hover:text-black",
@@ -150,27 +150,30 @@ export function HairlineHeader({
 
   return (
     <header className="flex shrink-0 items-center justify-between gap-4 border-b border-black px-4 py-3 sm:px-6">
-      <h1
-        className="flex min-w-0 items-center gap-2 text-[11px] tracking-[0.12em] text-[#fbbf24]"
-        style={{
-          textShadow:
-            "1px 0 0 rgb(12 48 92), -1px 0 0 rgb(12 48 92), 0 1px 0 rgb(12 48 92), 0 -1px 0 rgb(12 48 92)",
-        }}
-      >
-        {/* MARSH BRIDGE ON WHITE. THE YELLOW GLOW MATCHES THE WORDMARK. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/brand/marsh-bridge.png"
-          alt=""
-          width={22}
-          height={22}
-          className="h-[22px] w-[22px] shrink-0"
+      <h1 className="min-w-0">
+        <Link
+          href="/"
+          className="silkscreen-bold flex min-w-0 items-center gap-2 text-[16px] leading-none text-[#fbbf24]"
           style={{
-            imageRendering: "pixelated",
-            filter: "drop-shadow(0 0 2px #fbbf24) drop-shadow(0 0 4px #fbbf24)",
+            textShadow:
+              "1px 0 0 rgb(12 48 92), -1px 0 0 rgb(12 48 92), 0 1px 0 rgb(12 48 92), 0 -1px 0 rgb(12 48 92)",
           }}
-        />
-        <span className="truncate">The Bridges Game</span>
+        >
+          {/* ART STARTS 16PX DOWN IN THE 64PX TILE. NUDGE UP SO THE BRIDGE MEETS THE WORD. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/brand/marsh-bridge.png"
+            alt=""
+            width={22}
+            height={22}
+            className="block h-[22px] w-[22px] shrink-0 -translate-y-[3px]"
+            style={{
+              imageRendering: "pixelated",
+              filter: "drop-shadow(0 0 2px #fbbf24) drop-shadow(0 0 4px #fbbf24)",
+            }}
+          />
+          <span className="truncate leading-none">The Bridges Game</span>
+        </Link>
       </h1>
       {userId ? (
         <button

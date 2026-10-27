@@ -51,7 +51,7 @@ export function RoundCard({
       ) : null}
       <div className="flex flex-col items-center gap-2 px-3 py-3">
         <h1
-          className="text-center text-[13px] uppercase tracking-[0.08em] text-[#fbbf24]"
+          className="silkscreen-bold text-center text-[16px] leading-none text-[#fbbf24]"
           style={WORDMARK}
         >
           {story?.title ?? "No round"}

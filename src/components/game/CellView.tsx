@@ -13,6 +13,8 @@ type CellViewProps = {
   editable?: boolean;
   /** WHEN FALSE THE CELL REFUSES THE CLICK. THE LESSON USES THIS. */
   open?: boolean;
+  /** LAND THAT STILL TAKES A CLICK. HOME ISLANDS USE THIS. */
+  pressable?: boolean;
   onToggle?: (row: number, col: number) => void;
   onHover?: (key: string | null) => void;
 };
@@ -26,13 +28,14 @@ export function CellView({
   interactive,
   editable = false,
   open = true,
+  pressable = false,
   onToggle,
   onHover,
 }: CellViewProps) {
   const bridgeable = context.level
     ? canPlaceBridgeAt(context.level, row, col)
     : false;
-  const clickable = open && (editable || (interactive && bridgeable));
+  const clickable = open && (editable || pressable || (interactive && bridgeable));
   const top = isoCellTop(row, col, metrics);
 
   const style: CSSProperties = {

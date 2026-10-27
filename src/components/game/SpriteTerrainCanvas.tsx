@@ -8,7 +8,7 @@ import {
 } from "@/lib/game/creatureHiding";
 import { creatureSprite } from "@/lib/game/creatures";
 import { cellKey } from "@/lib/game/coords";
-import { isoLatticeCells, type IsoSpan } from "@/lib/game/isoBoard";
+import { isoCellRole, isoLatticeCells, type IsoSpan } from "@/lib/game/isoBoard";
 import { latticeWaterDepth } from "@/lib/game/terrain";
 import {
   allBoarFrameSrcs,
@@ -30,7 +30,7 @@ import {
   BRIDGE_WOOD,
   CLIFF_STONE_LIFT,
   FLOWER_BED,
-  oceanSprite,
+  OPEN_WATER,
   terrainLayers,
   waterSurfaceTint,
   type SpriteLayer,
@@ -377,7 +377,7 @@ function loadSprite(src: string): Promise<HTMLImageElement> {
   return pending;
 }
 
-/** BRIDGE REPLACES THE CELL. THE OUTER TWO ISO LAYERS ARE OPEN WATER. */
+/** BRIDGE REPLACES THE CELL. WATER OUTSIDE THE PLAYABLE RECTANGLE IS THE OPEN TILE. */
 function layersForCell(
   view: TerrainView,
   bridges: Set<string>,
@@ -397,7 +397,7 @@ function layersForCell(
   if (padding) {
     return [
       {
-        src: oceanSprite(view, row, col, false),
+        src: OPEN_WATER,
         lift: 0,
         water: { kind: "ocean", depth: depthAt(row, col), warmth: 0 },
       },
@@ -500,7 +500,10 @@ export function SpriteTerrainCanvas({
     const objectiveSrc = new Map(
       objectives.map((marker) => [cellKey(marker.row, marker.col), marker.src]),
     );
-    const depthAt = latticeWaterDepth(view, depthIso ?? view.iso);
+    const contentSpan = depthIso ?? view.iso;
+    const depthAt = latticeWaterDepth(view, contentSpan);
+    const outsidePlay = (row: number, col: number) =>
+      isoCellRole(row, col, contentSpan) !== "play";
     const waves = buildWaterWaveField(view.seed, view.iso);
     const warmthAt = buildMarshWarmth(view.seed);
     const mudKeys = grassKeysOnStartIsland(view.terrain, view.rows, view.cols, view.start);
@@ -536,6 +539,7 @@ export function SpriteTerrainCanvas({
       let index = 1;
       for (const cell of isoLatticeCells(view.iso)) {
         const key = cellKey(cell.row, cell.col);
+        const outside = outsidePlay(cell.row, cell.col);
         const layers = layersForCell(
           view,
           bridgeSet,
@@ -543,7 +547,7 @@ export function SpriteTerrainCanvas({
           whirlpools,
           cell.row,
           cell.col,
-          cell.role === "pad",
+          outside,
           depthAt,
           warmthAt,
           mudKeys,
@@ -557,7 +561,7 @@ export function SpriteTerrainCanvas({
           col: cell.col,
           key,
           index,
-          pad: cell.role === "pad",
+          pad: outside,
           layers,
           box: spriteBox(cell.row, cell.col, layers, eaten),
         };

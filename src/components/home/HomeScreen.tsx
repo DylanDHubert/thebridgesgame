@@ -5,13 +5,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { BoardColumn } from "@/components/game/BoardColumn";
 import { GameBoard } from "@/components/game/GameBoard";
 import { useBoarPassage } from "@/components/loading/BoarPassage";
-import type { MapLabel } from "@/components/game/MapLabelOverlay";
 import { GearButton } from "@/components/settings/GearButton";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { HairlineHeader } from "@/components/ui/hairline";
 import { cellKey } from "@/lib/game/coords";
 import {
+  HOME_LINKS,
+  homeDestinationAt,
   homeMapFromLevel,
+  homePathClicks,
   resolveHomeDestination,
   type HomeDestination,
 } from "@/lib/game/homeMap";
@@ -30,47 +32,83 @@ function emptyBridges(): Set<string> {
   return new Set();
 }
 
+const HOME_ASKS = [
+  "i can't swim! bridge me over.",
+  "yellow planks. i refuse the water.",
+  "build that and i will walk.",
+  "you do the wood.",
+  "see the yellow? that is the way.",
+  "i would go if the bridge were there.",
+] as const;
+
 function destinationHref(destination: HomeDestination): string {
-  if (destination === "play") {
-    return "/play";
-  }
-  if (destination === "daily") {
-    return "/play?daily=1";
-  }
-  if (destination === "create") {
-    return "/create";
-  }
-  return "/tutorial";
+  return HOME_LINKS.find((link) => link.id === destination)?.href ?? "/";
 }
 
-/** TITLE MAP — BOAR RUNS TO PLAY, CREATE, OR TUTORIAL BEFORE THE PAGE OPENS */
+/** TITLE MAP. THE BOAR RUNS TO A MENU ISLAND, THEN THAT PAGE OPENS. */
 export function HomeScreen({ level }: HomeScreenProps) {
   const depart = useBoarPassage();
   const map = useMemo(() => homeMapFromLevel(level), [level]);
   const [bridges, setBridges] = useState<Set<string>>(emptyBridges);
   const [settings, setSettings] = useState(false);
   const [runPath, setRunPath] = useState<CellCoord[]>([]);
+  const [asked, setAsked] = useState<HomeDestination | null>(null);
+  const [line, setLine] = useState<string | null>(null);
   const emptyPath = useMemo(() => new Set<string>(), []);
   const navigatedRef = useRef(false);
+  const askIndex = useRef(0);
   const boardLevel = useMemo(
     () => ({ ...map.level, start: map.homeOrigin }),
     [map.level, map.homeOrigin],
   );
-  const labels = useMemo(() => {
-    const shown: MapLabel[] = map.labels.filter((label) => label.id !== "home");
-    if (map.howAt) {
-      shown.push({
-        id: "how",
-        label: "TUTORIAL",
-        at: map.howAt,
-        color: "#fbbf24",
-      });
+  const labels = useMemo(
+    () => map.labels.filter((label) => label.id !== "home"),
+    [map.labels],
+  );
+  const pressKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const link of HOME_LINKS) {
+      for (const key of map.islands[link.id]) {
+        keys.add(key);
+      }
     }
-    return shown;
-  }, [map.howAt, map.labels]);
+    return keys;
+  }, [map]);
+  const hintKeys = useMemo(() => {
+    if (!asked) {
+      return undefined;
+    }
+    const left = homePathClicks(map, asked)
+      .map((cell) => cellKey(cell.row, cell.col))
+      .filter((key) => !bridges.has(key));
+    return left.length > 0 ? new Set(left) : undefined;
+  }, [asked, map, bridges]);
+
+  const askForBridge = (destination: HomeDestination) => {
+    if (navigatedRef.current) {
+      return;
+    }
+    const next = HOME_ASKS[askIndex.current % HOME_ASKS.length]!;
+    askIndex.current += 1;
+    setLine(next);
+    setAsked(destination);
+    console.log("[journeyman:home] ask", {
+      destination,
+      line: next,
+      clicks: homePathClicks(map, destination).length,
+    });
+  };
 
   const toggleBridge = (row: number, col: number) => {
-    if (navigatedRef.current || !canPlaceBridgeAt(map.level, row, col)) {
+    if (navigatedRef.current) {
+      return;
+    }
+    const destination = homeDestinationAt(map, row, col);
+    if (destination) {
+      askForBridge(destination);
+      return;
+    }
+    if (!canPlaceBridgeAt(map.level, row, col)) {
       return;
     }
     const key = cellKey(row, col);
@@ -88,26 +126,11 @@ export function HomeScreen({ level }: HomeScreenProps) {
     if (navigatedRef.current) {
       return;
     }
-    const destination = resolveHomeDestination(
-      map.level,
-      bridges,
-      map.homeOrigin,
-      map.playCells,
-      map.createCells,
-      map.dailyCells,
-      map.howCells,
-    );
+    const destination = resolveHomeDestination(map, bridges);
     if (!destination) {
       return;
     }
-    const target =
-        destination === "play"
-        ? map.level.mission.y
-        : destination === "daily"
-          ? map.level.daily
-          : destination === "create"
-            ? map.level.mission.z
-            : map.howAt;
+    const target = map.anchors[destination];
     const path = target
       ? shortestPath(map.level, bridges, map.homeOrigin, target)
       : [];
@@ -132,11 +155,22 @@ export function HomeScreen({ level }: HomeScreenProps) {
             pathKeys={emptyPath}
             runPath={runPath}
             showMission={false}
+            creatures={false}
             showBoar
             interactive
             sizing="contain"
             bleed
             mapLabels={labels}
+            onMapLabelSelect={(id) => {
+              const link = HOME_LINKS.find((item) => item.id === id);
+              if (link) {
+                askForBridge(link.id);
+              }
+            }}
+            hintKeys={hintKeys}
+            pressKeys={pressKeys}
+            hintLocks={false}
+            boarLine={line ?? undefined}
             onToggleBridge={toggleBridge}
           />
         }
