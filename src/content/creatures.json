@@ -28,47 +28,47 @@
     "slug": "capybara",
     "name": "Pond",
     "frame": 0,
-    "sound": "hmmph",
+    "sound": "Hmmph",
     "description": "A bench that breathes."
   },
   {
     "id": 5,
     "slug": "cat",
-    "name": "Moth",
+    "name": "Jeremy",
     "frame": 0,
-    "sound": "mrrp",
-    "description": "Watching the boar like a job."
+    "sound": "Meowww!",
+    "description": "Kitty Cat!"
   },
   {
     "id": 6,
     "slug": "chicken",
     "name": "Pip",
     "frame": 0,
-    "sound": "bawk",
-    "description": "Feet in the mud, head in the sky."
+    "sound": "Bakawk!",
+    "description": "Has a tender heart."
   },
   {
     "id": 7,
     "slug": "cow-0",
     "name": "Clover",
     "frame": 0,
-    "sound": "moo",
-    "description": "The spotted one. A slow blink."
+    "sound": "Moo",
+    "description": "The plain one. A slow blink."
   },
   {
     "id": 8,
     "slug": "cow-1",
     "name": "Butter",
     "frame": 0,
-    "sound": "moo",
-    "description": "The plain one. Also a slow blink."
+    "sound": "Moo, Moo?",
+    "description": "The spotted one. Also a slow blink."
   },
   {
     "id": 9,
     "slug": "deer",
     "name": "Fern",
     "frame": 0,
-    "sound": "snort",
+    "sound": "Snort",
     "description": "Thankfully, there are no headlights in this game."
   },
   {
@@ -100,7 +100,7 @@
     "slug": "elephant",
     "name": "Boulder",
     "frame": 0,
-    "sound": "pah",
+    "sound": "Phrrr!",
     "description": "The plants lean out of the way."
   },
   {
