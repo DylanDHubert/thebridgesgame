@@ -27,15 +27,15 @@ function Slider({
   onChange: (next: number) => void;
 }) {
   return (
-    <label className="flex items-center justify-between gap-3 text-[10px] uppercase tracking-[0.14em]">
-      {label}
+    <label className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-3 text-[10px] uppercase tracking-[0.14em]">
+      <span>{label}</span>
       <input
         type="range"
         min={0}
         max={100}
         value={Math.round(value * 100)}
         aria-label={`${label} volume`}
-        className="hairline-slider w-36"
+        className="hairline-slider w-full min-w-0"
         onChange={(event) => onChange(Number(event.target.value) / 100)}
       />
     </label>

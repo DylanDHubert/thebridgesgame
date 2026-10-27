@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/AuthProvider";
 import { BoardColumn } from "@/components/game/BoardColumn";
+import { BoardZoom, useBoardZoom } from "@/components/game/BoardZoom";
 import { GameBoard } from "@/components/game/GameBoard";
 import { ScoreHome } from "@/components/play/ScoreHome";
 import { HairlineButton, HairlineHeader, HairlineRow } from "@/components/ui/hairline";
@@ -48,6 +49,7 @@ function statusLabel(
 
 /** PLAY SESSION — BOARD + STATUS BAR */
 export function PlaySession({ level, solver }: PlaySessionProps) {
+  const boardZoom = useBoardZoom();
   const {
     bridges,
     phase,
@@ -184,6 +186,7 @@ export function PlaySession({ level, solver }: PlaySessionProps) {
             boarCue={boarCue}
             boarLine={homeLine ?? undefined}
             reach={reach}
+            zoom={boardZoom.zoom}
           />
         }
         bar={
@@ -192,6 +195,12 @@ export function PlaySession({ level, solver }: PlaySessionProps) {
               {statusLabel(phase, confirmedCost)}
             </p>
             <HairlineRow className="justify-end">
+              <BoardZoom
+                onZoomIn={boardZoom.zoomIn}
+                onZoomOut={boardZoom.zoomOut}
+                atMin={boardZoom.atMin}
+                atMax={boardZoom.atMax}
+              />
               {phase === "valid" && !auth.username ? (
                 <input
                   value={username}

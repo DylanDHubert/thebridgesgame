@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { BoardColumn } from "@/components/game/BoardColumn";
+import { BoardZoom, useBoardZoom } from "@/components/game/BoardZoom";
 import { GameBoard } from "@/components/game/GameBoard";
 import { useBoarPassage } from "@/components/loading/BoarPassage";
 import { GearButton } from "@/components/settings/GearButton";
@@ -48,6 +49,7 @@ function destinationHref(destination: HomeDestination): string {
 /** TITLE MAP. THE BOAR RUNS TO A MENU ISLAND, THEN THAT PAGE OPENS. */
 export function HomeScreen({ level }: HomeScreenProps) {
   const depart = useBoarPassage();
+  const boardZoom = useBoardZoom();
   const map = useMemo(() => homeMapFromLevel(level), [level]);
   const [bridges, setBridges] = useState<Set<string>>(emptyBridges);
   const [settings, setSettings] = useState(false);
@@ -170,13 +172,20 @@ export function HomeScreen({ level }: HomeScreenProps) {
             hintKeys={hintKeys}
             pressKeys={pressKeys}
             hintLocks={false}
+            zoom={boardZoom.zoom}
             boarLine={line ?? undefined}
             onToggleBridge={toggleBridge}
           />
         }
         bar={
           <>
-            <div className="flex w-full items-center justify-end border border-black px-3 py-2.5">
+            <div className="flex w-full items-center justify-end gap-2 border border-black px-3 py-2.5">
+              <BoardZoom
+                onZoomIn={boardZoom.zoomIn}
+                onZoomOut={boardZoom.zoomOut}
+                atMin={boardZoom.atMin}
+                atMax={boardZoom.atMax}
+              />
               <GearButton onClick={() => setSettings(true)} />
             </div>
             {settings ? <SettingsDialog onClose={() => setSettings(false)} /> : null}

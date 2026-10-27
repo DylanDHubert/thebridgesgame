@@ -170,11 +170,11 @@ export function CreateSettingsForm() {
 
         <div className="space-y-3">
           <p className="text-center text-[8px] uppercase tracking-[0.22em] text-black/55">
-            Noise
+            Shape
           </p>
           <div className="space-y-3">
             <SliderField
-              label="Land threshold"
+              label="Sea level"
               value={draft.noise.landThreshold}
               min={-0.2}
               max={0.35}
@@ -182,7 +182,7 @@ export function CreateSettingsForm() {
               onChange={(value) => updateNoise({ landThreshold: value })}
             />
             <SliderField
-              label="Edge falloff"
+              label="Edge water"
               value={draft.noise.falloffStrength}
               min={0}
               max={0.8}
@@ -190,7 +190,7 @@ export function CreateSettingsForm() {
               onChange={(value) => updateNoise({ falloffStrength: value })}
             />
             <SliderField
-              label="Falloff radius"
+              label="Reach"
               value={draft.noise.falloffRadius}
               min={0.4}
               max={1}
@@ -198,7 +198,7 @@ export function CreateSettingsForm() {
               onChange={(value) => updateNoise({ falloffRadius: value })}
             />
             <SliderField
-              label="Octave 1 scale"
+              label="Detail"
               value={draft.noise.octave1Scale}
               min={0.03}
               max={0.2}
@@ -206,7 +206,7 @@ export function CreateSettingsForm() {
               onChange={(value) => updateNoise({ octave1Scale: value })}
             />
             <SliderField
-              label="Octave 2 weight"
+              label="Ridges"
               value={draft.noise.octave2Weight}
               min={0}
               max={1}
@@ -214,7 +214,7 @@ export function CreateSettingsForm() {
               onChange={(value) => updateNoise({ octave2Weight: value })}
             />
             <SliderField
-              label="Octave 3 weight"
+              label="Speckles"
               value={draft.noise.octave3Weight}
               min={0}
               max={0.6}
@@ -225,7 +225,7 @@ export function CreateSettingsForm() {
         </div>
 
         <label className="flex flex-col gap-1.5 text-[10px] uppercase tracking-[0.14em]">
-          Seed
+          Name
           <div className="flex items-center gap-3">
             <input
               type="text"

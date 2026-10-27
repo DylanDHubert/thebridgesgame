@@ -15,6 +15,8 @@ type CellViewProps = {
   open?: boolean;
   /** LAND THAT STILL TAKES A CLICK. HOME ISLANDS USE THIS. */
   pressable?: boolean;
+  /** ZOOMED BOARD. DRAG SLIDES THE FRAME, A TAP STILL CLICKS. */
+  grab?: boolean;
   onToggle?: (row: number, col: number) => void;
   onHover?: (key: string | null) => void;
 };
@@ -29,6 +31,7 @@ export function CellView({
   editable = false,
   open = true,
   pressable = false,
+  grab = false,
   onToggle,
   onHover,
 }: CellViewProps) {
@@ -62,7 +65,7 @@ export function CellView({
       onPointerLeave={() => onHover?.(null)}
       className={[
         "absolute border-0 bg-transparent p-0",
-        clickable ? "cursor-pointer" : "cursor-default",
+        grab ? "cursor-grab" : clickable ? "cursor-pointer" : "cursor-default",
       ].join(" ")}
       style={style}
     />

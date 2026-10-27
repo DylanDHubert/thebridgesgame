@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { TileSwatch } from "@/components/create/TileSwatch";
 import { BoardColumn } from "@/components/game/BoardColumn";
+import { BoardZoom, useBoardZoom } from "@/components/game/BoardZoom";
 import { GameBoard } from "@/components/game/GameBoard";
 import { HairlineButton, HairlineHeader } from "@/components/ui/hairline";
 import { useLevelGame } from "@/hooks/useLevelGame";
@@ -153,6 +154,7 @@ function Lesson({
   onNext: () => void;
 }) {
   const router = useRouter();
+  const boardZoom = useBoardZoom();
   const [boarCue, setBoarCue] = useState(0);
   const last = index === TUTORIAL_STEPS.length - 1;
   const finishing = step.mode === "finish";
@@ -231,6 +233,7 @@ function Lesson({
           boarLine={step.boar}
           reach={reach}
           hintKeys={hintKeys}
+          zoom={boardZoom.zoom}
         />
       }
       bar={
@@ -253,6 +256,12 @@ function Lesson({
             />
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <BoardZoom
+              onZoomIn={boardZoom.zoomIn}
+              onZoomOut={boardZoom.zoomOut}
+              atMin={boardZoom.atMin}
+              atMax={boardZoom.atMax}
+            />
             <HairlineButton
               aria-label="Previous lesson"
               disabled={index === 0}

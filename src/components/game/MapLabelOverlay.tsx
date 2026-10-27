@@ -124,6 +124,7 @@ export function MapLabelOverlay({
         return (
           <g
             key={marker.id}
+            data-pan-skip={draggable ? "" : undefined}
             style={{
               cursor: draggable ? "grab" : selectable ? "pointer" : undefined,
               pointerEvents: selectable ? "auto" : undefined,

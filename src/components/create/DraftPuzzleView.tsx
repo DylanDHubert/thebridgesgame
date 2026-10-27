@@ -11,6 +11,7 @@ import {
   type EditorTool,
 } from "@/components/create/EditorPalette";
 import { BoardColumn } from "@/components/game/BoardColumn";
+import { BoardZoom, useBoardZoom } from "@/components/game/BoardZoom";
 import { GameBoard, type StillGrab } from "@/components/game/GameBoard";
 import type { DraftRoute } from "@/components/game/RouteCanvasOverlay";
 import { HairlineButton, HairlineHeader, HairlineRow } from "@/components/ui/hairline";
@@ -85,6 +86,7 @@ export function DraftPuzzleView({
   locked = false,
   onPlayerSaved,
 }: DraftPuzzleViewProps) {
+  const boardZoom = useBoardZoom();
   const [level, setLevel] = useState<Level>(initialLevel);
   const [tool, setTool] = useState<EditorTool>(null);
   const [brush, setBrush] = useState<BrushSize>(1);
@@ -415,6 +417,7 @@ export function DraftPuzzleView({
             hintLocks={false}
             mapLabels={homeLabels ?? lessonLabels}
             mapLabelsDraggable={(homeMap || tutorialMap) && tool === null}
+            zoom={boardZoom.zoom}
             onMapLabelMove={
               homeMap
                 ? handleHomeLabelMove
@@ -439,6 +442,12 @@ export function DraftPuzzleView({
             </p>
           </div>
           <HairlineRow className="justify-end">
+            <BoardZoom
+              onZoomIn={boardZoom.zoomIn}
+              onZoomOut={boardZoom.zoomOut}
+              atMin={boardZoom.atMin}
+              atMax={boardZoom.atMax}
+            />
             {homeMap || tutorialMap ? null : (
               <input
                 type="text"

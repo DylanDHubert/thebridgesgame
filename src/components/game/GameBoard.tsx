@@ -1,6 +1,14 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type RefObject,
+} from "react";
 import { createPortal } from "react-dom";
 
 import { BoarClick, BOAR_THOUGHTS } from "@/components/game/BoarClick";
@@ -116,12 +124,28 @@ type GameBoardProps = {
   stillRef?: RefObject<StillGrab | null>;
   /** THE MAP CANVAS HAS ITS FIRST FRAME. */
   onStill?: () => void;
+  /** 1 IS THE TUNED FRAME. LARGER VALUES ZOOM IN FROM THE CENTER. */
+  zoom?: number;
 };
 
 /** PNG OF THE VISIBLE BOARD. */
 export type StillGrab = () => Promise<Blob | null>;
 
 const THUMB_LONG = 640;
+const PAN_SLOP = 6;
+
+type FittedFrame = {
+  scale: number;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
+function clampPan(value: number, span: number, zoom: number): number {
+  const limit = (span / 2) * (Math.max(1, zoom) - 1);
+  return Math.min(limit, Math.max(-limit, value));
+}
 
 function captureBoard(
   view: HTMLDivElement | null,
@@ -286,14 +310,44 @@ export function GameBoard({
   onMapLabelSelect,
   stillRef,
   onStill,
+  zoom = 1,
 }: GameBoardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // TRUE AFTER THE FRAME HAS BEEN MEASURED. THE FIRST PAINT IS OFTEN UNSCALED.
   const placed = useRef(false);
+  // SHARE STILLS KEEP THE TUNED FRAME EVEN WHILE THE SCREEN IS ZOOMED IN.
+  const fittedPlace = useRef({ scale: 1, left: 0, top: 0 });
   const [tileWidth, setTileWidth] = useState(() =>
     sizing === "contain" ? CONTAIN_MIN_TILE : MAX_TILE,
   );
-  const [bleedPlace, setBleedPlace] = useState({ scale: 1, left: 0, top: 0 });
+  const [frame, setFrame] = useState<FittedFrame>({
+    scale: 1,
+    left: 0,
+    top: 0,
+    width: 1,
+    height: 1,
+  });
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const panRef = useRef(pan);
+  panRef.current = pan;
+  const dragRef = useRef<{
+    id: number;
+    x: number;
+    y: number;
+    panX: number;
+    panY: number;
+    moved: boolean;
+  } | null>(null);
+  const suppressClick = useRef(false);
+  const bleedPlace = useMemo(() => {
+    const z = Math.max(1, zoom);
+    return {
+      scale: frame.scale * z,
+      left: (frame.width / 2) * (1 - z) + frame.left * z + clampPan(pan.x, frame.width, z),
+      top: (frame.height / 2) * (1 - z) + frame.top * z + clampPan(pan.y, frame.height, z),
+    };
+  }, [frame, zoom, pan]);
   const view = useMemo(() => {
     const base = terrainViewFromLevel(level);
     // HOME SHOWS THE BOAR WITHOUT TURNING HIS ISLAND INTO MUD.
@@ -543,11 +597,10 @@ export function GameBoard({
           const bottomBaseY = base.height / 2 + height / (2 * cover);
           // HALF AN ISO ROW. THE OTHER HALF STAYS ON THE BOTTOM RIM.
           const topRow = (tile / 4) * scale;
-          setBleedPlace({
-            scale,
-            left: (width - base.width * scale) / 2 - dx * scale,
-            top: height - (bottomBaseY + dy) * scale + topRow,
-          });
+          const fittedLeft = (width - base.width * scale) / 2 - dx * scale;
+          const fittedTop = height - (bottomBaseY + dy) * scale + topRow;
+          fittedPlace.current = { scale, left: fittedLeft, top: fittedTop };
+          setFrame({ scale, left: fittedLeft, top: fittedTop, width, height });
         }
         return;
       }
@@ -575,12 +628,23 @@ export function GameBoard({
     };
   }, [level.rows, level.cols, level.iso, sizing, maxContainCell, framed, bleed]);
 
+  useEffect(() => {
+    setPan((current) => {
+      const x = clampPan(current.x, frame.width, zoom);
+      const y = clampPan(current.y, frame.height, zoom);
+      if (x === current.x && y === current.y) {
+        return current;
+      }
+      return { x, y };
+    });
+  }, [zoom, frame.width, frame.height]);
+
   if (stillRef) {
     stillRef.current = () => {
       if (!placed.current) {
         return Promise.resolve(null);
       }
-      return captureBoard(containerRef.current, bleedPlace, metrics, bleed);
+      return captureBoard(containerRef.current, fittedPlace.current, metrics, bleed);
     };
   }
 
@@ -657,6 +721,7 @@ export function GameBoard({
                 !hintLocks || hintKeys == null || hintKeys.has(cellKey(cell.row, cell.col))
               }
               pressable={pressKeys?.has(cellKey(cell.row, cell.col)) ?? false}
+              grab={zoom > 1}
               onToggle={handleCellActivate}
               onHover={setHoverKey}
             />
@@ -693,9 +758,70 @@ export function GameBoard({
           className={[
             "absolute inset-0 overflow-hidden bg-[rgb(12_48_92)]",
             borderless ? "" : "border border-black",
+            zoom > 1 ? (dragging ? "cursor-grabbing" : "cursor-grab") : "",
           ]
             .filter(Boolean)
             .join(" ")}
+          onPointerDownCapture={(event) => {
+            if (zoom <= 1) {
+              return;
+            }
+            const target = event.target;
+            if (target instanceof Element && target.closest("[data-pan-skip]")) {
+              return;
+            }
+            dragRef.current = {
+              id: event.pointerId,
+              x: event.clientX,
+              y: event.clientY,
+              panX: panRef.current.x,
+              panY: panRef.current.y,
+              moved: false,
+            };
+          }}
+          onPointerMove={(event) => {
+            const drag = dragRef.current;
+            if (!drag || drag.id !== event.pointerId) {
+              return;
+            }
+            const dx = event.clientX - drag.x;
+            const dy = event.clientY - drag.y;
+            if (!drag.moved && Math.hypot(dx, dy) < PAN_SLOP) {
+              return;
+            }
+            if (!drag.moved) {
+              drag.moved = true;
+              setDragging(true);
+              event.currentTarget.setPointerCapture(event.pointerId);
+            }
+            setPan({
+              x: clampPan(drag.panX + dx, frame.width, zoom),
+              y: clampPan(drag.panY + dy, frame.height, zoom),
+            });
+          }}
+          onPointerUp={(event) => {
+            const drag = dragRef.current;
+            if (!drag || drag.id !== event.pointerId) {
+              return;
+            }
+            if (drag.moved) {
+              suppressClick.current = true;
+            }
+            dragRef.current = null;
+            setDragging(false);
+          }}
+          onPointerCancel={() => {
+            dragRef.current = null;
+            setDragging(false);
+          }}
+          onClickCapture={(event: ReactMouseEvent<HTMLDivElement>) => {
+            if (!suppressClick.current) {
+              return;
+            }
+            suppressClick.current = false;
+            event.preventDefault();
+            event.stopPropagation();
+          }}
         >
           <div
             className="absolute origin-top-left"
