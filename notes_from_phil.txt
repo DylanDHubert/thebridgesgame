@@ -1,0 +1,10 @@
+LOGO not aligned with title [done]
+
+OOB water tiles visual queue [done]
+
+return to home for title [done]
+
+possible settings icon [done]
+
+clickable and then bridge appears... or tells user where to clickable
+

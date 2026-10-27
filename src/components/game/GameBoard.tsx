@@ -16,7 +16,7 @@ import { cellKey } from "@/lib/game/coords";
 import { getPlaySettings } from "@/lib/settings";
 import { bleedRimSpan, isoLatticeCells, type IsoSpan } from "@/lib/game/isoBoard";
 import type { Level } from "@/lib/game/level/types";
-import { bridgeCostAt } from "@/lib/game/rules";
+import { bridgeCostAt, canPlaceBridgeAt } from "@/lib/game/rules";
 import { floodReachable } from "@/lib/game/simulateLevel";
 import { latticeWaterDepth } from "@/lib/game/terrain";
 import type { CellCoord } from "@/lib/game/types";
@@ -369,7 +369,7 @@ export function GameBoard({
       splashId.current += 1;
       setPickups((prev) => [...prev, { id, row, col, tint }]);
     }
-    if (!editable) {
+    if (!editable && canPlaceBridgeAt(level, row, col)) {
       const amount = bridgeCostAt(level, row, col);
       if (amount > 0) {
         const id = costId.current;

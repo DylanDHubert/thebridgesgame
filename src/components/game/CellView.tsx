@@ -36,6 +36,7 @@ export function CellView({
     ? canPlaceBridgeAt(context.level, row, col)
     : false;
   const clickable = open && (editable || pressable || (interactive && bridgeable));
+  const hoverable = open && (editable || (interactive && bridgeable));
   const top = isoCellTop(row, col, metrics);
 
   const style: CSSProperties = {
@@ -54,7 +55,7 @@ export function CellView({
       disabled={!clickable}
       onClick={() => onToggle?.(row, col)}
       onPointerEnter={() => {
-        if (clickable) {
+        if (hoverable) {
           onHover?.(`${row},${col}`);
         }
       }}
