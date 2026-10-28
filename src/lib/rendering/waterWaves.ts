@@ -3,8 +3,8 @@ import { createNoise2D } from "simplex-noise";
 import type { IsoSpan } from "@/lib/game/isoBoard";
 import { hashStringToSeed, mulberry32 } from "@/lib/game/seed";
 
-/** ONE CYCLE ACROSS ABOUT TWO THIRDS OF THE BOARD, WHICH FILLS THE SCREEN. */
-const WAVE_PERIOD_OF_WIDTH = 2 / 3;
+/** ONE CYCLE ACROSS ABOUT A THIRD OF THE BOARD, WHICH FILLS THE SCREEN. */
+const WAVE_PERIOD_OF_WIDTH = 1 / 3;
 
 /** HOW FAR THE DEPTH WASH MAY SWING. SHORE MOVES LESS THAN OPEN WATER. */
 const WAVE_SWING = 0.16;
