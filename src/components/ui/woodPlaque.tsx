@@ -1,9 +1,13 @@
+"use client";
+
 import Link from "next/link";
 import type {
   ButtonHTMLAttributes,
   CSSProperties,
   ReactNode,
 } from "react";
+
+import { useButtonSfx } from "@/lib/sound/buttonSfx";
 
 /** SHARED WOOD PLAQUE LOOK — HEADER ARROWS, BUTTONS, FRAMES */
 export const WOOD_PLAQUE_STYLE: CSSProperties = {
@@ -149,14 +153,20 @@ export function WoodButton({
   pressed,
   compact = size === "sm" || size === "icon",
   type = "button",
+  onPointerDown,
+  onKeyDown,
+  onKeyUp,
+  onBlur,
   ...rest
 }: WoodButtonProps) {
+  const press = useButtonSfx<HTMLButtonElement>("button");
   return (
     <button
       type={type}
       className={woodControlClass({ className, pressed })}
       aria-pressed={pressed}
       {...rest}
+      {...press({ onPointerDown, onKeyDown, onKeyUp, onBlur })}
     >
       <WoodPlaque
         compact={compact}
@@ -185,11 +195,13 @@ export function WoodLink({
   compact = size === "sm" || size === "icon",
   "aria-label": ariaLabel,
 }: WoodLinkProps) {
+  const press = useButtonSfx<HTMLAnchorElement>("link");
   return (
     <Link
       href={href}
       aria-label={ariaLabel}
       className={woodControlClass({ className, pressed })}
+      {...press()}
     >
       <WoodPlaque
         compact={compact}

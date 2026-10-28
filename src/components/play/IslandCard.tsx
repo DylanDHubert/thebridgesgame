@@ -1,8 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { GAME_STAGE_ASPECT } from "@/components/game/GameStage";
 import { SCORE_BANDS, scoreBand, scoreTitle } from "@/lib/game/par";
+import { useButtonSfx } from "@/lib/sound/buttonSfx";
 
 /** SEVEN TO A ROW. THE CALENDAR AND THE LEVEL LIST SHARE THIS SHELF. */
 export const ISLAND_ROW = "grid w-full grid-cols-7 gap-2";
@@ -112,8 +115,25 @@ export function IslandCard({
     return <div className={shell}>{body}</div>;
   }
   return (
-    <Link href={href} className={shell}>
+    <IslandLink href={href} className={shell}>
       {body}
+    </IslandLink>
+  );
+}
+
+function IslandLink({
+  href,
+  className,
+  children,
+}: {
+  href: string;
+  className: string;
+  children: ReactNode;
+}) {
+  const press = useButtonSfx<HTMLAnchorElement>("link");
+  return (
+    <Link href={href} className={className} {...press()}>
+      {children}
     </Link>
   );
 }

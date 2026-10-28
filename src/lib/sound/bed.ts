@@ -13,6 +13,8 @@ const CLIPS = {
   removeWater: "/assets/sfx/remove_bridge_water.mp3",
   removeMarsh: "/assets/sfx/remove_bridge_marsh.mp3",
   fastForward: "/assets/sfx/fast_forward.mp3",
+  buttonDown: "/assets/sfx/button_down.mp3",
+  buttonUp: "/assets/sfx/button_up.mp3",
 } as const;
 
 export type SfxName = keyof typeof CLIPS;

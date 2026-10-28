@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+
+import { useButtonSfx } from "@/lib/sound/buttonSfx";
 
 /** WIDEST VIEW IS THE TUNED FRAME. EACH STOP MOVES CLOSER TO THE CENTER. */
 const STOPS = [1, 1.25, 1.55, 1.9, 2.35] as const;
@@ -22,6 +24,34 @@ export function useBoardZoom() {
   };
 }
 
+function ZoomStep({
+  label,
+  disabled,
+  onClick,
+  className,
+  children,
+}: {
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+  className: string;
+  children: ReactNode;
+}) {
+  const press = useButtonSfx<HTMLButtonElement>("button");
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className={className}
+      {...press()}
+    >
+      {children}
+    </button>
+  );
+}
+
 /** PLUS MOVES IN. MINUS STOPS AT THE TUNED FRAME. */
 export function BoardZoom({
   onZoomIn,
@@ -36,24 +66,17 @@ export function BoardZoom({
 }) {
   return (
     <div className="inline-flex shrink-0 border border-black">
-      <button
-        type="button"
-        aria-label="Zoom out"
-        disabled={atMin}
-        onClick={onZoomOut}
-        className={STEP}
-      >
+      <ZoomStep label="Zoom out" disabled={atMin} onClick={onZoomOut} className={STEP}>
         -
-      </button>
-      <button
-        type="button"
-        aria-label="Zoom in"
+      </ZoomStep>
+      <ZoomStep
+        label="Zoom in"
         disabled={atMax}
         onClick={onZoomIn}
         className={[STEP, "border-l border-black"].join(" ")}
       >
         +
-      </button>
+      </ZoomStep>
     </div>
   );
 }

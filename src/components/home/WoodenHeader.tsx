@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 
+import { useButtonSfx } from "@/lib/sound/buttonSfx";
 import {
   PixelArrow,
   WoodPlaque,
@@ -37,11 +40,13 @@ function NavArrowLink({
   label: string;
   direction: "left" | "right";
 }) {
+  const press = useButtonSfx<HTMLAnchorElement>("link");
   return (
     <Link
       href={href}
       aria-label={label}
       className="group shrink-0 transition hover:brightness-110 active:translate-y-px"
+      {...press()}
     >
       <WoodPlaque className="flex size-11 items-center justify-center sm:size-12" compact>
         <span className="drop-shadow-[1px_1px_0_rgb(42_24_10)]">

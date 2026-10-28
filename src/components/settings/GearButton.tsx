@@ -1,5 +1,7 @@
 "use client";
 
+import { useButtonSfx } from "@/lib/sound/buttonSfx";
+
 const BOX = [
   "inline-flex aspect-square shrink-0 items-center justify-center p-1.5",
   "border border-black bg-white text-black",
@@ -8,8 +10,9 @@ const BOX = [
 
 /** PIXEL GEAR. THE BUTTON STAYS SQUARE BESIDE A TEXT CONTROL. */
 export function GearButton({ onClick }: { onClick: () => void }) {
+  const press = useButtonSfx<HTMLButtonElement>("button");
   return (
-    <button type="button" className={BOX} aria-label="Settings" onClick={onClick}>
+    <button type="button" className={BOX} aria-label="Settings" onClick={onClick} {...press()}>
       <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
         <path
           fill="currentColor"

@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { TileSwatch } from "@/components/create/TileSwatch";
 import { TERRAIN_DEFINITIONS } from "@/lib/game/objects/registry";
 import type { TileKind } from "@/lib/game/types";
+import { useButtonSfx } from "@/lib/sound/buttonSfx";
 
 // EDITOR TOOL — MIRRORS THE THREE AUTHORED LAYERS PLUS AN ERASER
 export type EditorTool =
@@ -77,12 +78,14 @@ function SwatchButton({
   onClick: () => void;
   children: ReactNode;
 }) {
+  const press = useButtonSfx<HTMLButtonElement>("button");
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={selected}
       title={title}
+      {...press()}
       className={[
         "inline-flex items-center gap-1.5 border border-black px-1.5 py-1 text-[10px] uppercase tracking-[0.16em]",
         selected ? "bg-black text-white" : "bg-white text-black",
@@ -90,6 +93,33 @@ function SwatchButton({
     >
       <span className="block bg-transparent">{children}</span>
       {label}
+    </button>
+  );
+}
+
+function BrushButton({
+  size,
+  selected,
+  onClick,
+}: {
+  size: BrushSize;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const press = useButtonSfx<HTMLButtonElement>("button");
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      title={`${size}×${size}`}
+      onClick={onClick}
+      className={[
+        "inline-flex h-[30px] w-[30px] items-center justify-center border border-black",
+        selected ? "bg-black" : "bg-white",
+      ].join(" ")}
+      {...press()}
+    >
+      <BrushMark size={size} selected={selected} />
     </button>
   );
 }
@@ -153,24 +183,14 @@ export function EditorPalette({ tool, onSelect, brush, onBrush, marks = false }:
         </SwatchButton>
       ) : null}
       <span className="mx-0.5 h-6 w-px bg-black" aria-hidden />
-      {BRUSH_SIZES.map((size) => {
-        const selected = brush === size;
-        return (
-          <button
-            key={size}
-            type="button"
-            aria-pressed={selected}
-            title={`${size}×${size}`}
-            onClick={() => onBrush(size)}
-            className={[
-              "inline-flex h-[30px] w-[30px] items-center justify-center border border-black",
-              selected ? "bg-black" : "bg-white",
-            ].join(" ")}
-          >
-            <BrushMark size={size} selected={selected} />
-          </button>
-        );
-      })}
+      {BRUSH_SIZES.map((size) => (
+        <BrushButton
+          key={size}
+          size={size}
+          selected={brush === size}
+          onClick={() => onBrush(size)}
+        />
+      ))}
     </div>
   );
 }

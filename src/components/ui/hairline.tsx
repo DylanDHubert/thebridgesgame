@@ -8,6 +8,7 @@ import { AccountLink } from "@/components/auth/AccountLink";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { GearButton } from "@/components/settings/GearButton";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
+import { useButtonSfx } from "@/lib/sound/buttonSfx";
 
 const CONTROL = [
   "inline-flex items-center justify-center border border-black bg-white px-3 py-1.5",
@@ -28,14 +29,20 @@ export function HairlineButton({
   pressed,
   className = "",
   type = "button",
+  onPointerDown,
+  onKeyDown,
+  onKeyUp,
+  onBlur,
   ...rest
 }: HairlineButtonProps) {
+  const press = useButtonSfx<HTMLButtonElement>("button");
   return (
     <button
       type={type}
       aria-pressed={pressed}
       className={[CONTROL, className].filter(Boolean).join(" ")}
       {...rest}
+      {...press({ onPointerDown, onKeyDown, onKeyUp, onBlur })}
     >
       {children}
     </button>
@@ -58,6 +65,7 @@ export function HairlineLink({
   pressed = false,
   "aria-label": ariaLabel,
 }: HairlineLinkProps) {
+  const press = useButtonSfx<HTMLAnchorElement>("link");
   return (
     <Link
       href={href}
@@ -66,6 +74,34 @@ export function HairlineLink({
       className={[CONTROL, pressed ? "bg-black text-white" : "", className]
         .filter(Boolean)
         .join(" ")}
+      {...press()}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function NavLink({
+  href,
+  children,
+  current = false,
+  className,
+  onClick,
+}: {
+  href: string;
+  children: ReactNode;
+  current?: boolean;
+  className: string;
+  onClick?: () => void;
+}) {
+  const press = useButtonSfx<HTMLAnchorElement>("link");
+  return (
+    <Link
+      href={href}
+      aria-current={current ? "page" : undefined}
+      className={className}
+      onClick={onClick}
+      {...press()}
     >
       {children}
     </Link>
@@ -122,6 +158,9 @@ export function HairlineHeader({
   const { userId } = useAuth();
   const [open, setOpen] = useState(menuOpen);
   const [settings, setSettings] = useState(false);
+  const brandPress = useButtonSfx<HTMLAnchorElement>("link");
+  const menuPress = useButtonSfx<HTMLButtonElement>("button");
+  const closePress = useButtonSfx<HTMLButtonElement>("button");
   const close = () => {
     if (menuLocked) {
       return;
@@ -158,6 +197,7 @@ export function HairlineHeader({
             textShadow:
               "1px 0 0 rgb(12 48 92), -1px 0 0 rgb(12 48 92), 0 1px 0 rgb(12 48 92), 0 -1px 0 rgb(12 48 92)",
           }}
+          {...brandPress()}
         >
           {/* ART STARTS 16PX DOWN IN THE 64PX TILE. NUDGE UP SO THE BRIDGE MEETS THE WORD. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -182,6 +222,7 @@ export function HairlineHeader({
           aria-haspopup="dialog"
           aria-expanded={open}
           onClick={() => setOpen(true)}
+          {...menuPress()}
         >
           Menu
         </button>
@@ -201,20 +242,20 @@ export function HairlineHeader({
               >
                 {playHref ? (
                   <div className="border-b border-black pb-2">
-                    <Link href={playHref} className={`${NAV_LINK} w-full`}>
+                    <NavLink href={playHref} className={`${NAV_LINK} w-full`}>
                       Play level
-                    </Link>
+                    </NavLink>
                   </div>
                 ) : null}
                 <div className="flex items-stretch gap-2">
-                  <Link
+                  <NavLink
                     href="/"
-                    aria-current={nav === "home" ? "page" : undefined}
+                    current={nav === "home"}
                     className={`${NAV_LINK} min-w-0 flex-1`}
                     onClick={close}
                   >
                     Home
-                  </Link>
+                  </NavLink>
                   <GearButton
                     onClick={() => {
                       if (!menuLocked) {
@@ -226,31 +267,31 @@ export function HairlineHeader({
                 </div>
                 <div className="flex items-stretch gap-2">
                   {NAV.filter((item) => item.id === "play" || item.id === "calendar").map((item) => (
-                    <Link
+                    <NavLink
                       key={item.id}
                       href={item.href}
-                      aria-current={nav === item.id ? "page" : undefined}
+                      current={nav === item.id}
                       className={`${NAV_LINK} min-w-0 flex-1`}
                       onClick={close}
                     >
                       {item.label}
-                    </Link>
+                    </NavLink>
                   ))}
                 </div>
                 {NAV.filter((item) => item.id !== "home" && item.id !== "play" && item.id !== "calendar").map((item) => (
-                  <Link
+                  <NavLink
                     key={item.id}
                     href={item.href}
-                    aria-current={nav === item.id ? "page" : undefined}
+                    current={nav === item.id}
                     className={`${NAV_LINK} w-full`}
                     onClick={close}
                   >
                     {item.label}
-                  </Link>
+                  </NavLink>
                 ))}
                 <AccountLink onDone={close} />
                 {menuLocked ? null : (
-                  <button type="button" className={`${NAV_LINK} w-full`} onClick={close}>
+                  <button type="button" className={`${NAV_LINK} w-full`} onClick={close} {...closePress()}>
                     Close
                   </button>
                 )}
