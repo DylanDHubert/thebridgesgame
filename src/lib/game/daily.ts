@@ -5,6 +5,7 @@ import {
 } from "@/lib/game/generationConfig";
 import { generateLevel } from "@/lib/game/level/generateLevel";
 import type { Level } from "@/lib/game/level/types";
+import { pacificDateKey } from "@/lib/game/pacificDay";
 import { perfectBridgeCost } from "@/lib/game/perfectScore";
 
 /** OCTAVE WEIGHTS STAY ON THE SHARED DEFAULT. THE PRESET NAMES SCALES ONLY. */
@@ -39,13 +40,13 @@ function presetNoise(
   };
 }
 
-/** A IS MON–WED. B IS THU–FRI. C IS THE WEEKEND. THE CLOCK IS UTC. */
+/** A IS MON–WED. B IS THU–FRI. C IS THE WEEKEND. THE CLOCK IS PACIFIC. */
 const PRESET_A = presetNoise(0.18, 0.3, 0.78, 0.18, 0.85, 0.4);
 const PRESET_B = presetNoise(0.21, 0.14, 0.93, 0.17, 0.75, 0.35);
 const PRESET_C = presetNoise(0.35, 0.14, 0.93, 0.17, 0.75, 0.35);
 
 export function dailyPresetFor(date: Date): DailyPreset {
-  const day = date.getUTCDay();
+  const day = new Date(`${pacificDateKey(date)}T12:00:00.000Z`).getUTCDay();
   if (day === 0 || day === 6) {
     return { id: "C", noise: PRESET_C };
   }
@@ -56,7 +57,7 @@ export function dailyPresetFor(date: Date): DailyPreset {
 }
 
 export function dailyDateKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  return pacificDateKey(date);
 }
 
 export type DailyBuild = {
@@ -66,7 +67,7 @@ export type DailyBuild = {
   day: string;
 };
 
-/** THE BOARD FOR A UTC DAY. THE SAME SEED ALWAYS DRAWS THE SAME ISLAND. */
+/** THE BOARD FOR A PACIFIC DAY. THE SAME SEED ALWAYS DRAWS THE SAME ISLAND. */
 export function dailyLevelFor(date: Date): Level {
   const preset = dailyPresetFor(date);
   const day = dailyDateKey(date);
@@ -79,7 +80,7 @@ export function dailyLevelFor(date: Date): Level {
   });
 }
 
-/** ONE BOARD PER UTC DATE. THE GRID MATCHES CREATE. THE SOLVER COST IS FROZEN HERE. */
+/** ONE BOARD PER PACIFIC DATE. THE GRID MATCHES CREATE. THE SOLVER COST IS FROZEN HERE. */
 export function buildDailyLevel(date = new Date()): DailyBuild {
   const preset = dailyPresetFor(date);
   const day = dailyDateKey(date);

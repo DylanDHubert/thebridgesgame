@@ -3,6 +3,7 @@ import { PlaySession } from "@/components/play/PlaySession";
 import { HairlineHeader, HairlineLink } from "@/components/ui/hairline";
 import { creatureHiding } from "@/lib/game/creatureHiding";
 import { buildDailyLevel } from "@/lib/game/daily";
+import { pacificDateKey } from "@/lib/game/pacificDay";
 import type { Level } from "@/lib/game/level/types";
 import { openRequiredLandings } from "@/lib/game/level/landings";
 import { serializeLevel } from "@/lib/game/level/serialize";
@@ -16,7 +17,7 @@ function dailyDate(value: string): Date | null {
     return null;
   }
   const date = new Date(`${value}T12:00:00.000Z`);
-  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) > new Date().toISOString().slice(0, 10)) {
+  if (Number.isNaN(date.getTime()) || pacificDateKey(date) > pacificDateKey()) {
     return null;
   }
   return date;

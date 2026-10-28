@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { MapPreview } from "@/components/game/MapPreview";
 import { ISLAND_ROW, IslandCard } from "@/components/play/IslandCard";
 import { dailyPresetFor, type DailyPresetId } from "@/lib/game/daily";
+import { pacificDateKey, pacificParts } from "@/lib/game/pacificDay";
 import type { Level } from "@/lib/game/level/types";
 import {
   levelThumbSrc,
@@ -191,16 +192,15 @@ function useMonthWidth(weeks: number) {
   return { frameRef, gridRef, width };
 }
 
-/** THIS MONTH IN UTC. EACH DAY IS A LEVEL CARD, SEVEN TO A ROW. */
+/** THIS MONTH IN PACIFIC TIME. EACH DAY IS A LEVEL CARD, SEVEN TO A ROW. */
 export function CalendarMonth() {
   const auth = useAuth();
   const [dailies, setDailies] = useState<Record<string, DailyCard>>({});
   const [scores, setScores] = useState<Record<string, number>>({});
   const [costs, setCosts] = useState<Record<string, number[]>>({});
   const now = new Date();
-  const year = now.getUTCFullYear();
-  const month = now.getUTCMonth();
-  const today = now.toISOString().slice(0, 10);
+  const { year, month } = pacificParts(now);
+  const today = pacificDateKey(now);
   const firstWeekday = new Date(Date.UTC(year, month, 1)).getUTCDay();
   const count = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
   const label = new Date(Date.UTC(year, month, 1)).toLocaleString("en-US", {

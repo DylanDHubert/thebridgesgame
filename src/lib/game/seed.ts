@@ -1,3 +1,5 @@
+import { pacificDateKey } from "@/lib/game/pacificDay";
+
 /** MULBERRY32 — DETERMINISTIC PRNG FROM A NUMERIC SEED */
 export function mulberry32(seed: number): () => number {
   let state = seed >>> 0;
@@ -23,5 +25,5 @@ export function hashStringToSeed(input: string): number {
 }
 
 export function dailySeed(date = new Date()): string {
-  return date.toISOString().slice(0, 10);
+  return pacificDateKey(date);
 }

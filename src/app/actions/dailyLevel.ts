@@ -1,19 +1,20 @@
 "use server";
 
 import { buildDailyLevel } from "@/lib/game/daily";
+import { pacificDateKey } from "@/lib/game/pacificDay";
 import { openRequiredLandings } from "@/lib/game/level/landings";
 import { perfectBridgeCost } from "@/lib/game/perfectScore";
 import { loadDailyCard, loadStoredLevel, replaceDailyBoard, saveDailyLevel, type DailyCard } from "@/lib/supabase/scores";
 
-/** SAVE A PAST OR CURRENT UTC DAY ONCE, THEN HAND BACK THE ROW. */
+/** SAVE A PAST OR CURRENT PACIFIC DAY ONCE, THEN HAND BACK THE ROW. */
 export async function ensureDailyDay(day: string): Promise<DailyCard | null> {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
     console.log("[journeyman:daily] ensure rejected", { day });
     return null;
   }
-  const today = new Date().toISOString().slice(0, 10);
+  const today = pacificDateKey();
   if (day > today) {
-    console.log("[journeyman:daily] ensure future", { day });
+    console.log("[journeyman:daily] ensure future", { day, today });
     return null;
   }
   const existing = await loadDailyCard(day);
