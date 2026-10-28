@@ -6,11 +6,13 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { BoardColumn } from "@/components/game/BoardColumn";
 import { BoardZoom, useBoardZoom } from "@/components/game/BoardZoom";
 import { GameBoard } from "@/components/game/GameBoard";
+import { CreatureCard } from "@/components/creatures/CreatureBook";
 import { ScoreHome } from "@/components/play/ScoreHome";
 import { HairlineButton, HairlineHeader, HairlineRow } from "@/components/ui/hairline";
 import { useLevelGame } from "@/hooks/useLevelGame";
 import { rememberBestScore } from "@/lib/game/bestScore";
-import { claimCreature, type CreatureClaim } from "@/lib/game/creatureFinds";
+import { claimCreature, claimShownCreature, type CreatureClaim } from "@/lib/game/creatureFinds";
+import type { Creature } from "@/lib/game/creatures";
 import {
   lockFirstScore,
   readLockedScore,
@@ -69,12 +71,15 @@ export function PlaySession({ level, solver }: PlaySessionProps) {
   const [homeLine, setHomeLine] = useState<string | null>(null);
   const [fast, setFast] = useState(false);
   const [found, setFound] = useState<CreatureClaim | null>(null);
+  const [spotOpen, setSpotOpen] = useState(false);
   const auth = useAuth();
   const submitName = auth.username || username.trim();
 
   useEffect(() => {
     setFirstScore(readLockedScore(level.id));
     setUsername(readUsername());
+    setFound(null);
+    setSpotOpen(false);
   }, [level.id]);
 
   const success = phase === "success";
@@ -187,6 +192,12 @@ export function PlaySession({ level, solver }: PlaySessionProps) {
             boarLine={homeLine ?? undefined}
             reach={reach}
             zoom={boardZoom.zoom}
+            onCreatureClaim={(creature: Creature) => {
+              setFound(claimShownCreature(level, creature));
+            }}
+            onCreatureFound={() => {
+              setSpotOpen(true);
+            }}
           />
         }
         bar={
@@ -222,7 +233,8 @@ export function PlaySession({ level, solver }: PlaySessionProps) {
                     }
                     saveUsername(submitName);
                     void auth.saveUsername(submitName);
-                    setFound(claimCreature(level, bridges));
+                    setSpotOpen(false);
+                    setFound((current) => current ?? claimCreature(level, bridges));
                     const locked = lockFirstScore(
                       level.id,
                       result.bridgeCost,
@@ -270,6 +282,20 @@ export function PlaySession({ level, solver }: PlaySessionProps) {
           </div>
         }
       />
+      {spotOpen && found && !scoreOpen ? (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-white/80 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={found.creature.name}
+          onClick={() => setSpotOpen(false)}
+        >
+          <div className="flex w-full max-w-md flex-col gap-2">
+            <p className="text-center text-[10px] uppercase tracking-[0.16em]">Found</p>
+            <CreatureCard creature={found.creature} blank={false} />
+          </div>
+        </div>
+      ) : null}
       {scoreOpen ? (
         <ScoreHome
           score={confirmedCost}
@@ -281,6 +307,7 @@ export function PlaySession({ level, solver }: PlaySessionProps) {
           onRetry={() => {
             clearBridges();
             setScoreOpen(false);
+            setSpotOpen(false);
           }}
         />
       ) : null}

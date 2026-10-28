@@ -70,6 +70,16 @@ function remember(finds: CreatureFind[], claim: CreatureClaim, levelId: string):
   return claim;
 }
 
+/** THE BUSH WAS CLICKED. ONE ROW PER CREATURE. THE CARD STILL COMES BACK IF IT IS ALREADY KEPT. */
+export function claimShownCreature(level: Level, creature: Creature): CreatureClaim {
+  const finds = readFinds();
+  const claim: CreatureClaim = { creature, source: "wild" };
+  if (finds.some((find) => find.id === creature.id)) {
+    return claim;
+  }
+  return remember(finds, claim, level.id);
+}
+
 /**
  * ONE UNLOCK PER SUBMIT.
  * A REACHABLE HIDING WINS. AN EMPTY BOOK WITH NO WILD FIND GETS ONE GIFT.

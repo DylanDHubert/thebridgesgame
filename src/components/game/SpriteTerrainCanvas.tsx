@@ -4,7 +4,9 @@ import { useEffect, useId, useRef, useSyncExternalStore, type RefObject } from "
 
 import {
   CREATURE_BEHIND_LIFT,
+  CREATURE_SHAKE_MS,
   type CreatureHiding,
+  type CreatureScare,
 } from "@/lib/game/creatureHiding";
 import { creatureSprite } from "@/lib/game/creatures";
 import { cellKey } from "@/lib/game/coords";
@@ -63,6 +65,12 @@ type SpriteTerrainCanvasProps = {
   whirlpools: Set<string>;
   /** ANIMAL DRAWN UNDER THE PLANT ON ONE GRASS CELL. */
   hiding?: CreatureHiding | null;
+  /** SHAKE THEN DROP THE CREATURE. THE PARENT OWNS THE PHASE. */
+  scareRef?: RefObject<CreatureScare | null>;
+  /** BUMPED WHEN A SHAKE STARTS. */
+  scareMark?: number;
+  /** THE BUSH IS EMPTY. THE CARD CAN COME UP. */
+  onCreatureGone?: () => void;
   /** READ EACH PAINT. NULL ON THE HOME MAP. */
   boarRef?: RefObject<BoarPlan | null>;
   /** YELLOW WASH ON REACHABLE TILES. THE BOAR IS PUNCHED OUT SO HE STAYS ON TOP. */
@@ -452,6 +460,9 @@ export function SpriteTerrainCanvas({
   objectives,
   whirlpools,
   hiding = null,
+  scareRef,
+  scareMark = 0,
+  onCreatureGone,
   boarRef,
   flashRef,
   hintRef,
@@ -481,6 +492,10 @@ export function SpriteTerrainCanvas({
   bridgesRef.current = bridges;
   onStillRef.current = onStill;
   const walkId = useId();
+  const creatureAnimRef = useRef<(dx: number, show: boolean) => void>(() => {});
+  const creatureAnimReady = useRef(false);
+  const onCreatureGoneRef = useRef(onCreatureGone);
+  onCreatureGoneRef.current = onCreatureGone;
   const heardEat = useRef(new Set<string>());
   const eatBegan = useRef(0);
   const layerStyle = {
@@ -508,6 +523,13 @@ export function SpriteTerrainCanvas({
     const warmthAt = buildMarshWarmth(view.seed);
     const mudKeys = grassKeysOnStartIsland(view.terrain, view.rows, view.cols, view.start);
     const scale = metrics.tileWidth / SPRITE_NATIVE;
+    const creatureSrc = hiding ? creatureSprite(hiding.creature) : "";
+    const creatureKey = hiding ? cellKey(hiding.row, hiding.col) : "";
+    const creatureNudge = {
+      dx: 0,
+      show: scareRef?.current?.phase !== "gone",
+    };
+    creatureAnimReady.current = false;
     const placements: Placement[] = [];
     const byKey = new Map<string, Placement>();
 
@@ -627,6 +649,9 @@ export function SpriteTerrainCanvas({
         let maxY = tile;
         const visible: { image: CanvasImageSource; y: number }[] = [];
         for (const layer of layers) {
+          if (key === creatureKey && layer.src === creatureSrc) {
+            continue;
+          }
           if (flowerSrc && layer.src === flowerSrc && eaten.has(key)) {
             continue;
           }
@@ -666,6 +691,19 @@ export function SpriteTerrainCanvas({
       const drawCell = (context: CanvasRenderingContext2D, cell: Placement, time: number) => {
         const origin = isoSpriteOrigin(cell.row, cell.col, metrics);
         if (!isWater(cell)) {
+          if (cell.key === creatureKey && creatureNudge.show) {
+            const image = bySrc.get(creatureSrc);
+            const layer = cell.layers.find((entry) => entry.src === creatureSrc);
+            if (image && layer) {
+              context.drawImage(
+                image,
+                origin.x + creatureNudge.dx,
+                origin.y - layer.lift * scale,
+                metrics.tileWidth,
+                metrics.tileWidth,
+              );
+            }
+          }
           const plate = plates.get(cell.key);
           if (!plate) {
             return;
@@ -895,6 +933,40 @@ export function SpriteTerrainCanvas({
       paintMarksRef.current();
       startFlashRef.current();
       patchBridgesRef.current = patchBridges;
+      const paintCreatureNudge = (dx: number, show: boolean) => {
+        creatureNudge.dx = dx;
+        creatureNudge.show = show;
+        if (!hiding) {
+          return;
+        }
+        const cell = byKey.get(creatureKey);
+        if (!cell) {
+          return;
+        }
+        const amp = Math.max(4, Math.round(4 * scale));
+        const dirty: CssBox = {
+          left: cell.box.left - amp,
+          top: cell.box.top,
+          width: cell.box.width + amp * 2,
+          height: cell.box.height,
+        };
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.beginPath();
+        ctx.rect(dirty.left, dirty.top, dirty.width, dirty.height);
+        ctx.clip();
+        ctx.clearRect(dirty.left, dirty.top, dirty.width, dirty.height);
+        for (const other of placements) {
+          if (intersects(other.box, dirty)) {
+            drawCell(ctx, other, mapTime);
+          }
+        }
+        ctx.restore();
+        paintMarksRef.current();
+      };
+      creatureAnimRef.current = paintCreatureNudge;
+      creatureAnimReady.current = true;
       onStillRef.current?.();
       if (reduceMotion) {
         return;
@@ -928,9 +1000,59 @@ export function SpriteTerrainCanvas({
       cancelled = true;
       cancelAnimationFrame(frame);
       patchBridgesRef.current = () => {};
+      creatureAnimRef.current = () => {};
+      creatureAnimReady.current = false;
       setWalker(walkId, false);
     };
-  }, [view, depthIso, metrics, objectives, whirlpools, hiding, boarRef, alwaysAnimate, walkId]);
+  }, [view, depthIso, metrics, objectives, whirlpools, hiding, boarRef, alwaysAnimate, walkId, scareRef]);
+
+  useEffect(() => {
+    const scare = scareRef?.current;
+    if (!scare || scare.phase !== "shake") {
+      return;
+    }
+    let frame = 0;
+    let cancelled = false;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const finish = () => {
+      const live = scareRef?.current;
+      if (!live || live.phase !== "shake") {
+        return;
+      }
+      live.phase = "gone";
+      creatureAnimRef.current(0, false);
+      if (!cancelled) {
+        onCreatureGoneRef.current?.();
+      }
+    };
+    const tick = (now: number) => {
+      if (cancelled) {
+        return;
+      }
+      const live = scareRef?.current;
+      if (!live || live.phase !== "shake") {
+        return;
+      }
+      if (!creatureAnimReady.current) {
+        frame = requestAnimationFrame(tick);
+        return;
+      }
+      const age = now - live.startedAt;
+      if (reduced || age >= CREATURE_SHAKE_MS) {
+        finish();
+        return;
+      }
+      const amp = Math.max(1, Math.round((3 * metrics.tileWidth) / SPRITE_NATIVE));
+      const dx = Math.round(Math.sin(age / 28) * amp);
+      creatureAnimRef.current(dx, true);
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+    };
+  }, [scareMark, scareRef, metrics.tileWidth]);
 
   useEffect(() => {
     patchBridgesRef.current(bridges);

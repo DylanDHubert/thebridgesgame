@@ -10,8 +10,11 @@ import { grassKeysOnStartIsland } from "@/lib/rendering/terrainView";
 /** ONE HIDING IN THIS MANY BOARDS. THE SAME SEED ALWAYS AGREES. */
 const BOARDS_PER_HIDING = 8;
 
-/** SHOWING EVERY PLAY BOARD. FLIP OFF TO RESTORE ONE IN EIGHT. */
-const SHOW_EVERY_LEVEL = true;
+/** EVERY PLAY BOARD HIDES ONE WHILE THIS IS ON. OFF RESTORES ONE IN EIGHT. */
+const SHOW_EVERY_LEVEL = false;
+
+/** SHAKE IN THE BUSH BEFORE THE BODY IS GONE. */
+export const CREATURE_SHAKE_MS = 640;
 
 /** NATIVE PIXELS. THE PLANT IS DRAWN AFTER, SO THE BODY STAYS IN THE LEAVES. */
 export const CREATURE_BEHIND_LIFT = 6;
@@ -20,6 +23,12 @@ export type CreatureHiding = {
   creature: Creature;
   row: number;
   col: number;
+};
+
+/** SHAKE, THEN GONE. THE BOARD READS THIS WHILE IT PAINTS. */
+export type CreatureScare = {
+  phase: "shake" | "gone";
+  startedAt: number;
 };
 
 function touchesWater(level: Level, row: number, col: number): boolean {
@@ -59,7 +68,7 @@ function plantCells(level: Level): { row: number; col: number }[] {
   return cells;
 }
 
-/** HOME AND LESSONS NEVER HIDE ONE. PLAY BOARDS DO, EVERY ONE WHILE SHOWING OFF. */
+/** HOME AND LESSONS NEVER HIDE ONE. PLAY BOARDS HIDE ONE IN EIGHT. */
 export function creatureHiding(level: Level): CreatureHiding | null {
   if (CREATURES.length === 0 || level.id === HOME_LEVEL_ID || level.id.startsWith("tutorial-")) {
     return null;

@@ -19,7 +19,13 @@ import { MapLabelOverlay, type MapLabel } from "@/components/game/MapLabelOverla
 import type { DraftRoute } from "@/components/game/RouteCanvasOverlay";
 import { SpriteTerrainCanvas, type ReachFlash } from "@/components/game/SpriteTerrainCanvas";
 import { WoodFrame } from "@/components/ui/woodPlaque";
-import { creatureHiding } from "@/lib/game/creatureHiding";
+import {
+  CREATURE_BEHIND_LIFT,
+  creatureHiding,
+  type CreatureHiding,
+  type CreatureScare,
+} from "@/lib/game/creatureHiding";
+import type { Creature } from "@/lib/game/creatures";
 import { cellKey } from "@/lib/game/coords";
 import { getPlaySettings } from "@/lib/settings";
 import { bleedRimSpan, isoLatticeCells, type IsoSpan } from "@/lib/game/isoBoard";
@@ -36,7 +42,13 @@ import {
   BOAR_FRAME_W,
   type BoarPlan,
 } from "@/lib/rendering/boar";
-import { isoCellCenter, isoMetrics, SPRITE_NATIVE } from "@/lib/rendering/isoTiles";
+import {
+  isoCellCenter,
+  isoMetrics,
+  isoSpriteOrigin,
+  SPRITE_NATIVE,
+  type IsoMetrics,
+} from "@/lib/rendering/isoTiles";
 import { FLOWER_VARIANTS, waterSurfaceTint } from "@/lib/rendering/tileCatalog";
 import { terrainKindAt, terrainViewFromLevel } from "@/lib/rendering/terrainView";
 import { buildMarshWarmth } from "@/lib/rendering/waterWaves";
@@ -63,6 +75,40 @@ type BoarThought = {
 };
 
 const THOUGHT_MS = 2400;
+/** EMPTY BUSH, THEN THE CARD. */
+const CREATURE_CARD_PAUSE_MS = 200;
+
+function CreatureHit({
+  hiding,
+  metrics,
+  onClick,
+}: {
+  hiding: CreatureHiding;
+  metrics: IsoMetrics;
+  onClick: () => void;
+}) {
+  const scale = metrics.tileWidth / SPRITE_NATIVE;
+  const origin = isoSpriteOrigin(hiding.row, hiding.col, metrics);
+  return (
+    <button
+      type="button"
+      data-pan-skip=""
+      aria-label={hiding.creature.name}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
+      }}
+      className="absolute cursor-pointer border-0 bg-transparent p-0"
+      style={{
+        left: origin.x + metrics.tileWidth * 0.18,
+        top: origin.y - CREATURE_BEHIND_LIFT * scale + metrics.tileWidth * 0.02,
+        width: metrics.tileWidth * 0.64,
+        height: metrics.tileWidth * 0.62,
+        zIndex: hiding.row + hiding.col + 1,
+      }}
+    />
+  );
+}
 
 type GameBoardProps = {
   level: Level;
@@ -115,8 +161,12 @@ type GameBoardProps = {
   hintLocks?: boolean;
   /** THE LOADING LAP RUNS EVEN WHEN THE VIEWER ASKED FOR LESS MOTION. */
   alwaysAnimate?: boolean;
-  /** OFF WHILE A LEVEL IS BEING MADE. PLAY USES THE ONE-IN-EIGHT HIDING. */
+  /** OFF WHILE A LEVEL IS BEING MADE. PLAY BOARDS CAN HIDE A CREATURE. */
   creatures?: boolean;
+  /** CLICK. THE FIND IS KEPT BEFORE THE SHAKE FINISHES. */
+  onCreatureClaim?: (creature: Creature) => void;
+  /** AFTER THE CREATURE SHAKES AND LEAVES THE BUSH. */
+  onCreatureFound?: (creature: Creature) => void;
   mapLabelsDraggable?: boolean;
   onMapLabelMove?: (id: string, row: number, col: number) => void;
   onMapLabelSelect?: (id: string) => void;
@@ -305,6 +355,8 @@ export function GameBoard({
   hintLocks = true,
   alwaysAnimate = false,
   creatures = true,
+  onCreatureClaim,
+  onCreatureFound,
   mapLabelsDraggable = false,
   onMapLabelMove,
   onMapLabelSelect,
@@ -360,6 +412,46 @@ export function GameBoard({
     () => (creatures ? creatureHiding(level) : null),
     [creatures, level],
   );
+  const scareRef = useRef<CreatureScare | null>(null);
+  const hidingRef = useRef(hiding);
+  const onCreatureClaimRef = useRef(onCreatureClaim);
+  const onCreatureFoundRef = useRef(onCreatureFound);
+  const revealedRef = useRef(false);
+  const cardTimer = useRef(0);
+  hidingRef.current = hiding;
+  onCreatureClaimRef.current = onCreatureClaim;
+  onCreatureFoundRef.current = onCreatureFound;
+  const [scareMark, setScareMark] = useState(0);
+  const [creatureGone, setCreatureGone] = useState(false);
+  useEffect(() => {
+    scareRef.current = null;
+    revealedRef.current = false;
+    setCreatureGone(false);
+    setScareMark(0);
+    return () => window.clearTimeout(cardTimer.current);
+  }, [level.id]);
+  const spookCreature = () => {
+    if (!hiding || scareRef.current || !interactive) {
+      return;
+    }
+    scareRef.current = { phase: "shake", startedAt: performance.now() };
+    onCreatureClaimRef.current?.(hiding.creature);
+    setScareMark((mark) => mark + 1);
+  };
+  const settleCreature = () => {
+    if (revealedRef.current) {
+      return;
+    }
+    revealedRef.current = true;
+    setCreatureGone(true);
+    const spot = hidingRef.current;
+    window.clearTimeout(cardTimer.current);
+    cardTimer.current = window.setTimeout(() => {
+      if (spot) {
+        onCreatureFoundRef.current?.(spot.creature);
+      }
+    }, CREATURE_CARD_PAUSE_MS);
+  };
   const splashId = useRef(0);
   const costId = useRef(0);
   const thoughtId = useRef(0);
@@ -661,6 +753,9 @@ export function GameBoard({
         objectives={objectiveMarkers}
         whirlpools={emptyWhirlpools}
         hiding={hiding}
+        scareRef={scareRef}
+        scareMark={scareMark}
+        onCreatureGone={settleCreature}
         boarRef={boarOn ? boarRef : undefined}
         flashRef={flashRef}
         hintRef={hintRef}
@@ -735,6 +830,9 @@ export function GameBoard({
           onMoveLabel={onMapLabelMove}
           onSelect={onMapLabelSelect}
         />
+      ) : null}
+      {hiding && interactive && !creatureGone && !scareRef.current ? (
+        <CreatureHit hiding={hiding} metrics={metrics} onClick={spookCreature} />
       ) : null}
       {(showMission || showBoar) && level.start && boarClick ? (
         <BoarClick
