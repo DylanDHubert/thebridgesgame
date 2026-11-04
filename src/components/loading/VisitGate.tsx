@@ -1,9 +1,9 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { BoarRun } from "@/components/loading/LoadingScreen";
+import { LogoResolve } from "@/components/loading/LogoResolve";
 import { HairlineButton } from "@/components/ui/hairline";
 import { armAudio, setAudioBlocked } from "@/lib/sound/bed";
 
@@ -14,6 +14,7 @@ export function VisitGate() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const panelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     // THE SHARED CARD IS THE FIRST THING A FRIEND SHOULD SEE.
@@ -29,6 +30,14 @@ export function VisitGate() {
     setAudioBlocked(true);
     setOpen(true);
   }, [pathname]);
+
+  // FOCUS BELONGS INSIDE THE DIALOG, BUT NOT ON A CONTROL: autoFocus ON THE
+  // BUTTON MADE THE PLATFORM PAINT ITS FOCUS RING THE MOMENT THE GATE OPENED.
+  useEffect(() => {
+    if (open) {
+      panelRef.current?.focus({ preventScroll: true });
+    }
+  }, [open]);
 
   const begin = () => {
     window.sessionStorage.setItem(VISIT_KEY, "1");
@@ -54,14 +63,16 @@ export function VisitGate() {
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex min-h-dvh w-full flex-col items-center justify-center gap-5 bg-white text-black"
+      ref={panelRef}
+      tabIndex={-1}
+      className="fixed inset-0 z-[80] flex min-h-dvh w-full flex-col items-center justify-center gap-5 bg-white text-black outline-none"
       role="dialog"
       aria-modal="true"
       aria-label="Continue"
     >
-      <BoarRun />
+      <LogoResolve />
       <div className="flex flex-col items-center gap-2">
-        <HairlineButton autoFocus className="w-[184px]" onClick={onContinue}>
+        <HairlineButton className="w-[184px]" onClick={onContinue}>
           Continue
         </HairlineButton>
         <HairlineButton className="w-[184px]" onClick={onToday}>
