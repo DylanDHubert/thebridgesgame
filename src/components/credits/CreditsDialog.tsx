@@ -41,8 +41,18 @@ export function CreditsDialog({ onClose }: { onClose: () => void }) {
       >
         <h2 className="text-[11px] uppercase tracking-[0.16em]">Credits</h2>
         <ul className="flex flex-col gap-2 text-[10px] uppercase leading-5 tracking-[0.12em]">
-          <li>Developer: Dylan Hubert</li>
-          <li>SFX: Dylan Hubert</li>
+          <li>
+            Developer:{" "}
+            <a href="https://dylanhubert.me" target="_blank" rel="noreferrer" className={LINK}>
+              Dylan Hubert
+            </a>
+          </li>
+          <li>
+            SFX:{" "}
+            <a href="https://dylanhubert.me" target="_blank" rel="noreferrer" className={LINK}>
+              Dylan Hubert
+            </a>
+          </li>
           <li>
             Main Art:{" "}
             <a
@@ -65,6 +75,8 @@ export function CreditsDialog({ onClose }: { onClose: () => void }) {
               Masuone
             </a>
           </li>
+          <li className="text-center">Coded with Cursor</li>
+          <li className="text-center text-[#dc2626]">No AI art used</li>
         </ul>
         <HairlineButton onClick={onClose}>Close</HairlineButton>
       </div>
