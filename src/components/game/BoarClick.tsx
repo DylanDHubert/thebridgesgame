@@ -12,7 +12,7 @@ import {
   BOAR_FRAME_W,
   type BoarPlan,
 } from "@/lib/rendering/boar";
-import { SPRITE_NATIVE, type IsoMetrics } from "@/lib/rendering/isoTiles";
+import { isoCellTop, SPRITE_NATIVE, type IsoMetrics } from "@/lib/rendering/isoTiles";
 
 export const BOAR_THOUGHTS = [
   "mm, i am hungry.",
@@ -65,9 +65,13 @@ type BoarBox = {
   width: number;
   height: number;
   z: number;
+  hitLeft: number;
+  hitTop: number;
+  hitWidth: number;
+  hitHeight: number;
 };
 
-/** CLICK THE SPRITE. THE BUBBLE SITS ABOVE HIS HEAD. */
+/** THE SQUARE UNDER HIS FEET TAKES THE POKE. HIS BODY LETS THE TILE BEHIND RECEIVE THE CLICK. */
 export function BoarClick({
   boarRef,
   metrics,
@@ -94,7 +98,7 @@ export function BoarClick({
       }
       const pose = boarPose(plan, performance.now(), reduced);
       const place = boarPlace(pose, metrics);
-      const key = `${Math.round(place.x)},${Math.round(place.y)},${pose.facing},${metrics.tileWidth}`;
+      const key = `${place.row},${place.col},${Math.round(place.x)},${Math.round(place.y)},${pose.facing},${metrics.tileWidth}`;
       if (key === last) {
         return;
       }
@@ -102,12 +106,17 @@ export function BoarClick({
       const scale = metrics.tileWidth / SPRITE_NATIVE;
       const foot = BOAR_FOOT[pose.facing];
       const sink = boarSink(metrics.halfH * 2);
+      const top = isoCellTop(place.row, place.col, metrics);
       setBox({
         left: place.x - foot.x * scale,
         top: place.y - foot.y * scale + sink,
         width: BOAR_FRAME_W * scale,
         height: BOAR_FRAME_H * scale,
-        z: place.row + place.col,
+        z: place.row + place.col + 1,
+        hitLeft: top.x - metrics.halfW,
+        hitTop: top.y,
+        hitWidth: metrics.tileWidth,
+        hitHeight: metrics.halfH * 2,
       });
     };
 
@@ -123,6 +132,7 @@ export function BoarClick({
     <>
       <button
         type="button"
+        data-pan-skip=""
         aria-label="Boar"
         onClick={(event) => {
           event.stopPropagation();
@@ -130,10 +140,11 @@ export function BoarClick({
         }}
         className="absolute cursor-pointer border-0 bg-transparent p-0"
         style={{
-          left: box.left,
-          top: box.top,
-          width: box.width,
-          height: box.height,
+          left: box.hitLeft,
+          top: box.hitTop,
+          width: box.hitWidth,
+          height: box.hitHeight,
+          clipPath: "polygon(50% 0, 100% 50%, 50% 100%, 0 50%)",
           zIndex: box.z,
         }}
       />

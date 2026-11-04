@@ -16,6 +16,10 @@ type RoundCardProps = {
   solver: number | null;
   costs: number[];
   thumbUrl: string | null;
+  /** SCORE AND PAR NUMBERS. THE PUBLIC CARD KEEPS THE RESULT WORD ONLY. */
+  figures?: boolean;
+  /** EMOJI LINE UNDER THE RESULT. */
+  mark?: string | null;
   actions: ReactNode;
 };
 
@@ -29,6 +33,8 @@ export function RoundCard({
   solver,
   costs,
   thumbUrl,
+  figures = true,
+  mark = null,
   actions,
 }: RoundCardProps) {
   const story = score == null ? null : shareStory(score, solver, costs);
@@ -56,7 +62,8 @@ export function RoundCard({
         >
           {story?.title ?? "No round"}
         </h1>
-        {score != null ? (
+        {mark ? <p className="text-center text-[16px] leading-none">{mark}</p> : null}
+        {figures && score != null ? (
           <div className="flex flex-wrap items-center justify-center gap-2">
             <span className={BADGE}>Score {score}</span>
             {par != null ? <span className={BADGE}>Par {par}</span> : null}

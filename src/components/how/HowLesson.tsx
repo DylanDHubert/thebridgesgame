@@ -127,14 +127,18 @@ function LessonLine({
       or on the Boar to see where you can go. When complete the traversable area will be
       highlighted Green <ColorMark color={READY_GREEN} />, otherwise Yellow{" "}
       <ColorMark color={REACH_YELLOW} />. Click{" "}
-      <HairlineButton
-        onClick={onSubmit}
-        disabled={!ready}
-        className={ready ? "submit-ready" : ""}
-        style={ready ? undefined : { backgroundColor: "#d4d4d4", opacity: 1 }}
-      >
-        Submit
-      </HairlineButton>{" "}
+      <span className="mx-0.5 inline-flex border border-black p-0.5 align-middle">
+        <HairlineButton
+          onClick={onSubmit}
+          disabled={!ready}
+          className={ready ? "submit-ready" : ""}
+          style={
+            ready ? undefined : { backgroundColor: "#d4d4d4", color: "black", opacity: 1 }
+          }
+        >
+          Submit
+        </HairlineButton>
+      </span>{" "}
       to submit.
     </div>
   );

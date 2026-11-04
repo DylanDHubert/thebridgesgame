@@ -19,6 +19,36 @@ export type ShareStory = {
   total: number;
 };
 
+const BAND_MARK: Record<ScoreBand, string> = {
+  Albatross: "🦤",
+  Eagle: "🦅",
+  Birdie: "🦆",
+  Par: "🟰",
+  Bogey: "⬛",
+  Double: "⬛⬛",
+  Triple: "⬛⬛⬛",
+  "+N": "➕",
+};
+
+/** GREEN IS MON–WED, ORANGE IS THU–FRI, RED IS THE WEEKEND. MATCHES THE DAILY PRESETS. */
+function dailyDot(day: string): string {
+  const weekday = new Date(`${day}T12:00:00.000Z`).getUTCDay();
+  if (weekday === 0 || weekday === 6) {
+    return "🔴";
+  }
+  if (weekday === 4 || weekday === 5) {
+    return "🟠";
+  }
+  return "🟢";
+}
+
+/** ONE LINE FOR A PASTE. THE DOT IS ONLY ON A DAILY. */
+export function shareGlyph(score: number, solver: number | null, day: string | null): string {
+  const mark = solver == null ? "" : BAND_MARK[scoreBand(score, solver)];
+  const scene = `🏝️🌊${mark}🌉🐗`;
+  return day ? `${dailyDot(day)}${scene}` : scene;
+}
+
 /** THE LINE ON THE CARD. RANK COUNTS EVERYONE WHO BUILT IT CHEAPER. */
 export function shareStory(score: number, solver: number | null, costs: number[]): ShareStory {
   const cheaper = costs.filter((cost) => cost < score).length;

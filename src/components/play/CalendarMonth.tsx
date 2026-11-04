@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 
 import { ensureDailyDay } from "@/app/actions/dailyLevel";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useButtonSfx } from "@/lib/sound/buttonSfx";
 import { MapPreview } from "@/components/game/MapPreview";
 import { ISLAND_ROW, IslandCard } from "@/components/play/IslandCard";
 import { dailyPresetFor, type DailyPresetId } from "@/lib/game/daily";
@@ -37,6 +38,46 @@ function queueEnsure(day: string): Promise<DailyCard | null> {
 }
 
 const WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+/** OCTOBER 2026 IS THE FIRST DAILY MONTH. */
+const FIRST_YEAR = 2026;
+const FIRST_MONTH = 9;
+
+const MONTH_STEP = [
+  "silkscreen-bold inline-flex h-8 w-8 items-center justify-center border border-black bg-white text-[20px] leading-none text-black",
+  "hover:bg-[#fbbf24]",
+  "disabled:pointer-events-none disabled:opacity-40",
+].join(" ");
+
+function MonthStep({
+  label,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+  children: string;
+}) {
+  const press = useButtonSfx<HTMLButtonElement>("button");
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className={MONTH_STEP}
+      {...press()}
+    >
+      {children}
+    </button>
+  );
+}
+
+function shiftMonth(year: number, month: number, delta: number): { year: number; month: number } {
+  const date = new Date(Date.UTC(year, month + delta, 1));
+  return { year: date.getUTCFullYear(), month: date.getUTCMonth() };
+}
 
 function dayKey(year: number, month: number, day: number): string {
   const date = new Date(Date.UTC(year, month, day));
@@ -199,8 +240,12 @@ export function CalendarMonth() {
   const [scores, setScores] = useState<Record<string, number>>({});
   const [costs, setCosts] = useState<Record<string, number[]>>({});
   const now = new Date();
-  const { year, month } = pacificParts(now);
+  const live = pacificParts(now);
+  const [cursor, setCursor] = useState(() => ({ year: live.year, month: live.month }));
+  const { year, month } = cursor;
   const today = pacificDateKey(now);
+  const atFirst = year < FIRST_YEAR || (year === FIRST_YEAR && month <= FIRST_MONTH);
+  const atNow = year > live.year || (year === live.year && month >= live.month);
   const firstWeekday = new Date(Date.UTC(year, month, 1)).getUTCDay();
   const count = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
   const label = new Date(Date.UTC(year, month, 1)).toLocaleString("en-US", {
@@ -267,7 +312,23 @@ export function CalendarMonth() {
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col gap-3 overflow-hidden px-3 py-4">
-      <h2 className="shrink-0 text-center text-[11px] uppercase tracking-[0.16em]">{label}</h2>
+      <div className="flex shrink-0 items-center justify-center gap-3">
+        <MonthStep
+          label="Previous month"
+          disabled={atFirst}
+          onClick={() => setCursor((current) => shiftMonth(current.year, current.month, -1))}
+        >
+          {"<"}
+        </MonthStep>
+        <h2 className="min-w-32 text-center text-[11px] uppercase tracking-[0.16em]">{label}</h2>
+        <MonthStep
+          label="Next month"
+          disabled={atNow}
+          onClick={() => setCursor((current) => shiftMonth(current.year, current.month, 1))}
+        >
+          {">"}
+        </MonthStep>
+      </div>
       <div ref={frameRef} className="flex min-h-0 flex-1 items-center justify-center">
         <div
           ref={gridRef}

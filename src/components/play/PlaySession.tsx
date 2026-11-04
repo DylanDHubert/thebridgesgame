@@ -74,6 +74,7 @@ export function PlaySession({ level, solver }: PlaySessionProps) {
   const [spotOpen, setSpotOpen] = useState(false);
   const auth = useAuth();
   const submitName = auth.username || username.trim();
+  const submitReady = phase === "valid" && submitName.length > 0 && result != null;
 
   useEffect(() => {
     setFirstScore(readLockedScore(level.id));
@@ -202,7 +203,7 @@ export function PlaySession({ level, solver }: PlaySessionProps) {
         }
         bar={
           <div className="flex w-full items-center justify-between gap-3 border border-black px-3 py-2.5">
-            <p className="text-[10px] uppercase tracking-[0.14em]">
+            <p className="min-w-0 flex-1 truncate text-[10px] uppercase tracking-[0.14em]">
               {statusLabel(phase, confirmedCost)}
             </p>
             <HairlineRow className="justify-end">
@@ -212,53 +213,15 @@ export function PlaySession({ level, solver }: PlaySessionProps) {
                 atMin={boardZoom.atMin}
                 atMax={boardZoom.atMax}
               />
-              {phase === "valid" && !auth.username ? (
-                <input
-                  value={username}
-                  onChange={(event) => {
-                    setUsername(event.target.value);
-                    saveUsername(event.target.value);
-                  }}
-                  placeholder="Name"
-                  aria-label="Name"
-                  className="w-28 border border-black bg-white px-2 py-1.5 text-[10px] uppercase tracking-[0.12em] text-black placeholder:text-black/40 focus:outline-none"
-                />
-              ) : null}
-              {phase === "valid" ? (
-                <HairlineButton
-                  className={submitName ? "submit-ready" : ""}
-                  onClick={() => {
-                    if (!submitName || !result) {
-                      return;
-                    }
-                    saveUsername(submitName);
-                    void auth.saveUsername(submitName);
-                    setSpotOpen(false);
-                    setFound((current) => current ?? claimCreature(level, bridges));
-                    const locked = lockFirstScore(
-                      level.id,
-                      result.bridgeCost,
-                      [...bridges],
-                      submitName,
-                      { id: auth.userId, token: auth.accessToken },
-                    );
-                    setFirstScore(locked);
-                    submitSolution();
-                  }}
-                  disabled={!submitName}
-                >
-                  Submit
-                </HairlineButton>
-              ) : phase === "success" ? null : (
-                <HairlineButton
-                  onClick={() => {
-                    setBoarCue((cue) => cue + 1);
-                    checkSolution();
-                  }}
-                >
-                  Check
-                </HairlineButton>
-              )}
+              <HairlineButton
+                disabled={phase === "success"}
+                onClick={() => {
+                  setBoarCue((cue) => cue + 1);
+                  checkSolution();
+                }}
+              >
+                Check
+              </HairlineButton>
               {runningHome ? (
                 <HairlineButton
                   pressed={fast}
@@ -278,6 +241,49 @@ export function PlaySession({ level, solver }: PlaySessionProps) {
               <HairlineButton onClick={clearBridges} disabled={runningHome}>
                 Clear
               </HairlineButton>
+              <div className="flex items-center gap-2 border border-black p-1">
+                {phase === "valid" && !auth.username ? (
+                  <input
+                    value={username}
+                    onChange={(event) => {
+                      setUsername(event.target.value);
+                      saveUsername(event.target.value);
+                    }}
+                    placeholder="Name"
+                    aria-label="Name"
+                    className="w-28 border border-black bg-white px-2 py-1.5 text-[10px] uppercase tracking-[0.12em] text-black placeholder:text-black/40 focus:outline-none"
+                  />
+                ) : null}
+                <HairlineButton
+                  className={submitReady ? "submit-ready" : ""}
+                  style={
+                    submitReady
+                      ? undefined
+                      : { backgroundColor: "#d4d4d4", color: "black", opacity: 1 }
+                  }
+                  disabled={!submitReady}
+                  onClick={() => {
+                    if (!submitReady || !result) {
+                      return;
+                    }
+                    saveUsername(submitName);
+                    void auth.saveUsername(submitName);
+                    setSpotOpen(false);
+                    setFound((current) => current ?? claimCreature(level, bridges));
+                    const locked = lockFirstScore(
+                      level.id,
+                      result.bridgeCost,
+                      [...bridges],
+                      submitName,
+                      { id: auth.userId, token: auth.accessToken },
+                    );
+                    setFirstScore(locked);
+                    submitSolution();
+                  }}
+                >
+                  Submit
+                </HairlineButton>
+              </div>
             </HairlineRow>
           </div>
         }

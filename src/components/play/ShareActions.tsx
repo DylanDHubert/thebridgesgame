@@ -4,31 +4,33 @@ import { useEffect, useState } from "react";
 
 import { HairlineButton, HairlineLink, HairlineRow } from "@/components/ui/hairline";
 
-/** COPY THE CARD, HAND IT OFF, OR OPEN THE ISLAND. ONE ROW. */
+/** COPY THE EMOJI LINE, HAND THE CARD OFF, OR OPEN THE ISLAND. ONE ROW. */
 export function ShareActions({
   title,
   text,
+  copyText,
   playHref,
 }: {
   title: string;
   text: string;
+  copyText?: string | null;
   playHref: string;
 }) {
   const [copied, setCopied] = useState(false);
-  const [canSend, setCanSend] = useState(false);
+  const [canShare, setCanShare] = useState(false);
 
   useEffect(() => {
-    setCanSend(typeof navigator.share === "function");
+    setCanShare(typeof navigator.share === "function");
   }, []);
 
   const copy = () => {
-    const url = window.location.href;
-    void navigator.clipboard.writeText(url).then(() => {
+    const line = copyText || text;
+    void navigator.clipboard.writeText(line).then(() => {
       setCopied(true);
     });
   };
 
-  const send = () => {
+  const share = () => {
     void navigator.share({ title, text, url: window.location.href }).catch(() => {
       // THE SHEET WAS DISMISSED. THE CARD STAYS.
     });
@@ -36,8 +38,8 @@ export function ShareActions({
 
   return (
     <HairlineRow>
-      <HairlineButton onClick={copy}>{copied ? "Copied" : "Copy link"}</HairlineButton>
-      {canSend ? <HairlineButton onClick={send}>Send</HairlineButton> : null}
+      <HairlineButton onClick={copy}>{copied ? "Copied" : "Copy"}</HairlineButton>
+      {canShare ? <HairlineButton onClick={share}>Share</HairlineButton> : null}
       <HairlineLink href={playHref}>Play</HairlineLink>
     </HairlineRow>
   );

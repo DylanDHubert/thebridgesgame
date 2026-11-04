@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { SharePoster } from "@/components/play/SharePoster";
 import { HairlineHeader, HairlineLink } from "@/components/ui/hairline";
-import { shareStory } from "@/lib/game/shareCopy";
+import { shareGlyph, shareStory } from "@/lib/game/shareCopy";
 import { levelThumbSrc, listScoreRows, loadShareLevel } from "@/lib/supabase/scores";
 
 type SharePageProps = {
@@ -89,6 +89,7 @@ export default async function SharePage({ params, searchParams }: SharePageProps
     score,
     players: costs.length,
     found: level != null,
+    glyph: level && score != null ? shareGlyph(score, level.solver, level.kind === "daily" ? level.day : null) : null,
   });
   if (!level) {
     return (
@@ -117,6 +118,7 @@ export default async function SharePage({ params, searchParams }: SharePageProps
           costs={costs}
           thumbUrl={level.thumb ? levelThumbSrc(level.id, level.thumb) : null}
           playHref={playHref}
+          day={level.kind === "daily" ? level.day : null}
         />
       </div>
     </main>

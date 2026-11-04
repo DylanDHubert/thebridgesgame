@@ -1,6 +1,6 @@
 import { RoundCard } from "@/components/play/RoundCard";
 import { ShareActions } from "@/components/play/ShareActions";
-import { shareStory } from "@/lib/game/shareCopy";
+import { shareGlyph, shareStory } from "@/lib/game/shareCopy";
 
 /** THE PUBLIC CARD. COPY, SEND, OR PLAY THIS ISLAND. */
 export function SharePoster({
@@ -11,6 +11,7 @@ export function SharePoster({
   costs,
   thumbUrl,
   playHref,
+  day = null,
 }: {
   levelName: string;
   playerName: string;
@@ -19,11 +20,15 @@ export function SharePoster({
   costs: number[];
   thumbUrl: string | null;
   playHref: string;
+  /** PACIFIC DAY WHEN THIS CARD IS A DAILY. OMITTED FOR OTHER ISLANDS. */
+  day?: string | null;
 }) {
   const story = score == null ? null : shareStory(score, solver, costs);
-  const sendText = story
+  const glyph = score == null ? null : shareGlyph(score, solver, day);
+  const sentence = story
     ? `${playerName} scored ${story.title} on ${levelName}.`
     : `${levelName} on The Bridges Game`;
+  const sendText = glyph ? `${glyph}\n${sentence}` : sentence;
   return (
     <RoundCard
       levelName={levelName}
@@ -32,10 +37,13 @@ export function SharePoster({
       solver={solver}
       costs={costs}
       thumbUrl={thumbUrl}
+      figures={false}
+      mark={glyph}
       actions={
         <ShareActions
           title={`${playerName} · ${story?.title ?? levelName}`}
           text={sendText}
+          copyText={glyph}
           playHref={playHref}
         />
       }

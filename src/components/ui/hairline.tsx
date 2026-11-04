@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 
 import { AccountLink } from "@/components/auth/AccountLink";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { ReportDialog } from "@/components/report/ReportDialog";
 import { GearButton } from "@/components/settings/GearButton";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { useButtonSfx } from "@/lib/sound/buttonSfx";
@@ -158,9 +159,11 @@ export function HairlineHeader({
   const { userId } = useAuth();
   const [open, setOpen] = useState(menuOpen);
   const [settings, setSettings] = useState(false);
+  const [report, setReport] = useState(false);
   const brandPress = useButtonSfx<HTMLAnchorElement>("link");
   const menuPress = useButtonSfx<HTMLButtonElement>("button");
   const closePress = useButtonSfx<HTMLButtonElement>("button");
+  const reportPress = useButtonSfx<HTMLButtonElement>("button");
   const close = () => {
     if (menuLocked) {
       return;
@@ -290,6 +293,19 @@ export function HairlineHeader({
                   </NavLink>
                 ))}
                 <AccountLink onDone={close} />
+                <button
+                  type="button"
+                  className={`${NAV_LINK} w-full`}
+                  onClick={() => {
+                    if (!menuLocked) {
+                      setOpen(false);
+                    }
+                    setReport(true);
+                  }}
+                  {...reportPress()}
+                >
+                  Report
+                </button>
                 {menuLocked ? null : (
                   <button type="button" className={`${NAV_LINK} w-full`} onClick={close} {...closePress()}>
                     Close
@@ -301,6 +317,7 @@ export function HairlineHeader({
           )
         : null}
       {settings ? <SettingsDialog onClose={() => setSettings(false)} /> : null}
+      {report ? <ReportDialog onClose={() => setReport(false)} /> : null}
     </header>
   );
 }
