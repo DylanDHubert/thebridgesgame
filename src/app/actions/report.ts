@@ -23,7 +23,7 @@ export async function sendReport(input: {
   const body = input.body.trim();
   if (!url || !key) {
     console.log("[journeyman:report] skipped");
-    return { ok: false, error: "Reports are not available." };
+    return { ok: false, error: "Feedback is not available." };
   }
   if (!isKind(input.kind)) {
     console.log("[journeyman:report] rejected", { kind: input.kind });
@@ -35,7 +35,7 @@ export async function sendReport(input: {
   }
   if (!input.token) {
     console.log("[journeyman:report] rejected", { reason: "no session" });
-    return { ok: false, error: "Sign in before sending a report." };
+    return { ok: false, error: "Sign in before sending feedback." };
   }
 
   const supabase = createClient(url, key, {
@@ -46,7 +46,7 @@ export async function sendReport(input: {
   const userId = data.user?.id;
   if (userError || !userId) {
     console.log("[journeyman:report] rejected", { reason: userError?.message ?? "no user" });
-    return { ok: false, error: "Sign in before sending a report." };
+    return { ok: false, error: "Sign in before sending feedback." };
   }
 
   const response = await fetch(`${url}/rest/v1/reports`, {

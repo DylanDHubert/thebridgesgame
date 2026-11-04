@@ -47,7 +47,7 @@ export function ReportDialog({ onClose }: { onClose: () => void }) {
       return;
     }
     if (!auth.accessToken) {
-      setError("Sign in before sending a report.");
+      setError("Sign in before sending feedback.");
       return;
     }
     setPending(true);
@@ -72,11 +72,11 @@ export function ReportDialog({ onClose }: { onClose: () => void }) {
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
-        aria-label="Report"
+        aria-label="Feedback"
         className="flex w-full max-w-[22rem] flex-col gap-3 border border-black bg-white p-4 outline-none"
         onClick={(event) => event.stopPropagation()}
       >
-        <h2 className="text-[11px] uppercase tracking-[0.16em]">Report</h2>
+        <h2 className="text-[11px] uppercase tracking-[0.16em]">Feedback</h2>
         {sent ? (
           <p className="text-[10px] uppercase tracking-[0.14em]">Sent.</p>
         ) : (
