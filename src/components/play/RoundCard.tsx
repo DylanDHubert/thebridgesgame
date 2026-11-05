@@ -20,6 +20,8 @@ type RoundCardProps = {
   figures?: boolean;
   /** EMOJI LINE UNDER THE RESULT. */
   mark?: string | null;
+  /** THE STORED FIRST SUBMIT, NOT A LATER RUN. */
+  first?: boolean;
   actions: ReactNode;
 };
 
@@ -35,6 +37,7 @@ export function RoundCard({
   thumbUrl,
   figures = true,
   mark = null,
+  first = false,
   actions,
 }: RoundCardProps) {
   const story = score == null ? null : shareStory(score, solver, costs);
@@ -72,7 +75,14 @@ export function RoundCard({
         <div className="w-full">
           <ScoreHeat costs={costs} solver={solver} score={score} />
         </div>
-        <p className="text-center text-[10px] uppercase tracking-[0.12em]">{playerName}</p>
+        <p className="flex items-center justify-center gap-2 text-center text-[10px] uppercase tracking-[0.12em]">
+          <span>{playerName}</span>
+          {first ? (
+            <span className="bg-[#fbbf24] px-1 text-[8px] leading-none tracking-[0.14em]">
+              First
+            </span>
+          ) : null}
+        </p>
         {actions}
       </div>
     </article>

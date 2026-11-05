@@ -11,6 +11,7 @@ export function SharePoster({
   costs,
   thumbUrl,
   playHref,
+  first = false,
   day = null,
 }: {
   levelName: string;
@@ -20,6 +21,8 @@ export function SharePoster({
   costs: number[];
   thumbUrl: string | null;
   playHref: string;
+  /** THIS ROUND IS THE PLAYER'S FIRST SUBMIT. */
+  first?: boolean;
   /** PACIFIC DAY WHEN THIS CARD IS A DAILY. OMITTED FOR OTHER ISLANDS. */
   day?: string | null;
 }) {
@@ -39,6 +42,7 @@ export function SharePoster({
       thumbUrl={thumbUrl}
       figures={false}
       mark={glyph}
+      first={first}
       actions={
         <ShareActions
           title={`${playerName} · ${story?.title ?? levelName}`}

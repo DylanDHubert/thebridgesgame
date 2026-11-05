@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { useButtonSfx } from "@/lib/sound/buttonSfx";
 import { MapPreview } from "@/components/game/MapPreview";
 import { ISLAND_ROW, IslandCard } from "@/components/play/IslandCard";
+import { LevelHistory } from "@/components/play/LevelHistory";
 import { dailyPresetFor, type DailyPresetId } from "@/lib/game/daily";
 import { pacificDateKey, pacificParts } from "@/lib/game/pacificDay";
 import type { Level } from "@/lib/game/level/types";
@@ -239,6 +240,12 @@ export function CalendarMonth() {
   const [dailies, setDailies] = useState<Record<string, DailyCard>>({});
   const [scores, setScores] = useState<Record<string, number>>({});
   const [costs, setCosts] = useState<Record<string, number[]>>({});
+  const [open, setOpen] = useState<{
+    id: string;
+    name: string;
+    solver: number | null;
+    playHref: string;
+  } | null>(null);
   const now = new Date();
   const live = pacificParts(now);
   const [cursor, setCursor] = useState(() => ({ year: live.year, month: live.month }));
@@ -310,6 +317,26 @@ export function CalendarMonth() {
     });
   }, []);
 
+  const openDay = useCallback(
+    (day: string) => {
+      const known = dailies[day];
+      const playHref = `/play?daily=${day}`;
+      if (known) {
+        setOpen({ id: known.id, name: known.name, solver: known.solver, playHref });
+        return;
+      }
+      void queueEnsure(day).then((card) => {
+        if (card) {
+          remember(card);
+          setOpen({ id: card.id, name: card.name, solver: card.solver, playHref });
+          return;
+        }
+        setOpen({ id: "", name: day, solver: null, playHref });
+      });
+    },
+    [dailies, remember],
+  );
+
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col gap-3 overflow-hidden px-3 py-4">
       <div className="flex shrink-0 items-center justify-center gap-3">
@@ -349,7 +376,7 @@ export function CalendarMonth() {
           return (
             <IslandCard
               key={key}
-              href={future ? undefined : `/play?daily=${key}`}
+              onOpen={future ? undefined : () => openDay(key)}
               title={
                 <>
                   <span className="text-black group-hover:text-white">{day}</span>{" "}
@@ -375,6 +402,15 @@ export function CalendarMonth() {
         })}
         </div>
       </div>
+      {open ? (
+        <LevelHistory
+          levelId={open.id}
+          name={open.name}
+          solver={open.solver}
+          playHref={open.playHref}
+          onClose={() => setOpen(null)}
+        />
+      ) : null}
     </div>
   );
 }

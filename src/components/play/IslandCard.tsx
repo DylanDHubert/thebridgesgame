@@ -63,6 +63,7 @@ export function ScoreHeat({
 
 type IslandCardProps = {
   href?: string;
+  onOpen?: () => void;
   title: ReactNode;
   image?: ReactNode;
   solver: number | null;
@@ -75,6 +76,7 @@ type IslandCardProps = {
 /** THE LEVEL CARD. IMAGE, NAME, A PIXEL OF THE FIELD, THEN THE RESULT. */
 export function IslandCard({
   href,
+  onOpen,
   title,
   image,
   solver,
@@ -85,9 +87,10 @@ export function IslandCard({
 }: IslandCardProps) {
   const label =
     score == null ? "No score" : solver == null ? String(score) : scoreTitle(score, solver);
+  const open = Boolean(href || onOpen);
   const shell = [
     "block min-w-0 border border-black",
-    href ? "group transition hover:bg-black hover:text-white" : "opacity-45",
+    open ? "group transition hover:bg-black hover:text-white" : "opacity-45",
   ].join(" ");
   const body = (
     <>
@@ -111,6 +114,13 @@ export function IslandCard({
       </div>
     </>
   );
+  if (onOpen) {
+    return (
+      <IslandButton onClick={onOpen} className={shell}>
+        {body}
+      </IslandButton>
+    );
+  }
   if (!href) {
     return <div className={shell}>{body}</div>;
   }
@@ -118,6 +128,28 @@ export function IslandCard({
     <IslandLink href={href} className={shell}>
       {body}
     </IslandLink>
+  );
+}
+
+function IslandButton({
+  onClick,
+  className,
+  children,
+}: {
+  onClick: () => void;
+  className: string;
+  children: ReactNode;
+}) {
+  const press = useButtonSfx<HTMLButtonElement>("link");
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`${className} w-full cursor-pointer bg-transparent text-left font-[inherit]`}
+      {...press()}
+    >
+      {children}
+    </button>
   );
 }
 

@@ -6,6 +6,7 @@ import { loadPlayerScores } from "@/app/actions/playerScores";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { MapPreview } from "@/components/game/MapPreview";
 import { ISLAND_ROW, IslandCard } from "@/components/play/IslandCard";
+import { LevelHistory } from "@/components/play/LevelHistory";
 import { HairlineLink } from "@/components/ui/hairline";
 import { readBestScores } from "@/lib/game/bestScore";
 import { readLockedScores } from "@/lib/game/lockScore";
@@ -86,6 +87,7 @@ export function LevelPicker({ cards }: LevelPickerProps) {
   const auth = useAuth();
   const [bests, setBests] = useState<Record<string, number>>({});
   const [costs, setCosts] = useState<Record<string, number[]>>({});
+  const [open, setOpen] = useState<LevelCard | null>(null);
 
   useEffect(() => {
     const local = { ...readLockedScores(), ...readBestScores() };
@@ -121,19 +123,30 @@ export function LevelPicker({ cards }: LevelPickerProps) {
   }
 
   return (
-    <ul className={ISLAND_ROW}>
-      {cards.map((card) => (
-        <li key={card.id} className="min-w-0">
-          <IslandCard
-            href={`/play?level=${encodeURIComponent(card.id)}`}
-            title={card.name}
-            image={<CardShot id={card.id} thumb={card.thumb} />}
-            solver={card.solver}
-            costs={costs[card.id] ?? []}
-            score={bests[card.id] ?? null}
-          />
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className={ISLAND_ROW}>
+        {cards.map((card) => (
+          <li key={card.id} className="min-w-0">
+            <IslandCard
+              onOpen={() => setOpen(card)}
+              title={card.name}
+              image={<CardShot id={card.id} thumb={card.thumb} />}
+              solver={card.solver}
+              costs={costs[card.id] ?? []}
+              score={bests[card.id] ?? null}
+            />
+          </li>
+        ))}
+      </ul>
+      {open ? (
+        <LevelHistory
+          levelId={open.id}
+          name={open.name}
+          solver={open.solver}
+          playHref={`/play?level=${encodeURIComponent(open.id)}`}
+          onClose={() => setOpen(null)}
+        />
+      ) : null}
+    </>
   );
 }

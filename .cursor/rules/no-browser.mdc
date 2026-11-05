@@ -1,0 +1,14 @@
+---
+description: Do not drive the browser unless the user asks in this message
+alwaysApply: true
+---
+
+# No browser actions
+
+Do not use browser tools, page automation, or screenshots.
+
+The user has asked for this repeatedly. Skip the browser even when a change is visible in the app.
+
+Check the work another way, and say what was not opened in a browser.
+
+Use the browser only when the user explicitly asks for it in the current message.

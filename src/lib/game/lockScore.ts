@@ -1,4 +1,4 @@
-import { saveFirstSubmission } from "@/lib/supabase/scores";
+import { saveFirstSubmission, saveLaterSubmission } from "@/lib/supabase/scores";
 
 const LOCK_KEY = "journeyman:lock";
 const NAME_KEY = "journeyman:name";
@@ -77,19 +77,21 @@ export function lockFirstScore(
 ): number {
   const locks = readLocks();
   const existing = locks[levelId];
-  if (existing != null) {
-    return existing;
-  }
-  locks[levelId] = score;
-  window.localStorage.setItem(LOCK_KEY, JSON.stringify(locks));
-  console.log("[journeyman:play] locked score", { levelId, score });
-  void saveFirstSubmission({
+  const run = {
     levelId,
     playerId: player.id ?? playerId(),
     username: username.trim() || "boar",
     cost: score,
     bridges,
     token: player.token,
-  });
+  };
+  if (existing != null) {
+    void saveLaterSubmission(run);
+    return existing;
+  }
+  locks[levelId] = score;
+  window.localStorage.setItem(LOCK_KEY, JSON.stringify(locks));
+  console.log("[journeyman:play] locked score", { levelId, score });
+  void saveFirstSubmission(run);
   return score;
 }

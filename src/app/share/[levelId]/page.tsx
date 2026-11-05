@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { SharePoster } from "@/components/play/SharePoster";
 import { HairlineHeader, HairlineLink } from "@/components/ui/hairline";
 import { shareGlyph, shareStory } from "@/lib/game/shareCopy";
-import { levelThumbSrc, listScoreRows, loadShareLevel } from "@/lib/supabase/scores";
+import { levelThumbSrc, listLevelRuns, loadShareLevel } from "@/lib/supabase/scores";
 
 type SharePageProps = {
   params: Promise<{ levelId: string }>;
@@ -24,18 +24,21 @@ function cleanScore(value: string | undefined): number | null {
 }
 
 async function roundFor(levelId: string, name: string, hinted: number | null) {
-  const [level, rows] = await Promise.all([loadShareLevel(levelId), listScoreRows(levelId)]);
-  const matched = rows.filter(
+  const [level, runs] = await Promise.all([loadShareLevel(levelId), listLevelRuns(levelId)]);
+  const matched = runs.filter(
     (row) => row.username.trim().toLowerCase() === name.toLowerCase(),
   );
-  const stored =
-    matched.length > 0 ? Math.min(...matched.map((row) => row.cost)) : null;
-  const score = stored ?? hinted;
-  const costs = rows.map((row) => row.cost);
-  if (score != null && stored == null) {
+  const official = matched.filter((row) => row.first);
+  const stored = official.length > 0 ? Math.min(...official.map((row) => row.cost)) : null;
+  const known = hinted != null && matched.some((row) => row.cost === hinted);
+  const score = known ? hinted : (stored ?? hinted);
+  const shown = known ? matched.filter((row) => row.cost === hinted) : official;
+  const first = shown.some((row) => row.first);
+  const costs = runs.filter((row) => row.first).map((row) => row.cost);
+  if (score != null && !costs.includes(score)) {
     costs.push(score);
   }
-  return { level, score, costs };
+  return { level, score, costs, first };
 }
 
 export async function generateMetadata({
@@ -82,11 +85,12 @@ export default async function SharePage({ params, searchParams }: SharePageProps
       </main>
     );
   }
-  const { level, score, costs } = await roundFor(levelId, name, cleanScore(query.score));
+  const { level, score, costs, first } = await roundFor(levelId, name, cleanScore(query.score));
   console.log("[journeyman:share] card", {
     levelId,
     name,
     score,
+    first,
     players: costs.length,
     found: level != null,
     glyph: level && score != null ? shareGlyph(score, level.solver, level.kind === "daily" ? level.day : null) : null,
@@ -118,6 +122,7 @@ export default async function SharePage({ params, searchParams }: SharePageProps
           costs={costs}
           thumbUrl={level.thumb ? levelThumbSrc(level.id, level.thumb) : null}
           playHref={playHref}
+          first={first}
           day={level.kind === "daily" ? level.day : null}
         />
       </div>

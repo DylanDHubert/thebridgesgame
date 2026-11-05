@@ -84,7 +84,7 @@ export async function replaceDailyBoard(input: {
   });
 }
 
-/** THE FIRST SUBMISSION FOR THIS PLAYER AND LEVEL. LATER ROWS ARE REFUSED. */
+/** THE FIRST SUBMISSION FOR THIS PLAYER AND LEVEL. A SECOND COUNTING ROW IS REFUSED. */
 export async function saveFirstSubmission(input: {
   levelId: string;
   playerId: string;
@@ -93,24 +93,55 @@ export async function saveFirstSubmission(input: {
   bridges: string[];
   token?: string | null;
 }): Promise<void> {
+  await saveSubmission(input, true);
+}
+
+/** A LATER RUN. IT IS KEPT FOR THE HISTORY AND DOES NOT REPLACE THE FIRST SCORE. */
+export async function saveLaterSubmission(input: {
+  levelId: string;
+  playerId: string;
+  username: string;
+  cost: number;
+  bridges: string[];
+  token?: string | null;
+}): Promise<void> {
+  await saveSubmission(input, false);
+}
+
+async function saveSubmission(
+  input: {
+    levelId: string;
+    playerId: string;
+    username: string;
+    cost: number;
+    bridges: string[];
+    token?: string | null;
+  },
+  counts: boolean,
+): Promise<void> {
   const remote = env();
   if (!remote || typeof window === "undefined") {
     return;
   }
   const response = await fetch(`${remote.url}/rest/v1/submissions`, {
     method: "POST",
-    headers: headers(remote.key, "resolution=ignore-duplicates", input.token),
+    headers: headers(
+      remote.key,
+      counts ? "resolution=ignore-duplicates" : "return=minimal",
+      input.token,
+    ),
     body: JSON.stringify({
       level_id: input.levelId,
       player_id: input.playerId,
       username: input.username,
       cost: input.cost,
       bridges: input.bridges,
-      counts: true,
+      counts,
     }),
   });
   console.log("[journeyman:play] submission", {
     levelId: input.levelId,
+    counts,
     status: response.status,
   });
 }
@@ -420,7 +451,7 @@ export async function listSubmissionCosts(): Promise<Record<string, number[]>> {
     return {};
   }
   const response = await fetch(
-    `${remote.url}/rest/v1/submissions?select=level_id,cost`,
+    `${remote.url}/rest/v1/submissions?counts=eq.true&select=level_id,cost`,
     { headers: headers(remote.key), cache: "no-store" },
   );
   if (!response.ok) {
@@ -457,7 +488,7 @@ export async function listPlayerScores(
     return {};
   }
   const response = await fetch(
-    `${remote.url}/rest/v1/submissions?player_id=eq.${encodeURIComponent(playerId)}&select=level_id,cost`,
+    `${remote.url}/rest/v1/submissions?player_id=eq.${encodeURIComponent(playerId)}&counts=eq.true&select=level_id,cost`,
     { headers: headers(remote.key), cache: "no-store" },
   );
   if (!response.ok) {
@@ -493,7 +524,7 @@ export async function listScoreRows(levelId: string): Promise<ScoreRow[]> {
     return [];
   }
   const response = await fetch(
-    `${remote.url}/rest/v1/submissions?level_id=eq.${encodeURIComponent(levelId)}&select=cost,username&order=cost.asc`,
+    `${remote.url}/rest/v1/submissions?level_id=eq.${encodeURIComponent(levelId)}&counts=eq.true&select=cost,username&order=cost.asc`,
     { headers: headers(remote.key), cache: "no-store" },
   );
   if (!response.ok) {
@@ -511,5 +542,46 @@ export async function listScoreRows(levelId: string): Promise<ScoreRow[]> {
     const username =
       "username" in row && typeof row.username === "string" ? row.username : "";
     return cost == null ? [] : [{ cost, username }];
+  });
+}
+
+export type LevelRun = {
+  playerId: string;
+  username: string;
+  cost: number;
+  first: boolean;
+  createdAt: string;
+};
+
+/** EVERY STORED RUN ON ONE ISLAND, CHEAPEST FIRST. THE FIRST SUBMIT STAYS MARKED. */
+export async function listLevelRuns(levelId: string): Promise<LevelRun[]> {
+  const remote = env();
+  if (!remote || !levelId) {
+    return [];
+  }
+  const response = await fetch(
+    `${remote.url}/rest/v1/submissions?level_id=eq.${encodeURIComponent(levelId)}&select=player_id,username,cost,counts,created_at&order=cost.asc,created_at.asc`,
+    { headers: headers(remote.key), cache: "no-store" },
+  );
+  if (!response.ok) {
+    return [];
+  }
+  const rows: unknown = await response.json();
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+  return rows.flatMap((row) => {
+    if (!row || typeof row !== "object") {
+      return [];
+    }
+    const cost = "cost" in row && typeof row.cost === "number" ? row.cost : null;
+    const username =
+      "username" in row && typeof row.username === "string" ? row.username : "";
+    const playerId =
+      "player_id" in row && typeof row.player_id === "string" ? row.player_id : "";
+    const createdAt =
+      "created_at" in row && typeof row.created_at === "string" ? row.created_at : "";
+    const first = "counts" in row && row.counts === true;
+    return cost == null ? [] : [{ playerId, username: username || "Boar", cost, first, createdAt }];
   });
 }
