@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { browserSupabase } from "@/lib/supabase/browser";
+import { browserSupabase, redirectRecoveryHash } from "@/lib/supabase/browser";
 
 export type AuthSnapshot = {
   ready: boolean;
@@ -76,6 +76,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    if (redirectRecoveryHash()) {
+      return;
+    }
     const supabase = browserSupabase();
     if (!supabase) {
       setReady(true);

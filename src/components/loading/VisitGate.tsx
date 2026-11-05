@@ -17,8 +17,8 @@ export function VisitGate() {
   const panelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    // THE SHARED CARD IS THE FIRST THING A FRIEND SHOULD SEE.
-    if (pathname.startsWith("/share/")) {
+    // A SHARED CARD OR A PASSWORD LINK SHOULD BE THE FIRST THING ON SCREEN.
+    if (pathname.startsWith("/share/") || pathname === "/reset-password") {
       setAudioBlocked(false);
       setOpen(false);
       return;

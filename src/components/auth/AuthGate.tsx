@@ -6,7 +6,7 @@ import { useEffect, type ReactNode } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { browserSupabase } from "@/lib/supabase/browser";
 
-const OPEN = new Set(["/login", "/signup"]);
+const OPEN = new Set(["/login", "/signup", "/reset-password"]);
 
 /** SEND LOGGED-OUT VISITORS TO THE LOGIN PAGE. A SAVED SESSION SKIPS IT. */
 export function AuthGate({ children }: { children: ReactNode }) {
